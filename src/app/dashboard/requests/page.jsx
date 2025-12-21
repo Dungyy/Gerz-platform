@@ -55,7 +55,7 @@ export default function RequestsPage() {
         *,
         property:properties(name, address),
         unit:units(unit_number),
-        tenant:profiles!maintenance_requests_tenant_id_fkey(full_name, email),
+        tenant:profiles!maintenance_requests_tenant_id_fkey(full_name, email, phone),
         assigned:profiles!maintenance_requests_assigned_to_fkey(full_name)
       `)
       .order('created_at', { ascending: false })
@@ -165,25 +165,21 @@ export default function RequestsPage() {
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{request.title}</h3>
-                          {profile.role !== 'tenant' && (
-                            <p className="text-sm text-gray-600 mt-1">
-                              {request.property?.name} - Unit {request.unit?.unit_number}
-                            </p>
-                          )}
-                          <p className="text-sm text-gray-600 mt-1">
-                            {profile.role !== 'tenant' && `${request.tenant?.full_name} • `}
-                            {request.category} • {formatDate(request.created_at)}
-                          </p>
-                          {request.assigned && (
-                            <p className="text-sm text-blue-600 mt-1">
-                              Assigned to: {request.assigned.full_name}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                      <h3 className="font-semibold text-lg">{request.title}</h3>
+                      {profile.role !== 'tenant' && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          {request.property?.name} - Unit {request.unit?.unit_number}
+                        </p>
+                      )}
+                      <p className="text-sm text-gray-600 mt-1">
+                        {profile.role !== 'tenant' && `${request.tenant?.full_name} • `}
+                        {request.category} • {formatDate(request.created_at)}
+                      </p>
+                      {request.assigned && (
+                        <p className="text-sm text-blue-600 mt-1">
+                          Assigned to: {request.assigned.full_name}
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-col gap-2 ml-4">
                       <PriorityBadge priority={request.priority} />
@@ -208,11 +204,7 @@ function PriorityBadge({ priority }) {
     emergency: 'bg-red-100 text-red-700',
   }
 
-  return (
-    <Badge className={variants[priority]}>
-      {priority}
-    </Badge>
-  )
+  return <Badge className={variants[priority]}>{priority}</Badge>
 }
 
 function StatusBadge({ status }) {
@@ -224,11 +216,7 @@ function StatusBadge({ status }) {
     cancelled: 'bg-gray-100 text-gray-700',
   }
 
-  return (
-    <Badge className={variants[status]}>
-      {status.replace('_', ' ')}
-    </Badge>
-  )
+  return <Badge className={variants[status]}>{status.replace('_', ' ')}</Badge>
 }
 
 function formatDate(dateString) {
