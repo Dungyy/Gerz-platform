@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { Card, CardContent } from 'src/components/ui/card'
-import { Input } from 'src/components/ui/input'
-import { Badge } from 'src/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import { Search, Filter, Plus } from 'lucide-react'
 
 export default function RequestsPage() {

@@ -1,9 +1,9 @@
-'user client'
+'use client'
 
-import { createServerClient } from '@/lib/supabase-server'
-import { redirect } from 'next/navigation'
-import { Card, CardHeader, CardTitle, CardContent } from 'src/components/ui/card'
-import { Badge } from 'src/components/ui/badge'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { 
   Wrench, 
@@ -11,59 +11,93 @@ import {
   CheckCircle, 
   AlertCircle,
   TrendingUp,
-  Calendar
+  Plus
 } from 'lucide-react'
 
-export default async function DashboardPage() {
-  const supabase = createServerClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+export default function DashboardPage() {
+  const [profile, setProfile] = useState(null)
+  const [stats, setStats] = useState({
+    total: 0,
+    submitted: 0,
+    inProgress: 0,
+    completed: 0,
+    emergency: 0,
+  })
+  const [recentRequests, setRecentRequests] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*, organization:organizations(*)')
-    .eq('id', user.id)
-    .single()
+  useEffect(() => {
+    loadData()
+  }, [])
 
-  // Different dashboard based on role
-  if (profile.role === 'tenant') {
-    return <TenantDashboard userId={user.id} profile={profile} />
-  } else {
-    return <ManagerDashboard userId={user.id} profile={profile} />
+  async function loadData() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Get profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*, organization:organizations(*)')
+        .eq('id', user.id)
+        .single()
+
+      setProfile(profileData)
+
+      // Get requests based on role
+      let requestsQuery = supabase
+        .from('maintenance_requests')
+        .select(`
+          *,
+          property:properties(name),
+          unit:units(unit_number),
+          tenant:profiles!maintenance_requests_tenant_id_fkey(full_name)
+        `)
+        .order('created_at', { ascending: false })
+
+      if (profileData.role === 'tenant') {
+        requestsQuery = requestsQuery.eq('tenant_id', user.id).limit(10)
+      } else {
+        requestsQuery = requestsQuery.eq('organization_id', profileData.organization_id).limit(5)
+      }
+
+      const { data: requestsData } = await requestsQuery
+      setRecentRequests(requestsData || [])
+
+      // Calculate stats
+      const allRequests = requestsData || []
+      setStats({
+        total: allRequests.length,
+        submitted: allRequests.filter(r => r.status === 'submitted').length,
+        inProgress: allRequests.filter(r => r.status === 'in_progress' || r.status === 'assigned').length,
+        completed: allRequests.filter(r => r.status === 'completed').length,
+        emergency: allRequests.filter(r => r.priority === 'emergency' && r.status !== 'completed').length,
+      })
+
+      setLoading(false)
+    } catch (error) {
+      console.error('Error loading data:', error)
+      setLoading(false)
+    }
   }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  // Render based on role
+  if (profile?.role === 'tenant') {
+    return <TenantDashboard profile={profile} requests={recentRequests} />
+  }
+
+  return <ManagerDashboard profile={profile} stats={stats} requests={recentRequests} />
 }
 
-async function ManagerDashboard({ userId, profile }) {
-  const supabase = createServerClient()
-
-  // Get stats
-  const { data: requests } = await supabase
-    .from('maintenance_requests')
-    .select('*')
-    .eq('organization_id', profile.organization_id)
-
-  const stats = {
-    total: requests?.length || 0,
-    submitted: requests?.filter(r => r.status === 'submitted').length || 0,
-    inProgress: requests?.filter(r => r.status === 'in_progress' || r.status === 'assigned').length || 0,
-    completed: requests?.filter(r => r.status === 'completed').length || 0,
-    emergency: requests?.filter(r => r.priority === 'emergency' && r.status !== 'completed').length || 0,
-  }
-
-  // Get recent requests
-  const { data: recentRequests } = await supabase
-    .from('maintenance_requests')
-    .select(`
-      *,
-      property:properties(name),
-      unit:units(unit_number),
-      tenant:profiles!maintenance_requests_tenant_id_fkey(full_name)
-    `)
-    .eq('organization_id', profile.organization_id)
-    .order('created_at', { ascending: false })
-    .limit(5)
-
+function ManagerDashboard({ profile, stats, requests }) {
   return (
     <div className="space-y-6">
       <div>
@@ -73,30 +107,10 @@ async function ManagerDashboard({ userId, profile }) {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard
-          title="Total Requests"
-          value={stats.total}
-          icon={Wrench}
-          color="blue"
-        />
-        <StatsCard
-          title="New Requests"
-          value={stats.submitted}
-          icon={Clock}
-          color="yellow"
-        />
-        <StatsCard
-          title="In Progress"
-          value={stats.inProgress}
-          icon={TrendingUp}
-          color="blue"
-        />
-        <StatsCard
-          title="Completed"
-          value={stats.completed}
-          icon={CheckCircle}
-          color="green"
-        />
+        <StatsCard title="Total Requests" value={stats.total} icon={Wrench} color="blue" />
+        <StatsCard title="New Requests" value={stats.submitted} icon={Clock} color="yellow" />
+        <StatsCard title="In Progress" value={stats.inProgress} icon={TrendingUp} color="blue" />
+        <StatsCard title="Completed" value={stats.completed} icon={CheckCircle} color="green" />
       </div>
 
       {/* Emergency Alerts */}
@@ -114,7 +128,7 @@ async function ManagerDashboard({ userId, profile }) {
                 </p>
               </div>
               <Link href="/dashboard/requests?priority=emergency" className="ml-auto">
-                <Badge className="bg-red-600">View Now</Badge>
+                <Badge className="bg-red-600 text-white">View Now</Badge>
               </Link>
             </div>
           </CardContent>
@@ -133,10 +147,10 @@ async function ManagerDashboard({ userId, profile }) {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {recentRequests?.length === 0 ? (
+            {requests?.length === 0 ? (
               <p className="text-gray-500 text-center py-8">No requests yet</p>
             ) : (
-              recentRequests?.map((request) => (
+              requests?.map((request) => (
                 <Link
                   key={request.id}
                   href={`/dashboard/requests/${request.id}`}
@@ -167,21 +181,7 @@ async function ManagerDashboard({ userId, profile }) {
   )
 }
 
-async function TenantDashboard({ userId, profile }) {
-  const supabase = createServerClient()
-
-  // Get tenant's requests
-  const { data: requests } = await supabase
-    .from('maintenance_requests')
-    .select(`
-      *,
-      property:properties(name),
-      unit:units(unit_number)
-    `)
-    .eq('tenant_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(10)
-
+function TenantDashboard({ profile, requests }) {
   const activeRequests = requests?.filter(r => r.status !== 'completed' && r.status !== 'cancelled') || []
 
   return (
@@ -192,7 +192,8 @@ async function TenantDashboard({ userId, profile }) {
           <p className="text-gray-600 mt-1">Track your maintenance requests</p>
         </div>
         <Link href="/dashboard/requests/new">
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <Plus className="h-5 w-5" />
             New Request
           </button>
         </Link>
@@ -306,7 +307,7 @@ function PriorityBadge({ priority }) {
   }
 
   return (
-    <Badge className={variants[priority]}>
+    <Badge className={variants[priority] || 'bg-gray-100 text-gray-700'}>
       {priority}
     </Badge>
   )
@@ -322,8 +323,8 @@ function StatusBadge({ status }) {
   }
 
   return (
-    <Badge className={variants[status]}>
-      {status.replace('_', ' ')}
+    <Badge className={variants[status] || 'bg-gray-100 text-gray-700'}>
+      {status?.replace('_', ' ')}
     </Badge>
   )
 }
