@@ -1,0 +1,582 @@
+-- =====================================================
+-- GERZ SAAS DATABASE SCHEMA
+-- Multi-tenant maintenance request platform
+-- =====================================================
+
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- =====================================================
+-- 1. ORGANIZATIONS (Each property management company)
+-- =====================================================
+CREATE TABLE organizations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  slug TEXT UNIQUE NOT NULL, -- gerz.com/acme-properties
+  logo_url TEXT,
+  plan TEXT NOT NULL DEFAULT 'free', -- 'free', 'starter', 'professional', 'enterprise'
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
+  subscription_status TEXT DEFAULT 'trialing', -- 'trialing', 'active', 'past_due', 'canceled'
+  trial_ends_at TIMESTAMPTZ,
+  settings JSONB DEFAULT '{}', -- Custom settings per org
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =====================================================
+-- 2. USERS (Profiles - extends auth.users)
+-- =====================================================
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+  full_name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  role TEXT NOT NULL, -- 'owner', 'manager', 'maintenance', 'tenant'
+  phone TEXT,
+  avatar_url TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =====================================================
+-- 3. PROPERTIES
+-- =====================================================
+CREATE TABLE properties (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  address TEXT NOT NULL,
+  city TEXT,
+  state TEXT,
+  zip_code TEXT,
+  country TEXT DEFAULT 'US',
+  property_type TEXT, -- 'apartment', 'condo', 'house', 'commercial'
+  manager_id UUID REFERENCES profiles(id),
+  photo_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =====================================================
+-- 4. UNITS
+-- =====================================================
+CREATE TABLE units (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
+  unit_number TEXT NOT NULL,
+  floor INTEGER,
+  bedrooms INTEGER,
+  bathrooms DECIMAL(3,1),
+  square_feet INTEGER,
+  tenant_id UUID REFERENCES profiles(id),
+  lease_start_date DATE,
+  lease_end_date DATE,
+  monthly_rent DECIMAL(10,2),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(property_id, unit_number)
+);
+
+-- =====================================================
+-- 5. MAINTENANCE REQUESTS
+-- =====================================================
+CREATE TABLE maintenance_requests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+  property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
+  unit_id UUID REFERENCES units(id) ON DELETE CASCADE,
+  tenant_id UUID REFERENCES profiles(id),
+  assigned_to UUID REFERENCES profiles(id),
+  
+  -- Request details
+  title TEXT NOT NULL,
+  description TEXT,
+  category TEXT NOT NULL, -- 'plumbing', 'electrical', 'hvac', 'appliance', 'structural', 'pest', 'other'
+  priority TEXT NOT NULL DEFAULT 'medium', -- 'low', 'medium', 'high', 'emergency'
+  status TEXT NOT NULL DEFAULT 'submitted', -- 'submitted', 'assigned', 'in_progress', 'completed', 'cancelled'
+  
+  -- Access and scheduling
+  entry_allowed BOOLEAN DEFAULT FALSE,
+  preferred_date DATE,
+  preferred_time TEXT, -- 'morning', 'afternoon', 'evening', 'anytime'
+  
+  -- Media
+  photo_urls TEXT[],
+  
+  -- Completion
+  resolution_notes TEXT,
+  completed_at TIMESTAMPTZ,
+  completed_by UUID REFERENCES profiles(id),
+  
+  -- Timestamps
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =====================================================
+-- 6. REQUEST COMMENTS/UPDATES
+-- =====================================================
+CREATE TABLE request_comments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  request_id UUID REFERENCES maintenance_requests(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id),
+  comment TEXT NOT NULL,
+  is_internal BOOLEAN DEFAULT FALSE, -- Only managers/staff see this
+  photo_urls TEXT[],
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =====================================================
+-- 7. MAINTENANCE STAFF
+-- =====================================================
+CREATE TABLE maintenance_staff (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+  profile_id UUID REFERENCES profiles(id),
+  specialties TEXT[], -- ['plumbing', 'electrical', 'hvac']
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =====================================================
+-- 8. ACTIVITY LOG
+-- =====================================================
+CREATE TABLE activity_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+  request_id UUID REFERENCES maintenance_requests(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id),
+  action TEXT NOT NULL, -- 'created', 'updated', 'assigned', 'commented', 'completed'
+  details JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =====================================================
+-- INDEXES FOR PERFORMANCE
+-- =====================================================
+CREATE INDEX idx_profiles_org ON profiles(organization_id);
+CREATE INDEX idx_profiles_role ON profiles(role);
+CREATE INDEX idx_properties_org ON properties(organization_id);
+CREATE INDEX idx_units_property ON units(property_id);
+CREATE INDEX idx_units_tenant ON units(tenant_id);
+CREATE INDEX idx_requests_org ON maintenance_requests(organization_id);
+CREATE INDEX idx_requests_property ON maintenance_requests(property_id);
+CREATE INDEX idx_requests_status ON maintenance_requests(status);
+CREATE INDEX idx_requests_tenant ON maintenance_requests(tenant_id);
+CREATE INDEX idx_requests_assigned ON maintenance_requests(assigned_to);
+CREATE INDEX idx_requests_created ON maintenance_requests(created_at);
+CREATE INDEX idx_comments_request ON request_comments(request_id);
+CREATE INDEX idx_activity_org ON activity_logs(organization_id);
+CREATE INDEX idx_activity_request ON activity_logs(request_id);
+
+-- =====================================================
+-- ROW LEVEL SECURITY (RLS) POLICIES
+-- =====================================================
+
+-- Enable RLS on all tables
+ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE properties ENABLE ROW LEVEL SECURITY;
+ALTER TABLE units ENABLE ROW LEVEL SECURITY;
+ALTER TABLE maintenance_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE request_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE maintenance_staff ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
+
+-- =====================================================
+-- PROFILES POLICIES
+-- =====================================================
+CREATE POLICY "Users can view profiles in their org"
+  ON profiles FOR SELECT
+  USING (
+    organization_id IN (
+      SELECT organization_id FROM profiles WHERE id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can update their own profile"
+  ON profiles FOR UPDATE
+  USING (id = auth.uid());
+
+-- =====================================================
+-- ORGANIZATIONS POLICIES
+-- =====================================================
+CREATE POLICY "Users can view their own organization"
+  ON organizations FOR SELECT
+  USING (
+    id IN (
+      SELECT organization_id FROM profiles WHERE id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Organization owners can update their org"
+  ON organizations FOR UPDATE
+  USING (
+    id IN (
+      SELECT organization_id FROM profiles 
+      WHERE id = auth.uid() AND role = 'owner'
+    )
+  );
+
+-- =====================================================
+-- PROPERTIES POLICIES
+-- =====================================================
+CREATE POLICY "Users can view properties in their org"
+  ON properties FOR SELECT
+  USING (
+    organization_id IN (
+      SELECT organization_id FROM profiles WHERE id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Managers and owners can create properties"
+  ON properties FOR INSERT
+  WITH CHECK (
+    organization_id IN (
+      SELECT organization_id FROM profiles 
+      WHERE id = auth.uid() AND role IN ('owner', 'manager')
+    )
+  );
+
+CREATE POLICY "Managers and owners can update properties"
+  ON properties FOR UPDATE
+  USING (
+    organization_id IN (
+      SELECT organization_id FROM profiles 
+      WHERE id = auth.uid() AND role IN ('owner', 'manager')
+    )
+  );
+
+-- =====================================================
+-- UNITS POLICIES
+-- =====================================================
+CREATE POLICY "Users can view units in their org"
+  ON units FOR SELECT
+  USING (
+    property_id IN (
+      SELECT id FROM properties 
+      WHERE organization_id IN (
+        SELECT organization_id FROM profiles WHERE id = auth.uid()
+      )
+    )
+  );
+
+CREATE POLICY "Managers can manage units"
+  ON units FOR ALL
+  USING (
+    property_id IN (
+      SELECT id FROM properties 
+      WHERE organization_id IN (
+        SELECT organization_id FROM profiles 
+        WHERE id = auth.uid() AND role IN ('owner', 'manager')
+      )
+    )
+  );
+
+-- =====================================================
+-- MAINTENANCE REQUESTS POLICIES
+-- =====================================================
+CREATE POLICY "Tenants can view their own requests"
+  ON maintenance_requests FOR SELECT
+  USING (tenant_id = auth.uid());
+
+CREATE POLICY "Staff can view all requests in their org"
+  ON maintenance_requests FOR SELECT
+  USING (
+    organization_id IN (
+      SELECT organization_id FROM profiles 
+      WHERE id = auth.uid() AND role IN ('owner', 'manager', 'maintenance')
+    )
+  );
+
+CREATE POLICY "Tenants can create requests"
+  ON maintenance_requests FOR INSERT
+  WITH CHECK (
+    tenant_id = auth.uid() AND
+    organization_id IN (
+      SELECT organization_id FROM profiles WHERE id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Staff can update requests in their org"
+  ON maintenance_requests FOR UPDATE
+  USING (
+    organization_id IN (
+      SELECT organization_id FROM profiles 
+      WHERE id = auth.uid() AND role IN ('owner', 'manager', 'maintenance')
+    )
+  );
+
+-- =====================================================
+-- REQUEST COMMENTS POLICIES
+-- =====================================================
+CREATE POLICY "Users can view comments on requests they can see"
+  ON request_comments FOR SELECT
+  USING (
+    -- Can see request
+    request_id IN (
+      SELECT id FROM maintenance_requests 
+      WHERE tenant_id = auth.uid()
+      OR organization_id IN (
+        SELECT organization_id FROM profiles 
+        WHERE id = auth.uid() AND role IN ('owner', 'manager', 'maintenance')
+      )
+    )
+    AND
+    -- If internal comment, must be staff
+    (
+      is_internal = FALSE
+      OR
+      auth.uid() IN (
+        SELECT id FROM profiles 
+        WHERE role IN ('owner', 'manager', 'maintenance')
+      )
+    )
+  );
+
+CREATE POLICY "Users can create comments on requests they can see"
+  ON request_comments FOR INSERT
+  WITH CHECK (
+    user_id = auth.uid() AND
+    request_id IN (
+      SELECT id FROM maintenance_requests 
+      WHERE tenant_id = auth.uid()
+      OR organization_id IN (
+        SELECT organization_id FROM profiles WHERE id = auth.uid()
+      )
+    )
+  );
+
+-- =====================================================
+-- FUNCTIONS
+-- =====================================================
+
+-- Function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Add triggers for updated_at
+CREATE TRIGGER update_organizations_updated_at BEFORE UPDATE ON organizations
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_properties_updated_at BEFORE UPDATE ON properties
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_units_updated_at BEFORE UPDATE ON units
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_requests_updated_at BEFORE UPDATE ON maintenance_requests
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Function to log activity
+CREATE OR REPLACE FUNCTION log_request_activity()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO activity_logs (organization_id, request_id, user_id, action, details)
+  VALUES (
+    NEW.organization_id,
+    NEW.id,
+    auth.uid(),
+    TG_OP,
+    jsonb_build_object(
+      'status', NEW.status,
+      'assigned_to', NEW.assigned_to
+    )
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Add trigger for activity logging
+CREATE TRIGGER log_request_changes AFTER INSERT OR UPDATE ON maintenance_requests
+  FOR EACH ROW EXECUTE FUNCTION log_request_activity();
+```
+
+-----
+
+## 📁 COMPLETE PROJECT STRUCTURE
+```
+gerz/
+├── app/
+│   ├── (auth)/
+│   │   ├── login/
+│   │   │   └── page.jsx
+│   │   ├── signup/
+│   │   │   └── page.jsx
+│   │   └── layout.jsx
+│   │
+│   ├── (dashboard)/
+│   │   ├── layout.jsx              # Main dashboard layout with sidebar
+│   │   ├── page.jsx                # Dashboard home
+│   │   │
+│   │   ├── requests/
+│   │   │   ├── page.jsx            # All requests list
+│   │   │   ├── new/
+│   │   │   │   └── page.jsx        # New request form
+│   │   │   └── [id]/
+│   │   │       └── page.jsx        # Request detail
+│   │   │
+│   │   ├── properties/
+│   │   │   ├── page.jsx            # All properties
+│   │   │   ├── new/
+│   │   │   │   └── page.jsx        # Add property
+│   │   │   └── [id]/
+│   │   │       ├── page.jsx        # Property detail
+│   │   │       └── units/
+│   │   │           ├── page.jsx    # Units list
+│   │   │           └── new/
+│   │   │               └── page.jsx # Add unit
+│   │   │
+│   │   ├── tenants/
+│   │   │   ├── page.jsx            # All tenants
+│   │   │   └── new/
+│   │   │       └── page.jsx        # Add tenant
+│   │   │
+│   │   ├── staff/
+│   │   │   ├── page.jsx            # Maintenance staff
+│   │   │   └── new/
+│   │   │       └── page.jsx        # Add staff
+│   │   │
+│   │   ├── settings/
+│   │   │   ├── page.jsx            # Organization settings
+│   │   │   ├── profile/
+│   │   │   │   └── page.jsx        # User profile
+│   │   │   └── billing/
+│   │   │       └── page.jsx        # Billing & subscription
+│   │   │
+│   │   └── reports/
+│   │       └── page.jsx            # Analytics & reports
+│   │
+│   ├── api/
+│   │   ├── auth/
+│   │   │   ├── signup/
+│   │   │   │   └── route.js
+│   │   │   └── session/
+│   │   │       └── route.js
+│   │   │
+│   │   ├── organizations/
+│   │   │   ├── route.js            # GET, POST
+│   │   │   └── [id]/
+│   │   │       └── route.js        # GET, PUT, DELETE
+│   │   │
+│   │   ├── properties/
+│   │   │   ├── route.js
+│   │   │   └── [id]/
+│   │   │       └── route.js
+│   │   │
+│   │   ├── units/
+│   │   │   ├── route.js
+│   │   │   └── [id]/
+│   │   │       └── route.js
+│   │   │
+│   │   ├── requests/
+│   │   │   ├── route.js
+│   │   │   └── [id]/
+│   │   │       ├── route.js
+│   │   │       ├── assign/
+│   │   │       │   └── route.js
+│   │   │       ├── status/
+│   │   │       │   └── route.js
+│   │   │       └── comments/
+│   │   │           └── route.js
+│   │   │
+│   │   ├── tenants/
+│   │   │   ├── route.js
+│   │   │   └── [id]/
+│   │   │       └── route.js
+│   │   │
+│   │   ├── staff/
+│   │   │   ├── route.js
+│   │   │   └── [id]/
+│   │   │       └── route.js
+│   │   │
+│   │   ├── upload/
+│   │   │   └── route.js            # File upload
+│   │   │
+│   │   ├── notifications/
+│   │   │   ├── new-request/
+│   │   │   │   └── route.js
+│   │   │   ├── status-update/
+│   │   │   │   └── route.js
+│   │   │   └── assignment/
+│   │   │       └── route.js
+│   │   │
+│   │   └── webhooks/
+│   │       └── stripe/
+│   │           └── route.js        # Stripe webhooks
+│   │
+│   ├── layout.jsx                  # Root layout
+│   └── page.jsx                    # Landing page
+│
+├── components/
+│   ├── ui/                         # shadcn components
+│   │   ├── button.jsx
+│   │   ├── card.jsx
+│   │   ├── input.jsx
+│   │   ├── select.jsx
+│   │   ├── textarea.jsx
+│   │   ├── dialog.jsx
+│   │   ├── table.jsx
+│   │   ├── badge.jsx
+│   │   └── avatar.jsx
+│   │
+│   ├── layout/
+│   │   ├── sidebar.jsx
+│   │   ├── header.jsx
+│   │   └── navbar.jsx
+│   │
+│   ├── requests/
+│   │   ├── request-form.jsx
+│   │   ├── request-card.jsx
+│   │   ├── request-list.jsx
+│   │   ├── request-detail.jsx
+│   │   ├── status-badge.jsx
+│   │   ├── priority-badge.jsx
+│   │   └── assign-modal.jsx
+│   │
+│   ├── properties/
+│   │   ├── property-form.jsx
+│   │   ├── property-card.jsx
+│   │   └── property-selector.jsx
+│   │
+│   ├── units/
+│   │   ├── unit-form.jsx
+│   │   └── unit-card.jsx
+│   │
+│   ├── comments/
+│   │   ├── comment-list.jsx
+│   │   └── comment-form.jsx
+│   │
+│   └── shared/
+│       ├── loading.jsx
+│       ├── error.jsx
+│       └── empty-state.jsx
+│
+├── lib/
+│   ├── supabase.js                 # Supabase client
+│   ├── supabase-server.js          # Server-side Supabase
+│   ├── auth.js                     # Auth helpers
+│   ├── email.js                    # Email templates
+│   ├── validations.js              # Zod schemas
+│   └── utils.js                    # Utility functions
+│
+├── hooks/
+│   ├── use-user.js
+│   ├── use-organization.js
+│   └── use-requests.js
+│
+├── .env.local
+├── jsconfig.json
+├── next.config.js
+├── package.json
+└── tailwind.config.js
