@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createServerClient } from '@/src/lib/supabase-server'
+import { createServerClient } from '@/lib/supabase-server'
 
 // GET - List all properties in organization
 export async function GET(request) {
