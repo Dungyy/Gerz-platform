@@ -53,7 +53,7 @@ export default function Sidebar({ profile, currentPath }) {
       `}>
         <div className="h-full flex flex-col">
           {/* Logo */}
-          <div className="h-16 flex items-center gap-2 px-6 border-b">
+          <div className="h-22 flex items-center gap-2 px-6 border-b">
             <div className="h-10 w-10 bg-blue-600 rounded-lg flex items-center justify-center">
               <Wrench className="h-6 w-6 text-white" />
             </div>

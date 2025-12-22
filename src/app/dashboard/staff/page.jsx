@@ -1,37 +1,34 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { fetchWithAuth } from '@/lib/api-helper'
+import { supabase } from '@/lib/supabase'
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { UserCog, Mail, Phone, Plus, Wrench, X } from 'lucide-react'
 
-export default function StaffPageMerged() {
+import { UserCog, Mail, Phone, Plus, Wrench } from 'lucide-react'
+
+export default function StaffPage() {
   const router = useRouter()
 
-  // list
   const [staff, setStaff] = useState([])
   const [loadingList, setLoadingList] = useState(true)
   const [error, setError] = useState('')
 
-  // permissions + org
+  // permissions/org
   const [orgId, setOrgId] = useState(null)
   const [canManage, setCanManage] = useState(false)
 
-  // create form
+  // inline create (optional)
   const [showCreate, setShowCreate] = useState(false)
   const [creating, setCreating] = useState(false)
 
-  const [form, setForm] = useState({
-    full_name: '',
-    email: '',
-    phone: '',
-  })
-
+  const [form, setForm] = useState({ full_name: '', email: '', phone: '' })
   const [selectedSpecialties, setSelectedSpecialties] = useState([])
 
   const availableSpecialties = useMemo(
@@ -76,7 +73,7 @@ export default function StaffPageMerged() {
       setOrgId(profile?.organization_id || null)
       setCanManage(profile?.role === 'owner' || profile?.role === 'manager')
     } catch (err) {
-      console.error('Failed to load profile/org:', err)
+      console.error('Failed to load org/role:', err)
       setOrgId(null)
       setCanManage(false)
     }
@@ -95,9 +92,7 @@ export default function StaffPageMerged() {
       }
 
       const data = await response.json().catch(() => [])
-      if (!response.ok) {
-        throw new Error(data?.error || 'Failed to load staff')
-      }
+      if (!response.ok) throw new Error(data?.error || 'Failed to load staff')
 
       const list = Array.isArray(data) ? data : data.staff || []
       setStaff(list)
@@ -110,15 +105,15 @@ export default function StaffPageMerged() {
     }
   }
 
+  function onChange(e) {
+    const { name, value } = e.target
+    setForm((prev) => ({ ...prev, [name]: value }))
+  }
+
   function toggleSpecialty(s) {
     setSelectedSpecialties((prev) =>
       prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
     )
-  }
-
-  function onChange(e) {
-    const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
   }
 
   function resetForm() {
@@ -137,8 +132,7 @@ export default function StaffPageMerged() {
       const payload = {
         ...form,
         specialties: selectedSpecialties,
-        // orgId optional depending on API. Safe to include; API can ignore if it derives org server-side.
-        organization_id: orgId,
+        organization_id: orgId, // safe if backend ignores
       }
 
       const response = await fetchWithAuth('/api/staff', {
@@ -148,12 +142,8 @@ export default function StaffPageMerged() {
       })
 
       const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data?.error || 'Failed to add staff')
 
-      if (!response.ok) {
-        throw new Error(data?.error || 'Failed to add staff')
-      }
-
-      // refresh list + close form
       await loadStaff()
       setShowCreate(false)
       resetForm()
@@ -176,12 +166,14 @@ export default function StaffPageMerged() {
           <p className="text-gray-600 mt-1">{staff.length} staff members</p>
         </div>
 
-        {canManage && (
-          <Button type="button" onClick={() => setShowCreate((v) => !v)}>
-            <Plus className="h-5 w-5 mr-2" />
-            {showCreate ? 'Close' : 'Add Staff'}
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {canManage && (
+            <Button type="button" onClick={() => setShowCreate((v) => !v)}>
+              <Plus className="h-5 w-5 mr-2" />
+              {showCreate ? 'Close' : 'Add Staff'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -257,7 +249,6 @@ export default function StaffPageMerged() {
                 <Button type="submit" disabled={creating || !orgId}>
                   {creating ? 'Creating...' : 'Create Staff'}
                 </Button>
-
                 <Button
                   type="button"
                   variant="outline"
@@ -299,54 +290,54 @@ export default function StaffPageMerged() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {staff.map((member) => {
-            const p = member?.profile || member?.profiles || member || {}
+            const p = member?.profile || member?.profiles || {}
             return (
-              <Card key={member.id}>
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-3 mb-4">
-                    <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Wrench className="h-6 w-6 text-blue-600" />
+              <Link key={member.id} href={`/dashboard/staff/${member.id}`} className="block">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <Wrench className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold">{p.full_name || 'Unknown'}</h3>
+                        <p className="text-sm text-gray-600">Maintenance Staff</p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{p.full_name || 'Unknown'}</h3>
-                      <p className="text-sm text-gray-600">Maintenance Staff</p>
-                    </div>
-                  </div>
 
-                  <div className="space-y-2 mb-4">
-                    {p.email && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Mail className="h-4 w-4" />
-                        <a href={`mailto:${p.email}`} className="hover:underline truncate" title={p.email}>
-                          {p.email}
-                        </a>
+                    <div className="space-y-2 mb-4">
+                      {p.email && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Mail className="h-4 w-4" />
+                          <span className="truncate" title={p.email}>
+                            {p.email}
+                          </span>
+                        </div>
+                      )}
+
+                      {p.phone && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Phone className="h-4 w-4" />
+                          <span>{p.phone}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {Array.isArray(member.specialties) && member.specialties.length > 0 && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-2">Specialties</p>
+                        <div className="flex flex-wrap gap-1">
+                          {member.specialties.map((specialty, idx) => (
+                            <Badge key={`${specialty}-${idx}`} variant="outline" className="text-xs">
+                              {specialty}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
                     )}
-
-                    {p.phone && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Phone className="h-4 w-4" />
-                        <a href={`tel:${p.phone}`} className="hover:underline">
-                          {p.phone}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-
-                  {Array.isArray(member.specialties) && member.specialties.length > 0 && (
-                    <div>
-                      <p className="text-xs text-gray-500 mb-2">Specialties</p>
-                      <div className="flex flex-wrap gap-1">
-                        {member.specialties.map((specialty, idx) => (
-                          <Badge key={`${specialty}-${idx}`} variant="outline" className="text-xs">
-                            {specialty}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </Link>
             )
           })}
         </div>
