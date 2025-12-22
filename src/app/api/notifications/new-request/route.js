@@ -34,7 +34,7 @@ export async function POST(request) {
   // Send email to manager
   try {
     await resend.emails.send({
-      from: `Gerz <notifications@${process.env.EMAIL_DOMAIN || 'gerz.app'}>`,
+      from: process.env.DEFAULT_FROM_EMAIL,
       to: manager.email,
       subject: `New Maintenance Request - ${maintenanceRequest.title}`,
       html: `

@@ -27,7 +27,7 @@ export async function POST(request) {
 
   try {
     await resend.emails.send({
-      from: `Gerz <notifications@${process.env.EMAIL_DOMAIN || 'gerz.app'}>`,
+      from: process.env.DEFAULT_FROM_EMAIL,
       to: tenant.email,
       subject: `Maintenance Request Update - ${maintenanceRequest.title}`,
       html: `
