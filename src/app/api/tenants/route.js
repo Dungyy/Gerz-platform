@@ -55,7 +55,7 @@ export async function POST(request) {
     console.log('🏠 Unit:', unit.property.name, 'Unit', unit.unit_number)
 
     // Generate temporary password
-    const tempPassword = Math.random().toString(36).slice(-12) + 'Aa1!'
+    const tempPassword = 'password123!'
 
     // Create auth user
     const { data: authData, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
