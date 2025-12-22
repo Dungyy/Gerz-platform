@@ -4,7 +4,7 @@ import { createServerClient } from '@/lib/supabase-server'
 // GET - List comments
 export async function GET(request, { params }) {
   const supabase = createServerClient()
-  const { id } = params
+  const { id } = await context.params
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
@@ -43,7 +43,7 @@ export async function GET(request, { params }) {
 // POST - Add comment
 export async function POST(request, { params }) {
   const supabase = createServerClient()
-  const { id } = params
+  const { id } = await context.params
   const { comment, is_internal, photo_urls } = await request.json()
 
   const { data: { user } } = await supabase.auth.getUser()

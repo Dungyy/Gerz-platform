@@ -6,51 +6,43 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-function getToken(request) {
-  const authHeader = request.headers.get('authorization')
-  return authHeader?.replace('Bearer ', '')
-}
-
-export async function GET(request, ctx) {
+export async function GET(request, context) {
   try {
-    // ✅ Next 15: params may be a Promise
-    const { id: staffId } = await ctx.params
+    // ✅ Await params in Next.js 15+
+    const { id } = await context.params
 
-    if (!staffId || staffId === 'undefined') {
-      return NextResponse.json({ error: 'Missing staff id' }, { status: 400 })
+    console.log('📦 Fetching requests for staff:', id)
+
+    // Get auth token
+    const authHeader = request.headers.get('authorization')
+    const token = authHeader?.replace('Bearer ', '')
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const token = getToken(request)
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Verify user
+    const { data: { user } } = await supabaseAdmin.auth.getUser(token)
+    
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token)
-    if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    // requester org
-    const { data: requesterProfile, error: pErr } = await supabaseAdmin
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', user.id)
-      .single()
-
-    if (pErr) throw pErr
-
-    // staff row (to get profile_id + org)
-    const { data: staff, error: staffErr } = await supabaseAdmin
+    // Get staff member
+    const { data: staffMember } = await supabaseAdmin
       .from('maintenance_staff')
-      .select('id, profile_id, organization_id')
-      .eq('id', staffId)
+      .select('profile_id, organization_id')
+      .eq('id', id)
       .single()
 
-    if (staffErr || !staff) {
+    if (!staffMember) {
       return NextResponse.json({ error: 'Staff member not found' }, { status: 404 })
     }
 
-    if (staff.organization_id !== requesterProfile.organization_id) {
-      return NextResponse.json({ error: 'Forbidden - Organization mismatch' }, { status: 403 })
-    }
+    console.log('👤 Staff profile_id:', staffMember.profile_id)
 
-    const { data: requests, error: rErr } = await supabaseAdmin
+    // Get assigned requests
+    const { data: requests, error } = await supabaseAdmin
       .from('maintenance_requests')
       .select(`
         *,
@@ -58,16 +50,22 @@ export async function GET(request, ctx) {
         unit:units(unit_number),
         tenant:profiles!maintenance_requests_tenant_id_fkey(full_name)
       `)
-      .eq('assigned_to', staff.profile_id)
+      .eq('assigned_to', staffMember.profile_id)
       .order('created_at', { ascending: false })
 
-    if (rErr) throw rErr
+    if (error) {
+      console.error('❌ Requests fetch error:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    console.log('✅ Found', requests?.length || 0, 'requests')
 
     return NextResponse.json(requests || [])
+
   } catch (error) {
-    console.error('Staff requests GET error:', error)
+    console.error('❌ Staff requests error:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch assigned requests' },
+      { error: error.message || 'Failed to fetch requests' },
       { status: 500 }
     )
   }

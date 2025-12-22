@@ -3,77 +3,141 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
+import { fetchWithAuth } from '@/lib/api-helper'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  ArrowLeft, 
-  MapPin, 
-  User, 
+import {
+  ArrowLeft,
+  MapPin,
+  User,
   Home,
   Plus,
   Mail,
   Phone,
-  Edit
+  Edit,
+  Trash2
 } from 'lucide-react'
 
 export default function PropertyDetailPage() {
   const params = useParams()
   const router = useRouter()
   const [property, setProperty] = useState(null)
-  const [units, setUnits] = useState([])
-  const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     loadProperty()
   }, [params.id])
 
   async function loadProperty() {
-    // Load property details
-    const { data: propertyData } = await supabase
-      .from('properties')
-      .select(`
-        *,
-        manager:profiles!properties_manager_id_fkey(full_name, email, phone)
-      `)
-      .eq('id', params.id)
-      .single()
+    try {
+      setLoading(true)
+      setError(null)
 
-    setProperty(propertyData)
+      const response = await fetchWithAuth(`/api/properties/${params.id}`, {
+        method: 'GET'
+      })
 
-    // Load units
-    const { data: unitsData } = await supabase
-      .from('units')
-      .select(`
-        *,
-        tenant:profiles(full_name, email, phone)
-      `)
-      .eq('property_id', params.id)
-      .order('unit_number')
+      if (response.status === 401) {
+        router.push('/login')
+        return
+      }
 
-    setUnits(unitsData || [])
+      const data = await response.json()
 
-    // Load recent requests
-    const { data: requestsData } = await supabase
-      .from('maintenance_requests')
-      .select(`
-        *,
-        unit:units(unit_number),
-        tenant:profiles!maintenance_requests_tenant_id_fkey(full_name)
-      `)
-      .eq('property_id', params.id)
-      .order('created_at', { ascending: false })
-      .limit(10)
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to load property')
+      }
 
-    setRequests(requestsData || [])
-    setLoading(false)
+      console.log('✅ Property loaded:', data)
+      setProperty(data)
+    } catch (err) {
+      console.error('Error loading property:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  if (loading || !property) {
+  async function handleDelete() {
+    const units = property?.units || []
+    const occupiedUnits = units.filter(u => u.tenant_id).length
+
+    // Warning if there are occupied units
+    if (occupiedUnits > 0) {
+      const confirmWithTenants = confirm(
+        `⚠️ WARNING: This property has ${occupiedUnits} occupied unit${occupiedUnits > 1 ? 's' : ''}.\n\n` +
+        `Deleting this property will:\n` +
+        `• Remove all ${units.length} units\n` +
+        `• Unassign ${occupiedUnits} tenant${occupiedUnits > 1 ? 's' : ''}\n` +
+        `• Delete all maintenance requests for this property\n\n` +
+        `This action CANNOT be undone!\n\n` +
+        `Are you absolutely sure you want to delete "${property.name}"?`
+      )
+
+      if (!confirmWithTenants) return
+    } else {
+      // Standard confirmation
+      const confirmed = confirm(
+        `Are you sure you want to delete "${property.name}"?\n\n` +
+        `This will permanently delete:\n` +
+        `• The property\n` +
+        `• All ${units.length} unit${units.length !== 1 ? 's' : ''}\n` +
+        `• All maintenance requests\n\n` +
+        `This action cannot be undone.`
+      )
+
+      if (!confirmed) return
+    }
+
+    setDeleting(true)
+
+    try {
+      const response = await fetchWithAuth(`/api/properties/${params.id}`, {
+        method: 'DELETE'
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to delete property')
+      }
+
+      alert('✅ Property deleted successfully')
+      router.push('/dashboard/properties')
+    } catch (err) {
+      console.error('Delete error:', err)
+      alert(`❌ Error: ${err.message}`)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  if (loading) {
     return <div className="flex justify-center py-12">Loading...</div>
   }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <Button variant="outline" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="py-4 text-red-700">Error: {error}</CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!property) {
+    return <div className="flex justify-center py-12">Property not found</div>
+  }
+
+  const units = property.units || []
 
   const occupiedUnits = units.filter(u => u.tenant_id).length
   const vacantUnits = units.length - occupiedUnits
@@ -96,11 +160,44 @@ export default function PropertyDetailPage() {
             {property.address}, {property.city}, {property.state} {property.zip}
           </p>
         </div>
-        <Button variant="outline">
-          <Edit className="h-4 w-4 mr-2" />
-          Edit Property
-        </Button>
+        {/* // Update the Edit button in the header */}
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href={`/dashboard/properties/${params.id}/edit`}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Link>
+          </Button>
+          <Button
+            variant="outline"
+            className="text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200"
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </div>
       </div>
+
+      {/* Warning for occupied units */}
+      {occupiedUnits > 0 && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="py-4 flex items-start gap-3">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <User className="h-5 w-5 text-orange-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-orange-900">
+                {occupiedUnits} Occupied Unit{occupiedUnits > 1 ? 's' : ''}
+              </p>
+              <p className="text-sm text-orange-700 mt-1">
+                This property has active tenants. Make sure to notify them before deleting.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -159,7 +256,7 @@ export default function PropertyDetailPage() {
                 {units.map((unit) => (
                   <div
                     key={unit.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
                   >
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-blue-100 rounded-lg">
@@ -172,6 +269,12 @@ export default function PropertyDetailPage() {
                         ) : (
                           <p className="text-sm text-orange-600">Vacant</p>
                         )}
+                        {unit.bedrooms && unit.bathrooms && (
+                          <p className="text-xs text-gray-500">
+                            {unit.bedrooms} bed • {unit.bathrooms} bath
+                            {unit.square_feet && ` • ${unit.square_feet} sq ft`}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <Badge variant={unit.tenant ? 'default' : 'outline'}>
@@ -182,43 +285,6 @@ export default function PropertyDetailPage() {
 
                 {units.length === 0 && (
                   <p className="text-gray-500 text-center py-8">No units yet</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Requests */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Recent Requests</CardTitle>
-                <Link href="/dashboard/requests" className="text-sm text-blue-600 hover:underline">
-                  View All
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {requests.map((request) => (
-                  <Link
-                    key={request.id}
-                    href={`/dashboard/requests/${request.id}`}
-                    className="block p-4 border rounded-lg hover:bg-gray-50"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-semibold">{request.title}</p>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Unit {request.unit?.unit_number} • {request.tenant?.full_name}
-                        </p>
-                      </div>
-                      <StatusBadge status={request.status} />
-                    </div>
-                  </Link>
-                ))}
-
-                {requests.length === 0 && (
-                  <p className="text-gray-500 text-center py-8">No requests</p>
                 )}
               </div>
             </CardContent>
@@ -238,10 +304,12 @@ export default function PropertyDetailPage() {
                 <p className="font-medium capitalize">{property.property_type || 'Property'}</p>
               </div>
 
-              <div>
-                <p className="text-sm text-gray-600">Year Built</p>
-                <p className="font-medium">{property.year_built || 'N/A'}</p>
-              </div>
+              {property.year_built && (
+                <div>
+                  <p className="text-sm text-gray-600">Year Built</p>
+                  <p className="font-medium">{property.year_built}</p>
+                </div>
+              )}
 
               {property.description && (
                 <div>
@@ -282,20 +350,39 @@ export default function PropertyDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Danger Zone */}
+          <Card className="border-red-200">
+            <CardHeader>
+              <CardTitle className="text-red-600">Danger Zone</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-3">
+                Deleting this property will permanently remove:
+              </p>
+              <ul className="text-sm text-gray-600 mb-4 space-y-1">
+                <li>• All {units.length} unit{units.length !== 1 ? 's' : ''}</li>
+                {occupiedUnits > 0 && (
+                  <li className="text-orange-600 font-medium">
+                    • {occupiedUnits} tenant assignment{occupiedUnits > 1 ? 's' : ''}
+                  </li>
+                )}
+                <li>• All maintenance requests</li>
+                <li>• All property history</li>
+              </ul>
+              <Button
+                variant="outline"
+                className="w-full text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {deleting ? 'Deleting...' : 'Delete Property'}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
   )
-}
-
-function StatusBadge({ status }) {
-  const variants = {
-    submitted: 'bg-yellow-100 text-yellow-700',
-    assigned: 'bg-blue-100 text-blue-700',
-    in_progress: 'bg-purple-100 text-purple-700',
-    completed: 'bg-green-100 text-green-700',
-    cancelled: 'bg-gray-100 text-gray-700',
-  }
-
-  return <Badge className={variants[status]}>{status.replace('_', ' ')}</Badge>
 }

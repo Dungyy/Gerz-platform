@@ -4,7 +4,7 @@ import { createServerClient } from '@/lib/supabase-server'
 // GET - Get request detail
 export async function GET(request, { params }) {
   const supabase = createServerClient()
-  const { id } = params
+  const { id } = await context.params
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
@@ -34,7 +34,7 @@ export async function GET(request, { params }) {
 // PUT - Update request
 export async function PUT(request, { params }) {
   const supabase = createServerClient()
-  const { id } = params
+  const { id } = await context.params
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { fetchWithAuth } from '@/lib/api-helper'
@@ -30,30 +30,39 @@ export default function StaffDetailPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    void loadAll()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params?.id])
+    loadAll()
+  }, [params.id])
 
   async function loadAll() {
     try {
       setLoading(true)
       setError('')
 
-      // 1) staff detail
+      // Load staff detail
       const staffRes = await fetchWithAuth(`/api/staff/${params.id}`, { method: 'GET' })
+      
       if (staffRes.status === 401) {
         router.push('/login')
         return
       }
-      const staffData = await staffRes.json().catch(() => null)
-      if (!staffRes.ok) throw new Error(staffData?.error || 'Failed to load staff member')
+
+      const staffData = await staffRes.json()
+      
+      if (!staffRes.ok) {
+        throw new Error(staffData?.error || 'Failed to load staff member')
+      }
+
       setStaffMember(staffData)
 
-      // 2) assigned requests
+      // Load assigned requests
       const reqRes = await fetchWithAuth(`/api/staff/${params.id}/requests`, { method: 'GET' })
-      const reqData = await reqRes.json().catch(() => [])
-      if (!reqRes.ok) throw new Error(reqData?.error || 'Failed to load assigned requests')
-      setAssignedRequests(Array.isArray(reqData) ? reqData : reqData.requests || [])
+      const reqData = await reqRes.json()
+      
+      if (!reqRes.ok) {
+        throw new Error(reqData?.error || 'Failed to load requests')
+      }
+
+      setAssignedRequests(Array.isArray(reqData) ? reqData : [])
     } catch (err) {
       console.error('Load staff detail error:', err)
       setError(err.message || 'Failed to load staff member.')
@@ -65,13 +74,17 @@ export default function StaffDetailPage() {
   }
 
   async function handleDelete() {
-    if (!confirm('Are you sure you want to remove this staff member? This cannot be undone.')) return
+    if (!confirm('Are you sure you want to remove this staff member? This cannot be undone.')) {
+      return
+    }
 
     try {
       const res = await fetchWithAuth(`/api/staff/${params.id}`, { method: 'DELETE' })
-      const data = await res.json().catch(() => ({}))
+      const data = await res.json()
 
-      if (!res.ok) throw new Error(data?.error || 'Failed to remove staff member')
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to remove staff member')
+      }
 
       alert('Staff member removed successfully')
       router.push('/dashboard/staff')
@@ -81,25 +94,9 @@ export default function StaffDetailPage() {
     }
   }
 
-  const profile = staffMember?.profile || staffMember?.profiles || {}
-  const specialties = staffMember?.specialties || []
-
-  const activeRequests = assignedRequests.filter(
-    (r) => r.status !== 'completed' && r.status !== 'cancelled'
-  )
-  const completedRequests = assignedRequests.filter((r) => r.status === 'completed')
-
-  const joinedText = useMemo(() => {
-    const created = profile?.created_at || staffMember?.created_at
-    if (!created) return '—'
-    return new Date(created).toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    })
-  }, [profile?.created_at, staffMember?.created_at])
-
-  if (loading) return <div className="flex justify-center py-12">Loading...</div>
+  if (loading) {
+    return <div className="flex justify-center py-12">Loading...</div>
+  }
 
   if (error) {
     return (
@@ -115,7 +112,25 @@ export default function StaffDetailPage() {
     )
   }
 
-  if (!staffMember) return <div className="flex justify-center py-12">Not found</div>
+  if (!staffMember) {
+    return <div className="flex justify-center py-12">Staff member not found</div>
+  }
+
+  const profile = staffMember?.profile || {}
+  const specialties = staffMember?.specialties || []
+
+  const activeRequests = assignedRequests.filter(
+    (r) => r.status !== 'completed' && r.status !== 'cancelled'
+  )
+  const completedRequests = assignedRequests.filter((r) => r.status === 'completed')
+
+  const joinedText = profile?.created_at
+    ? new Date(profile.created_at).toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : '—'
 
   return (
     <div className="space-y-6">
@@ -163,7 +178,7 @@ export default function StaffDetailPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main */}
+        {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Contact */}
           <Card>
@@ -237,7 +252,7 @@ export default function StaffDetailPage() {
                           </p>
                           <p className="text-sm text-gray-500 mt-1">
                             {request.tenant?.full_name} •{' '}
-                            {request.created_at ? new Date(request.created_at).toLocaleDateString() : ''}
+                            {new Date(request.created_at).toLocaleDateString()}
                           </p>
                         </div>
                         <div className="flex flex-col gap-2 ml-4">
@@ -261,7 +276,7 @@ export default function StaffDetailPage() {
               <CardTitle>Specialties</CardTitle>
             </CardHeader>
             <CardContent>
-              {Array.isArray(specialties) && specialties.length > 0 ? (
+              {specialties.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {specialties.map((s, idx) => (
                     <Badge key={`${s}-${idx}`} variant="outline">

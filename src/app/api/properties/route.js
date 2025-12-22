@@ -1,92 +1,108 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// Use service role for server operations
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
+function getToken(request) {
+  const authHeader = request.headers.get('authorization')
+  return authHeader?.replace('Bearer ', '')
+}
+
 export async function POST(request) {
   try {
-    const { units, ...propertyData } = await request.json()
+    const token = getToken(request)
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Get current user from auth header
-    const authHeader = request.headers.get('authorization')
-    const token = authHeader?.replace('Bearer ', '')
-    
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token)
+    if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Verify user
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const body = await request.json()
 
-    // Get user's profile to verify organization
-    const { data: profile } = await supabaseAdmin
+    // requester profile (org + role)
+    const { data: profile, error: pErr } = await supabaseAdmin
       .from('profiles')
       .select('organization_id, role')
       .eq('id', user.id)
       .single()
 
-    if (!profile || (profile.role !== 'owner' && profile.role !== 'manager')) {
+    if (pErr) throw pErr
+    if (!profile || !['owner', 'manager'].includes(profile.role)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // Ensure organization_id matches user's organization
-    if (propertyData.organization_id !== profile.organization_id) {
+    // ---- Map UI fields -> DB fields (IMPORTANT) ----
+    const orgId = body.organization_id || profile.organization_id
+    if (orgId !== profile.organization_id) {
       return NextResponse.json({ error: 'Organization mismatch' }, { status: 403 })
     }
 
-    // Set manager_id to current user
-    propertyData.manager_id = user.id
+    const propertyInsert = {
+      organization_id: orgId,
+      name: body.name,
+      address: body.address,
+      city: body.city || null,
+      state: body.state || null,
+      zip_code: body.zip || body.zip_code || null, // ✅ map zip -> zip_code
+      property_type: body.property_type || null,
+      manager_id: body.manager_id || null,
+      // photo_url: body.photo_url || null, // if you have it
+    }
+
+    // remove undefined keys (optional safety)
+    Object.keys(propertyInsert).forEach((k) => {
+      if (typeof propertyInsert[k] === 'undefined') delete propertyInsert[k]
+    })
 
     // Create property
-    const { data: property, error: propError } = await supabaseAdmin
+    const { data: property, error: propErr } = await supabaseAdmin
       .from('properties')
-      .insert([propertyData])
+      .insert(propertyInsert)
       .select()
       .single()
 
-    if (propError) {
-      console.error('Property creation error:', propError)
-      return NextResponse.json({ error: propError.message }, { status: 400 })
-    }
+    if (propErr) throw propErr
 
-    // Create units if provided
-    if (units && units.length > 0) {
-      const unitsToInsert = units
-        .filter(unit => unit.unit_number && unit.unit_number.trim()) // Only units with numbers
-        .map(unit => ({
-          ...unit,
-          property_id: property.id,
-          organization_id: propertyData.organization_id,
-        }))
+    // ---- Create units ----
+    const units = Array.isArray(body.units) ? body.units : []
 
-      if (unitsToInsert.length > 0) {
-        const { error: unitsError } = await supabaseAdmin
-          .from('units')
-          .insert(unitsToInsert)
+    const cleanedUnits = units
+      .filter((u) => u?.unit_number && String(u.unit_number).trim())
+      .map((u) => ({
+        property_id: property.id,
+        unit_number: String(u.unit_number).trim(),
+        floor: u.floor === '' || u.floor == null ? null : Number(u.floor),
+        bedrooms: u.bedrooms === '' || u.bedrooms == null ? null : Number(u.bedrooms),
+        bathrooms: u.bathrooms === '' || u.bathrooms == null ? null : Number(u.bathrooms),
+        square_feet: u.square_feet === '' || u.square_feet == null ? null : Number(u.square_feet),
+      }))
 
-        if (unitsError) {
-          console.error('Units creation error:', unitsError)
-          // Property created but units failed - log but don't fail
-        }
+    let unitsCreated = 0
+
+    if (cleanedUnits.length > 0) {
+      const { data: insertedUnits, error: unitErr } = await supabaseAdmin
+        .from('units')
+        .insert(cleanedUnits)
+        .select('id')
+
+      if (unitErr) {
+        // cleanup property if units fail
+        await supabaseAdmin.from('properties').delete().eq('id', property.id)
+        throw unitErr
       }
+
+      unitsCreated = insertedUnits?.length || 0
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       property,
-      units_created: units?.length || 0 
+      units_created: unitsCreated,
     })
-
   } catch (error) {
-    console.error('Property API error:', error)
+    console.error('Properties POST error:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to create property' },
       { status: 500 }
@@ -96,39 +112,41 @@ export async function POST(request) {
 
 export async function GET(request) {
   try {
-    const authHeader = request.headers.get('authorization')
-    const token = authHeader?.replace('Bearer ', '')
-    
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const token = getToken(request)
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { data: { user } } = await supabaseAdmin.auth.getUser(token)
-    
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token)
+    if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { data: profile } = await supabaseAdmin
+    const { data: profile, error: pErr } = await supabaseAdmin
       .from('profiles')
       .select('organization_id')
       .eq('id', user.id)
       .single()
 
-    const { data: properties } = await supabaseAdmin
+    if (pErr) throw pErr
+
+    // Return properties + unit counts
+    const { data, error } = await supabaseAdmin
       .from('properties')
       .select(`
-        *,
-        manager:profiles!properties_manager_id_fkey(full_name),
-        units(count)
+        id, name, address, city, state, zip_code, property_type, created_at,
+        units:units(count)
       `)
       .eq('organization_id', profile.organization_id)
       .order('created_at', { ascending: false })
 
-    return NextResponse.json(properties || [])
+    if (error) throw error
 
+    // normalize units_count
+    const normalized = (data || []).map((p) => ({
+      ...p,
+      units_count: p.units?.[0]?.count || 0,
+    }))
+
+    return NextResponse.json(normalized)
   } catch (error) {
-    console.error('Property GET error:', error)
+    console.error('Properties GET error:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to fetch properties' },
       { status: 500 }

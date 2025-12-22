@@ -6,23 +6,86 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-export async function POST(request) {
+export async function GET(request, context) {
   try {
-    const { email, full_name, phone, specialties, organization_id } = await request.json()
+    // ✅ Await params in Next.js 15+
+    const { id } = await context.params
 
-    // Get current user from auth header
+    console.log('📦 Fetching staff member:', id)
+
+    // Get auth token
     const authHeader = request.headers.get('authorization')
     const token = authHeader?.replace('Bearer ', '')
     
     if (!token) {
-      return NextResponse.json({ error: 'Unauthorized - No token provided' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Verify user
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    const { data: { user } } = await supabaseAdmin.auth.getUser(token)
     
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized - Invalid token' }, { status: 401 })
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get user's profile
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('organization_id')
+      .eq('id', user.id)
+      .single()
+
+    console.log('👤 User org:', profile.organization_id)
+
+    // Get staff member
+    const { data: staffMember, error } = await supabaseAdmin
+      .from('maintenance_staff')
+      .select(`
+        *,
+        profile:profiles(full_name, email, phone, created_at)
+      `)
+      .eq('id', id)
+      .eq('organization_id', profile.organization_id)
+      .single()
+
+    if (error) {
+      console.error('❌ Staff fetch error:', error)
+      return NextResponse.json({ error: error.message }, { status: 404 })
+    }
+
+    console.log('✅ Staff member found:', staffMember.profile?.full_name)
+
+    return NextResponse.json(staffMember)
+
+  } catch (error) {
+    console.error('❌ Staff detail error:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch staff member' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request, context) {
+  try {
+    // ✅ Await params in Next.js 15+
+    const { id } = await context.params
+
+    console.log('🗑️ Deleting staff member:', id)
+
+    // Get auth token
+    const authHeader = request.headers.get('authorization')
+    const token = authHeader?.replace('Bearer ', '')
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Verify user
+    const { data: { user } } = await supabaseAdmin.auth.getUser(token)
+    
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Get user's profile
@@ -32,124 +95,47 @@ export async function POST(request) {
       .eq('id', user.id)
       .single()
 
-    if (!profile || (profile.role !== 'owner' && profile.role !== 'manager')) {
+    if (profile.role !== 'owner' && profile.role !== 'manager') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // Use profile's org_id if not provided
-    const orgId = organization_id || profile.organization_id
-
-    if (orgId !== profile.organization_id) {
-      return NextResponse.json({ error: 'Organization mismatch' }, { status: 403 })
-    }
-
-    // Generate temporary password
-    const tempPassword = Math.random().toString(36).slice(-12) + 'Aa1!'
-
-    // Create auth user
-    const { data: authData, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password: tempPassword,
-      email_confirm: true,
-      user_metadata: {
-        full_name,
-        role: 'staff',
-      }
-    })
-
-    if (createAuthError) throw createAuthError
-
-    const staffUserId = authData.user.id
-
-    // Create profile
-    const { error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .insert({
-        id: staffUserId,
-        organization_id: orgId,
-        full_name,
-        email,
-        phone: phone || null,
-        role: 'staff',
-      })
-
-    if (profileError) {
-      // Cleanup: delete auth user if profile creation fails
-      await supabaseAdmin.auth.admin.deleteUser(staffUserId)
-      throw profileError
-    }
-
-    // Create maintenance_staff entry
-    const { data: staffData, error: staffError } = await supabaseAdmin
+    // Get staff member to get profile_id
+    const { data: staffMember } = await supabaseAdmin
       .from('maintenance_staff')
-      .insert({
-        profile_id: staffUserId,
-        organization_id: orgId,
-        specialties: specialties || [],
-      })
-      .select()
+      .select('profile_id, organization_id')
+      .eq('id', id)
       .single()
 
-    if (staffError) {
-      // Cleanup
-      await supabaseAdmin.auth.admin.deleteUser(staffUserId)
-      await supabaseAdmin.from('profiles').delete().eq('id', staffUserId)
-      throw staffError
+    if (!staffMember) {
+      return NextResponse.json({ error: 'Staff member not found' }, { status: 404 })
     }
 
-    // TODO: Send welcome email with credentials
-
-    return NextResponse.json({ 
-      success: true, 
-      staff: staffData,
-      message: 'Staff member added successfully'
-    })
-
-  } catch (error) {
-    console.error('Staff API error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to add staff member' },
-      { status: 500 }
-    )
-  }
-}
-
-export async function GET(request) {
-  try {
-    const authHeader = request.headers.get('authorization')
-    const token = authHeader?.replace('Bearer ', '')
-    
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (staffMember.organization_id !== profile.organization_id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    const { data: { user } } = await supabaseAdmin.auth.getUser(token)
-    
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', user.id)
-      .single()
-
-    const { data: staff } = await supabaseAdmin
+    // Delete staff record
+    const { error: deleteError } = await supabaseAdmin
       .from('maintenance_staff')
-      .select(`
-        *,
-        profile:profiles(full_name, email, phone)
-      `)
-      .eq('organization_id', profile.organization_id)
-      .order('created_at', { ascending: false })
+      .delete()
+      .eq('id', id)
 
-    return NextResponse.json(staff || [])
+    if (deleteError) {
+      console.error('❌ Delete staff error:', deleteError)
+      return NextResponse.json({ error: deleteError.message }, { status: 400 })
+    }
+
+    console.log('✅ Staff member deleted')
+
+    // Optionally delete the auth user too
+    // await supabaseAdmin.auth.admin.deleteUser(staffMember.profile_id)
+
+    return NextResponse.json({ success: true })
 
   } catch (error) {
-    console.error('Staff GET error:', error)
+    console.error('❌ Staff delete error:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch staff' },
+      { error: error.message || 'Failed to delete staff member' },
       { status: 500 }
     )
   }
