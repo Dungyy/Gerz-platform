@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Plus, X } from 'lucide-react'
+import { fetchWithAuth } from '@/lib/api-helper'
 
 export default function NewPropertyPage() {
   const router = useRouter()
@@ -65,7 +66,7 @@ export default function NewPropertyPage() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/properties', {
+      const response = await fetchWithAuth('/api/properties', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

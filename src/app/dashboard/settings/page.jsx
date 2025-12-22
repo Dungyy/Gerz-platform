@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { User, Building2, CreditCard, Bell, Shield, LogOut } from 'lucide-react'
+import { fetchWithAuth } from '@/lib/api-helper'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -90,7 +91,7 @@ export default function SettingsPage() {
     e.preventDefault()
     setSaving(true)
 
-    const response = await fetch('/api/organizations', {
+    const response = await fetchWithAuth('/api/organizations', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orgForm),

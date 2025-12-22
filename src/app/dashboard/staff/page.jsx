@@ -1,80 +1,171 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Card, CardContent } from '@/components/ui/card'
+import { fetchWithAuth } from '@/lib/api-helper'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { UserCog, Mail, Phone, Plus, Wrench } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { UserCog, Mail, Phone, Plus, Wrench, X } from 'lucide-react'
 
-export default function StaffPage() {
+export default function StaffPageMerged() {
   const router = useRouter()
 
+  // list
   const [staff, setStaff] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loadingList, setLoadingList] = useState(true)
   const [error, setError] = useState('')
 
+  // permissions + org
+  const [orgId, setOrgId] = useState(null)
+  const [canManage, setCanManage] = useState(false)
+
+  // create form
+  const [showCreate, setShowCreate] = useState(false)
+  const [creating, setCreating] = useState(false)
+
+  const [form, setForm] = useState({
+    full_name: '',
+    email: '',
+    phone: '',
+  })
+
+  const [selectedSpecialties, setSelectedSpecialties] = useState([])
+
+  const availableSpecialties = useMemo(
+    () => [
+      'Plumbing',
+      'Electrical',
+      'HVAC',
+      'Carpentry',
+      'Painting',
+      'Appliance Repair',
+      'General Maintenance',
+    ],
+    []
+  )
+
   useEffect(() => {
-    void loadStaff()
+    void init()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function loadStaff() {
+  async function init() {
+    await Promise.all([loadOrgAndPermissions(), loadStaff()])
+  }
+
+  async function loadOrgAndPermissions() {
     try {
-      setLoading(true)
-      setError('')
-
-      const { data, error: userErr } = await supabase.auth.getUser()
-      if (userErr) throw userErr
-
-      const user = data?.user
+      const { data: userRes } = await supabase.auth.getUser()
+      const user = userRes?.user
       if (!user) {
         router.push('/login')
         return
       }
 
-      const { data: profile, error: profileErr } = await supabase
+      const { data: profile, error: pErr } = await supabase
         .from('profiles')
-        .select('organization_id')
+        .select('organization_id, role')
         .eq('id', user.id)
         .single()
 
-      if (profileErr) throw profileErr
+      if (pErr) throw pErr
 
-      const orgId = profile?.organization_id
-      if (!orgId) {
-        setStaff([])
-        setError('No organization found for this user.')
-        return
-      }
-
-      const { data: staffData, error: staffErr } = await supabase
-        .from('maintenance_staff')
-        .select(
-          `
-          *,
-          profile:profiles(full_name, email, phone)
-        `
-        )
-        .eq('organization_id', orgId)
-        .order('created_at', { ascending: false })
-
-      if (staffErr) throw staffErr
-
-      setStaff(staffData || [])
+      setOrgId(profile?.organization_id || null)
+      setCanManage(profile?.role === 'owner' || profile?.role === 'manager')
     } catch (err) {
-      console.error('Failed to load staff:', err)
-      setError('Failed to load staff. Check console for details.')
-      setStaff([])
-    } finally {
-      setLoading(false)
+      console.error('Failed to load profile/org:', err)
+      setOrgId(null)
+      setCanManage(false)
     }
   }
 
-  if (loading) {
-    return <div className="flex justify-center py-12">Loading...</div>
+  async function loadStaff() {
+    try {
+      setLoadingList(true)
+      setError('')
+
+      const response = await fetchWithAuth('/api/staff', { method: 'GET' })
+
+      if (response.status === 401) {
+        router.push('/login')
+        return
+      }
+
+      const data = await response.json().catch(() => [])
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to load staff')
+      }
+
+      const list = Array.isArray(data) ? data : data.staff || []
+      setStaff(list)
+    } catch (err) {
+      console.error('Failed to load staff:', err)
+      setError(err.message || 'Failed to load staff.')
+      setStaff([])
+    } finally {
+      setLoadingList(false)
+    }
   }
+
+  function toggleSpecialty(s) {
+    setSelectedSpecialties((prev) =>
+      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+    )
+  }
+
+  function onChange(e) {
+    const { name, value } = e.target
+    setForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  function resetForm() {
+    setForm({ full_name: '', email: '', phone: '' })
+    setSelectedSpecialties([])
+  }
+
+  async function onCreateSubmit(e) {
+    e.preventDefault()
+    if (!canManage) return
+
+    setCreating(true)
+    setError('')
+
+    try {
+      const payload = {
+        ...form,
+        specialties: selectedSpecialties,
+        // orgId optional depending on API. Safe to include; API can ignore if it derives org server-side.
+        organization_id: orgId,
+      }
+
+      const response = await fetchWithAuth('/api/staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to add staff')
+      }
+
+      // refresh list + close form
+      await loadStaff()
+      setShowCreate(false)
+      resetForm()
+    } catch (err) {
+      console.error('Create staff error:', err)
+      setError(err.message || 'Failed to add staff.')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  if (loadingList) return <div className="flex justify-center py-12">Loading...</div>
 
   return (
     <div className="space-y-6">
@@ -85,17 +176,107 @@ export default function StaffPage() {
           <p className="text-gray-600 mt-1">{staff.length} staff members</p>
         </div>
 
-        <Button asChild>
-          <Link href="/dashboard/staff/new">
+        {canManage && (
+          <Button type="button" onClick={() => setShowCreate((v) => !v)}>
             <Plus className="h-5 w-5 mr-2" />
-            Add Staff
-          </Link>
-        </Button>
+            {showCreate ? 'Close' : 'Add Staff'}
+          </Button>
+        )}
       </div>
 
       {error && (
         <Card className="border-red-200 bg-red-50">
           <CardContent className="py-4 text-red-700">{error}</CardContent>
+        </Card>
+      )}
+
+      {/* Inline Create */}
+      {showCreate && canManage && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Add Maintenance Staff</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={onCreateSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  className="col-span-2"
+                  name="full_name"
+                  placeholder="Full Name *"
+                  value={form.full_name}
+                  onChange={onChange}
+                  required
+                />
+
+                <Input
+                  className="col-span-2"
+                  type="email"
+                  name="email"
+                  placeholder="Email *"
+                  value={form.email}
+                  onChange={onChange}
+                  required
+                />
+
+                <Input
+                  className="col-span-2"
+                  type="tel"
+                  name="phone"
+                  placeholder="Phone (optional)"
+                  value={form.phone}
+                  onChange={onChange}
+                />
+              </div>
+
+              <div>
+                <p className="text-sm font-medium mb-2">Specialties</p>
+                <div className="flex flex-wrap gap-2">
+                  {availableSpecialties.map((s) => {
+                    const active = selectedSpecialties.includes(s)
+                    return (
+                      <Badge
+                        key={s}
+                        variant={active ? 'default' : 'outline'}
+                        className="cursor-pointer select-none"
+                        onClick={() => toggleSpecialty(s)}
+                      >
+                        {s}
+                      </Badge>
+                    )
+                  })}
+                </div>
+
+                {selectedSpecialties.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Selected: {selectedSpecialties.join(', ')}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <Button type="submit" disabled={creating || !orgId}>
+                  {creating ? 'Creating...' : 'Create Staff'}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowCreate(false)
+                    resetForm()
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+
+              {!orgId && (
+                <p className="text-sm text-red-600">
+                  Could not determine organization. Make sure you’re logged in.
+                </p>
+              )}
+            </form>
+          </CardContent>
         </Card>
       )}
 
@@ -107,18 +288,18 @@ export default function StaffPage() {
             <h3 className="text-lg font-semibold mb-2">No staff members yet</h3>
             <p className="text-gray-600 mb-4">Add maintenance staff to assign requests</p>
 
-            <Button asChild>
-              <Link href="/dashboard/staff/new">
+            {canManage && (
+              <Button type="button" onClick={() => setShowCreate(true)}>
                 <Plus className="h-5 w-5 mr-2" />
                 Add Staff
-              </Link>
-            </Button>
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {staff.map((member) => {
-            const p = member?.profile || {}
+            const p = member?.profile || member?.profiles || member || {}
             return (
               <Card key={member.id}>
                 <CardContent className="pt-6">
@@ -136,11 +317,7 @@ export default function StaffPage() {
                     {p.email && (
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Mail className="h-4 w-4" />
-                        <a
-                          href={`mailto:${p.email}`}
-                          className="hover:underline truncate"
-                          title={p.email}
-                        >
+                        <a href={`mailto:${p.email}`} className="hover:underline truncate" title={p.email}>
                           {p.email}
                         </a>
                       </div>
@@ -160,8 +337,8 @@ export default function StaffPage() {
                     <div>
                       <p className="text-xs text-gray-500 mb-2">Specialties</p>
                       <div className="flex flex-wrap gap-1">
-                        {member.specialties.map((specialty, index) => (
-                          <Badge key={`${specialty}-${index}`} variant="outline" className="text-xs">
+                        {member.specialties.map((specialty, idx) => (
+                          <Badge key={`${specialty}-${idx}`} variant="outline" className="text-xs">
                             {specialty}
                           </Badge>
                         ))}

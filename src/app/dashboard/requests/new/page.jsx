@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Upload, X, Loader2 } from 'lucide-react'
+import { fetchWithAuth } from '@/lib/api-helper'
 
 export default function NewRequestPage() {
   const router = useRouter()
@@ -65,7 +66,7 @@ export default function NewRequestPage() {
       formData.append('file', file)
       formData.append('folder', 'requests')
 
-      const response = await fetch('/api/upload', {
+      const response = await fetchWithAuth('/api/upload', {
         method: 'POST',
         body: formData,
       })
@@ -88,7 +89,7 @@ export default function NewRequestPage() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/requests', {
+      const response = await fetchWithAuth('/api/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

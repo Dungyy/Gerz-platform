@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { fetchWithAuth } from '@/lib/api-helper'
 
 export default function NewStaffPage() {
   const router = useRouter()
@@ -74,36 +75,48 @@ export default function NewStaffPage() {
     )
   }
 
-  async function onSubmit(e) {
-    e.preventDefault()
-    if (!orgId) return
+async function onSubmit(e) {
+  e.preventDefault()
+  if (!orgId) return
 
-    setLoading(true)
-    try {
-      const res = await fetch('/api/staff', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          specialties: selectedSpecialties,
-          organization_id: orgId, // include if your API expects it (safe to ignore if not)
-        }),
-      })
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        alert('Error: ' + (data.error || 'Failed to add staff'))
-        return
-      }
-
-      router.push('/dashboard/staff')
-    } catch (err) {
-      console.error('Error creating staff:', err)
-      alert('Error creating staff. See console.')
-    } finally {
-      setLoading(false)
+  setLoading(true)
+  try {
+    // Get current session token
+    const { data: { session } } = await supabase.auth.getSession()
+    
+    if (!session) {
+      alert('Session expired. Please login again.')
+      router.push('/login')
+      return
     }
+
+    const res = await fetchWithAuth('/api/staff', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}` // ✅ ADD THIS
+      },
+      body: JSON.stringify({
+        ...form,
+        specialties: selectedSpecialties,
+        organization_id: orgId,
+      }),
+    })
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      alert('Error: ' + (data.error || 'Failed to add staff'))
+      return
+    }
+
+    router.push('/dashboard/staff')
+  } catch (err) {
+    console.error('Error creating staff:', err)
+    alert('Error creating staff. See console.')
+  } finally {
+    setLoading(false)
   }
+}
 
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">

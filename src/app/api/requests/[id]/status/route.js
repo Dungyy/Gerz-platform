@@ -32,6 +32,29 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
+  // After updating status, send SMS if enabled
+  const { data: tenant } = await supabase
+    .from('profiles')
+    .select('phone, sms_notifications, notification_preferences(*)')
+    .eq('id', request.tenant_id)
+    .single()
+
+  if (tenant?.phone && tenant?.sms_notifications) {
+    await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/notifications/sms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: request.tenant_id,
+        message_type: 'status_update',
+        request_data: {
+          id: request.id,
+          title: request.title,
+          status: newStatus,
+        },
+      }),
+    })
+  }
+
   // Send status update notification
   await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/notifications/status-update`, {
     method: 'POST',

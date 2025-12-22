@@ -20,6 +20,7 @@ import {
   Paperclip,
   AlertCircle,
 } from 'lucide-react'
+import { fetchWithAuth } from '@/lib/api-helper'
 
 export default function RequestDetailPage() {
   const params = useParams()
@@ -138,7 +139,7 @@ export default function RequestDetailPage() {
   async function handleAddComment() {
     if (!newComment.trim() || !requestId) return
 
-    const response = await fetch(`/api/requests/${requestId}/comments`, {
+    const response = await fetchWithAuth(`/api/requests/${requestId}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -159,7 +160,7 @@ export default function RequestDetailPage() {
   async function handleAssign(staffId) {
     if (!requestId) return
 
-    const response = await fetch(`/api/requests/${requestId}/assign`, {
+    const response = await fetchWithAuth(`/api/requests/${requestId}/assign`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ staff_id: staffId }),
@@ -176,7 +177,7 @@ export default function RequestDetailPage() {
   async function handleStatusUpdate(newStatus) {
     if (!requestId) return
 
-    const response = await fetch(`/api/requests/${requestId}/status`, {
+    const response = await fetchWithAuth(`/api/requests/${requestId}/status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
