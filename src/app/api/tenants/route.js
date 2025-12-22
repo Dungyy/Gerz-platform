@@ -11,6 +11,8 @@ export async function POST(request) {
   try {
     const { email, full_name, phone, unit_id, send_sms } = await request.json()
 
+    console.log('📧 Starting tenant invitation for:', email)
+
     // Get current user from auth header
     const authHeader = request.headers.get('authorization')
     const token = authHeader?.replace('Bearer ', '')
@@ -37,6 +39,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
+    console.log('👤 Manager org:', managerProfile.organization.name)
+
     // Get unit details
     const { data: unit } = await supabaseAdmin
       .from('units')
@@ -48,6 +52,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unit not found' }, { status: 404 })
     }
 
+    console.log('🏠 Unit:', unit.property.name, 'Unit', unit.unit_number)
+
     // Generate temporary password
     const tempPassword = Math.random().toString(36).slice(-12) + 'Aa1!'
 
@@ -55,7 +61,7 @@ export async function POST(request) {
     const { data: authData, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: tempPassword,
-      email_confirm: true,
+      email_confirm: true, // Auto-confirm so they can use magic link
       user_metadata: {
         full_name,
         invited_by: manager.id,
@@ -63,9 +69,13 @@ export async function POST(request) {
       }
     })
 
-    if (createAuthError) throw createAuthError
+    if (createAuthError) {
+      console.error('❌ Auth creation error:', createAuthError)
+      throw createAuthError
+    }
 
     const userId = authData.user.id
+    console.log('✅ Auth user created:', userId)
 
     // Create profile
     const { error: profileError } = await supabaseAdmin
@@ -81,9 +91,12 @@ export async function POST(request) {
       })
 
     if (profileError) {
+      console.error('❌ Profile creation error:', profileError)
       await supabaseAdmin.auth.admin.deleteUser(userId)
       throw profileError
     }
+
+    console.log('✅ Profile created')
 
     // Assign to unit
     const { error: unitError } = await supabaseAdmin
@@ -92,10 +105,13 @@ export async function POST(request) {
       .eq('id', unit_id)
 
     if (unitError) {
+      console.error('❌ Unit assignment error:', unitError)
       await supabaseAdmin.auth.admin.deleteUser(userId)
       await supabaseAdmin.from('profiles').delete().eq('id', userId)
       throw unitError
     }
+
+    console.log('✅ Unit assigned')
 
     // Create notification preferences
     await supabaseAdmin.from('notification_preferences').insert({
@@ -105,63 +121,222 @@ export async function POST(request) {
       sms_emergency: !!phone,
     })
 
-    // Generate magic link
-    const { data: resetData } = await supabaseAdmin.auth.admin.generateLink({
+    // ✅ GENERATE MAGIC LINK FOR PASSWORD SETUP
+    console.log('🔗 Generating magic link...')
+    
+    const { data: magicLinkData, error: magicLinkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: email,
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/set-password`
+      }
     })
 
-    const setupLink = resetData?.properties?.action_link || 
-      `${process.env.NEXT_PUBLIC_APP_URL}/auth/set-password?email=${email}`
+    if (magicLinkError) {
+      console.error('❌ Magic link error:', magicLinkError)
+    }
 
-    // Send Email (if Resend configured)
+    // Use magic link or fallback URL
+    const setupLink = magicLinkData?.properties?.action_link || 
+      `${process.env.NEXT_PUBLIC_APP_URL}/auth/set-password?email=${encodeURIComponent(email)}`
+
+    console.log('✅ Setup link generated:', setupLink.substring(0, 50) + '...')
+
+    // ✅ SEND EMAIL WITH MAGIC LINK
     if (process.env.RESEND_API_KEY) {
+      console.log('📧 Sending email...')
+      
       try {
-        await fetch('https://api.resend.com/emails', {
+        const emailResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
           },
           body: JSON.stringify({
-            from: `${managerProfile.organization.name} <noreply@yourdomain.com>`,
+            from: process.env.DEFAULT_FROM_EMAIL,
             to: email,
-            subject: `Welcome to ${managerProfile.organization.name}`,
-            html: `<p>Hi ${full_name},</p><p>Your account is ready! <a href="${setupLink}">Set your password</a></p>`,
+            subject: `Welcome to ${managerProfile.organization.name} - Set Your Password`,
+            html: generateWelcomeEmail(
+              full_name, 
+              managerProfile.organization.name, 
+              unit, 
+              setupLink
+            ),
           }),
         })
+
+        if (emailResponse.ok) {
+          console.log('✅ Email sent successfully')
+        } else {
+          const errorText = await emailResponse.text()
+          console.error('❌ Email send failed:', errorText)
+        }
       } catch (emailError) {
-        console.error('Email error:', emailError)
+        console.error('❌ Email error:', emailError)
       }
+    } else {
+      console.warn('⚠️ No RESEND_API_KEY - email not sent')
     }
 
-    // Send SMS if requested
+    // ✅ SEND SMS IF REQUESTED
     if (phone && send_sms) {
-      const smsMessage = `Welcome to ${managerProfile.organization.name}! Your account for Unit ${unit.unit_number} is ready. Check your email (${email}) to set your password.`
+      console.log('📱 Sending SMS to:', phone)
+      
+      const smsMessage = `Welcome to ${managerProfile.organization.name}! Your account for Unit ${unit.unit_number} at ${unit.property.name} is ready. Check your email (${email}) to set your password and get started. - Gerz`
 
-      await sendSMS({
+      const smsResult = await sendSMS({
         to: formatPhoneNumber(phone),
         message: smsMessage,
         organizationId: managerProfile.organization_id,
         recipientUserId: userId,
         messageType: 'invitation',
       })
+
+      if (smsResult.success) {
+        console.log('✅ SMS sent successfully')
+      } else {
+        console.error('❌ SMS failed:', smsResult.error)
+      }
     }
 
     return NextResponse.json({ 
       success: true, 
       user_id: userId,
       message: 'Tenant invited successfully',
-      sms_sent: !!phone && send_sms,
+      email_sent: !!process.env.RESEND_API_KEY,
+      sms_sent: !!(phone && send_sms),
     })
 
   } catch (error) {
-    console.error('Tenant invitation error:', error)
+    console.error('❌ Tenant invitation error:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to invite tenant' },
       { status: 400 }
     )
   }
+}
+
+// Email template function
+function generateWelcomeEmail(fullName, orgName, unit, setupLink) {
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { 
+            font-family: Arial, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            margin: 0;
+            padding: 0;
+          }
+          .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 20px; 
+          }
+          .header { 
+            background: #2563eb; 
+            color: white; 
+            padding: 30px 20px; 
+            text-align: center; 
+            border-radius: 8px 8px 0 0; 
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+          }
+          .content { 
+            background: #f9fafb; 
+            padding: 30px; 
+            border-radius: 0 0 8px 8px; 
+          }
+          .button { 
+            display: inline-block; 
+            background: #2563eb; 
+            color: white !important; 
+            padding: 14px 28px; 
+            text-decoration: none; 
+            border-radius: 6px; 
+            margin: 20px 0;
+            font-weight: bold;
+          }
+          .button:hover {
+            background: #1d4ed8;
+          }
+          .info-box { 
+            background: white; 
+            padding: 15px; 
+            border-left: 4px solid #2563eb; 
+            margin: 20px 0; 
+          }
+          .footer { 
+            text-align: center; 
+            margin-top: 30px; 
+            color: #6b7280; 
+            font-size: 14px; 
+          }
+          ul {
+            padding-left: 20px;
+          }
+          ul li {
+            margin: 8px 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Welcome to ${orgName}!</h1>
+          </div>
+          <div class="content">
+            <p>Hi ${fullName},</p>
+            
+            <p>Your property manager has created an account for you on our maintenance request platform. You can now easily submit and track maintenance requests for your unit.</p>
+            
+            <div class="info-box">
+              <strong>📍 Your Unit:</strong><br>
+              ${unit.property.name} - Unit ${unit.unit_number}<br>
+              ${unit.property.address}
+            </div>
+
+            <p><strong>To get started, click the button below to set your password:</strong></p>
+            
+            <div style="text-align: center;">
+              <a href="${setupLink}" class="button">
+                Set Your Password
+              </a>
+            </div>
+
+            <p style="font-size: 14px; color: #6b7280;">
+              If the button doesn't work, copy and paste this link into your browser:<br>
+              <a href="${setupLink}" style="color: #2563eb; word-break: break-all;">${setupLink}</a>
+            </p>
+
+            <p><strong>Once you're logged in, you can:</strong></p>
+            <ul>
+              <li>Submit maintenance requests 24/7</li>
+              <li>Track the status of your requests in real-time</li>
+              <li>Upload photos of maintenance issues</li>
+              <li>Communicate directly with maintenance staff</li>
+              <li>View your request history</li>
+            </ul>
+
+            <p>If you have any questions or need assistance, please contact your property manager.</p>
+
+            <p>Best regards,<br><strong>${orgName}</strong></p>
+          </div>
+          <div class="footer">
+            <p>This is an automated email. Please do not reply.</p>
+            <p style="margin-top: 10px; font-size: 12px;">
+              This link will expire in 24 hours for security purposes.
+            </p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `
 }
 
 export async function GET(request) {

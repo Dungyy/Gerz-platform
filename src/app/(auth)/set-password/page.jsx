@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Wrench, CheckCircle } from 'lucide-react'
+import { Wrench, CheckCircle, AlertCircle } from 'lucide-react'
 
 export default function SetPasswordPage() {
   const router = useRouter()
@@ -26,10 +26,11 @@ export default function SetPasswordPage() {
       setEmail(emailParam)
     }
 
-    // Check if user came from magic link
+    // Check if user came from magic link (has hash in URL)
     const hash = window.location.hash
     if (hash) {
-      // Supabase will handle the token automatically
+      console.log('🔗 Magic link detected, processing...')
+      // Supabase will automatically handle the token
       checkSession()
     }
   }, [searchParams])
@@ -37,6 +38,7 @@ export default function SetPasswordPage() {
   async function checkSession() {
     const { data: { session } } = await supabase.auth.getSession()
     if (session) {
+      console.log('✅ Session active for:', session.user.email)
       setEmail(session.user.email)
     }
   }
@@ -59,6 +61,8 @@ export default function SetPasswordPage() {
     }
 
     try {
+      console.log('🔐 Setting password for user...')
+
       // Update user's password
       const { error: updateError } = await supabase.auth.updateUser({
         password: formData.password
@@ -66,6 +70,7 @@ export default function SetPasswordPage() {
 
       if (updateError) throw updateError
 
+      console.log('✅ Password set successfully!')
       setSuccess(true)
 
       // Redirect to dashboard after 2 seconds
@@ -74,7 +79,7 @@ export default function SetPasswordPage() {
       }, 2000)
 
     } catch (err) {
-      console.error('Password setup error:', err)
+      console.error('❌ Password setup error:', err)
       setError(err.message || 'Failed to set password')
     } finally {
       setLoading(false)
@@ -95,6 +100,9 @@ export default function SetPasswordPage() {
             <p className="text-gray-600 mb-4">
               Redirecting you to the dashboard...
             </p>
+            <div className="animate-pulse">
+              <div className="h-2 bg-blue-600 rounded-full w-3/4 mx-auto"></div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -162,8 +170,9 @@ export default function SetPasswordPage() {
             </div>
 
             {error && (
-              <div className="text-red-500 text-sm bg-red-50 p-3 rounded">
-                {error}
+              <div className="flex items-start gap-2 text-red-700 text-sm bg-red-50 p-3 rounded border border-red-200">
+                <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                <span>{error}</span>
               </div>
             )}
 
@@ -171,6 +180,12 @@ export default function SetPasswordPage() {
               {loading ? 'Setting Password...' : 'Set Password & Continue'}
             </Button>
           </form>
+
+          <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-xs text-blue-900">
+              💡 <strong>Tip:</strong> After setting your password, you can login anytime to submit and track maintenance requests.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
