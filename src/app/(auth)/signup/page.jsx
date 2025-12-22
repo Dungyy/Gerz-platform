@@ -59,6 +59,12 @@ export default function SignupPage() {
           <CardTitle>Create Account</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>Tenants:</strong> If you received an invitation from your property manager,
+              use the link in your email instead of signing up here.
+            </p>
+          </div>
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">

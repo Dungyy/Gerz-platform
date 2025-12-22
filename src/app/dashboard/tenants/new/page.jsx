@@ -67,32 +67,36 @@ export default function NewTenantPage() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault()
-    setLoading(true)
+async function handleSubmit(e) {
+  e.preventDefault()
+  setLoading(true)
 
-    try {
-      const response = await fetch('/api/tenants', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      })
+  try {
+    const response = await fetch('/api/tenants', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+      },
+      body: JSON.stringify(formData),
+    })
 
-      const data = await response.json()
+    const data = await response.json()
 
-      if (response.ok) {
-        alert('Tenant invited successfully! They will receive an email with login instructions.')
-        router.push('/dashboard/tenants')
-      } else {
-        alert('Error: ' + (data.error || 'Failed to invite tenant'))
-      }
-    } catch (error) {
-      console.error('Error inviting tenant:', error)
-      alert('Error inviting tenant. Please try again.')
-    } finally {
-      setLoading(false)
+    if (response.ok) {
+      // Show success message
+      alert(`Invitation sent! ${formData.full_name} will receive an email at ${formData.email} with instructions to set their password and access the platform.`)
+      router.push('/dashboard/tenants')
+    } else {
+      alert('Error: ' + (data.error || 'Failed to invite tenant'))
     }
+  } catch (error) {
+    console.error('Error inviting tenant:', error)
+    alert('Error inviting tenant. Please try again.')
+  } finally {
+    setLoading(false)
   }
+}
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
