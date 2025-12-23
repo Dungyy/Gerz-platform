@@ -86,7 +86,7 @@ export default function DashboardPage() {
 
   async function loadRequests(userId, profileData) {
     try {
-      const response = await fetchWithAuth('/api/maintenance-requests', {
+      const response = await fetchWithAuth('/api/requests', {
         method: 'GET'
       })
 

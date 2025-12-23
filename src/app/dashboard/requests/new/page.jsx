@@ -137,7 +137,7 @@ export default function NewRequestPage() {
 
       console.log('📤 Submitting request:', requestData)
 
-      const response = await fetchWithAuth('/api/maintenance-requests', {
+      const response = await fetchWithAuth('/api/requests', {
         method: 'POST',
         body: JSON.stringify(requestData),
       })
