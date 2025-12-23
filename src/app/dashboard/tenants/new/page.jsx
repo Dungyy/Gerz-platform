@@ -7,7 +7,6 @@ import { fetchWithAuth } from '@/lib/api-helper'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Mail, MessageSquare, AlertCircle, Home } from 'lucide-react'
 
 export default function InviteTenantPage() {
@@ -16,6 +15,7 @@ export default function InviteTenantPage() {
   const [orgId, setOrgId] = useState(null)
   const [units, setUnits] = useState([])
   const [loadingUnits, setLoadingUnits] = useState(true)
+  const [invitationMethod, setInvitationMethod] = useState('magic_link') // or 'password'
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -90,6 +90,7 @@ export default function InviteTenantPage() {
       const payload = {
         ...formData,
         send_sms: sendSMS && formData.phone,
+        invitation_method: invitationMethod,
       }
 
       console.log('📤 Sending tenant invitation:', payload)
@@ -110,11 +111,11 @@ export default function InviteTenantPage() {
       let message = `Invitation sent successfully!\n\n`
       message += `${formData.full_name} will receive:\n`
       message += `✉️ Email at ${formData.email} with a secure link to set their password\n`
-      
+
       if (sendSMS && formData.phone) {
         message += `📱 Text message at ${formData.phone} with account details\n`
       }
-      
+
       message += `\nThey can access the platform as soon as they set their password.`
 
       alert(message)
@@ -209,7 +210,58 @@ export default function InviteTenantPage() {
                 Magic link for password setup will be sent to this email
               </p>
             </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Invitation Method
+              </label>
+              <div className="space-y-3">
+                <div
+                  onClick={() => setInvitationMethod('magic_link')}
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${invitationMethod === 'magic_link'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      checked={invitationMethod === 'magic_link'}
+                      onChange={() => setInvitationMethod('magic_link')}
+                      className="h-4 w-4"
+                    />
+                    <div className="flex-1">
+                      <p className="font-semibold">🔐 Magic Link (Recommended)</p>
+                      <p className="text-sm text-gray-600">
+                        Tenant receives a one-click login link - no password needed
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
+                <div
+                  onClick={() => setInvitationMethod('password')}
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${invitationMethod === 'password'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      checked={invitationMethod === 'password'}
+                      onChange={() => setInvitationMethod('password')}
+                      className="h-4 w-4"
+                    />
+                    <div className="flex-1">
+                      <p className="font-semibold">🔑 Set Password</p>
+                      <p className="text-sm text-gray-600">
+                        Tenant creates their own password (traditional method)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-medium mb-1">
                 Phone (optional)
