@@ -18,18 +18,21 @@ import {
   Home,
   User,
   Users,
-  Building
+  Building,
+  ClipboardList
 } from 'lucide-react'
 
 export default function DashboardPage() {
   const router = useRouter()
   const [profile, setProfile] = useState(null)
+  const [currentUserId, setCurrentUserId] = useState(null)
   const [stats, setStats] = useState({
     total: 0,
     submitted: 0,
     inProgress: 0,
     completed: 0,
     emergency: 0,
+    myAssigned: 0,
   })
   const [recentRequests, setRecentRequests] = useState([])
   const [loading, setLoading] = useState(true)
@@ -47,6 +50,7 @@ export default function DashboardPage() {
         return
       }
 
+      setCurrentUserId(user.id)
       console.log('👤 Loading dashboard for:', user.email)
 
       // Get profile with organization and unit info
@@ -99,16 +103,26 @@ export default function DashboardPage() {
 
       console.log('📊 Loaded', requestsData.length, 'requests')
 
-      // Set recent requests
-      setRecentRequests(requestsData.slice(0, profileData.role === 'tenant' ? 10 : 5))
+      // Set recent requests based on role
+      if (profileData.role === 'worker') {
+        // Workers see their assigned requests first
+        const myRequests = requestsData.filter(r => r.assigned_to === userId)
+        const otherRequests = requestsData.filter(r => r.assigned_to !== userId)
+        setRecentRequests([...myRequests.slice(0, 3), ...otherRequests.slice(0, 2)])
+      } else {
+        setRecentRequests(requestsData.slice(0, profileData.role === 'tenant' ? 10 : 5))
+      }
 
       // Calculate stats
+      const myAssigned = requestsData.filter(r => r.assigned_to === userId).length
+      
       setStats({
         total: requestsData.length,
         submitted: requestsData.filter(r => r.status === 'submitted').length,
         inProgress: requestsData.filter(r => r.status === 'in_progress' || r.status === 'assigned').length,
         completed: requestsData.filter(r => r.status === 'completed').length,
         emergency: requestsData.filter(r => r.priority === 'emergency' && r.status !== 'completed').length,
+        myAssigned: myAssigned,
       })
     } catch (error) {
       console.error('❌ Error loading requests:', error)
@@ -129,6 +143,10 @@ export default function DashboardPage() {
   // Render based on role
   if (profile?.role === 'tenant') {
     return <TenantDashboard profile={profile} stats={stats} requests={recentRequests} />
+  }
+
+  if (profile?.role === 'worker') {
+    return <WorkerDashboard profile={profile} stats={stats} requests={recentRequests} currentUserId={currentUserId} />
   }
 
   return <ManagerDashboard profile={profile} stats={stats} requests={recentRequests} />
@@ -327,6 +345,176 @@ function TenantDashboard({ profile, stats, requests }) {
 }
 
 // ============================================
+// WORKER DASHBOARD
+// ============================================
+function WorkerDashboard({ profile, stats, requests, currentUserId }) {
+  const myRequests = requests?.filter(r => r.assigned_to === currentUserId) || []
+  const availableRequests = requests?.filter(r => !r.assigned_to && r.status === 'submitted') || []
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="text-3xl font-bold">Worker Dashboard</h2>
+        <p className="text-gray-600 mt-1">
+          Welcome back, {profile?.full_name} • {profile?.organization?.name}
+        </p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard 
+          title="My Assigned" 
+          value={stats.myAssigned} 
+          icon={User} 
+          color="blue" 
+        />
+        <StatsCard 
+          title="Available" 
+          value={stats.submitted} 
+          icon={Clock} 
+          color="yellow" 
+        />
+        <StatsCard 
+          title="In Progress" 
+          value={stats.inProgress} 
+          icon={TrendingUp} 
+          color="purple" 
+        />
+        <StatsCard 
+          title="Completed" 
+          value={stats.completed} 
+          icon={CheckCircle} 
+          color="green" 
+        />
+      </div>
+
+      {/* Emergency Alerts */}
+      {stats.emergency > 0 && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <AlertCircle className="h-6 w-6 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-red-900">
+                  {stats.emergency} Emergency Request{stats.emergency > 1 ? 's' : ''} Need Attention
+                </h3>
+                <p className="text-sm text-red-700">
+                  Please review these high-priority requests
+                </p>
+              </div>
+              <Link href="/dashboard/requests?priority=emergency">
+                <Button variant="outline" className="bg-red-600 text-white hover:bg-red-700">
+                  View Now
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* My Assigned Requests */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-blue-900">
+              My Assigned Requests ({myRequests.length})
+            </CardTitle>
+            {myRequests.length > 0 && (
+              <Link href="/dashboard/requests?assigned=me" className="text-sm text-blue-600 hover:underline">
+                View All
+              </Link>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {myRequests.length === 0 ? (
+            <div className="text-center py-8 bg-white rounded-lg">
+              <ClipboardList className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-500">No requests assigned to you yet</p>
+              <p className="text-sm text-gray-400 mt-1">Check available requests below</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {myRequests.map((request) => (
+                <Link
+                  key={request.id}
+                  href={`/dashboard/requests/${request.id}`}
+                  className="block p-4 bg-white border border-blue-200 rounded-lg hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-semibold">{request.title}</h4>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {request.property?.name} - Unit {request.unit?.unit_number}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {request.tenant?.full_name} • {formatDate(request.created_at)}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      <PriorityBadge priority={request.priority} />
+                      <StatusBadge status={request.status} />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Available Requests */}
+      {availableRequests.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Available Requests ({availableRequests.length})</CardTitle>
+              <Link href="/dashboard/requests?status=submitted" className="text-sm text-blue-600 hover:underline">
+                View All
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {availableRequests.slice(0, 5).map((request) => (
+                <Link
+                  key={request.id}
+                  href={`/dashboard/requests/${request.id}`}
+                  className="block p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-semibold">{request.title}</h4>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {request.property?.name} - Unit {request.unit?.unit_number}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {request.tenant?.full_name} • {formatDate(request.created_at)}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      <PriorityBadge priority={request.priority} />
+                      <Badge className="bg-green-100 text-green-700">Available</Badge>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+// ============================================
 // MANAGER/OWNER DASHBOARD
 // ============================================
 function ManagerDashboard({ profile, stats, requests }) {
@@ -493,6 +681,7 @@ function StatsCard({ title, value, icon: Icon, color }) {
     yellow: 'bg-yellow-500',
     green: 'bg-green-500',
     red: 'bg-red-500',
+    purple: 'bg-purple-500',
   }
 
   return (
