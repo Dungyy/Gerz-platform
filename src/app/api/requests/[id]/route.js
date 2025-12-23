@@ -14,7 +14,6 @@ export async function GET(request, context) {
   try {
     console.log('📥 GET request for maintenance request')
 
-    // Get authorization token
     const authHeader = request.headers.get('authorization')
     const token = authHeader?.replace('Bearer ', '')
     
@@ -23,7 +22,6 @@ export async function GET(request, context) {
       return NextResponse.json({ error: 'Unauthorized - No token provided' }, { status: 401 })
     }
 
-    // Verify user
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
     
     if (authError || !user) {
@@ -33,13 +31,11 @@ export async function GET(request, context) {
 
     console.log('✅ Authenticated user:', user.email)
 
-    // Get request ID from params
     const params = await context.params
     const requestId = params.id
 
     console.log('🔍 Fetching request ID:', requestId)
 
-    // Get user's profile and role
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('id, organization_id, role, full_name')
@@ -53,7 +49,6 @@ export async function GET(request, context) {
 
     console.log('👤 User role:', profile.role, '| Org:', profile.organization_id)
 
-    // Fetch the maintenance request with all related data
     const { data: maintenanceRequest, error: requestError } = await supabaseAdmin
       .from('maintenance_requests')
       .select(`
@@ -104,21 +99,18 @@ export async function GET(request, context) {
 
     console.log('📄 Request found:', maintenanceRequest.title)
 
-    // ✅ AUTHORIZATION CHECKS BASED ON ROLE
+    // ✅ AUTHORIZATION CHECKS
     let authorized = false
 
     if (profile.role === 'owner' || profile.role === 'manager') {
-      // Owners/Managers can view all requests in their organization
       authorized = maintenanceRequest.organization_id === profile.organization_id
       console.log('🔐 Manager/Owner check:', authorized ? '✅ Authorized' : '❌ Denied')
       
     } else if (profile.role === 'worker') {
-      // Workers can view requests in their organization
       authorized = maintenanceRequest.organization_id === profile.organization_id
       console.log('🔐 Worker check:', authorized ? '✅ Authorized' : '❌ Denied')
       
     } else if (profile.role === 'tenant') {
-      // Tenants can only view their own requests
       authorized = maintenanceRequest.tenant_id === user.id
       console.log('🔐 Tenant check:', authorized ? '✅ Authorized (own request)' : '❌ Denied')
       
@@ -135,7 +127,6 @@ export async function GET(request, context) {
 
     console.log('✅ Authorization passed')
 
-    // Return the request data
     return NextResponse.json(maintenanceRequest)
 
   } catch (error) {
@@ -156,7 +147,6 @@ export async function PUT(request, context) {
     
     console.log('📥 PUT request for maintenance request:', updates)
 
-    // Get authorization token
     const authHeader = request.headers.get('authorization')
     const token = authHeader?.replace('Bearer ', '')
     
@@ -164,20 +154,17 @@ export async function PUT(request, context) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Verify user
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
     
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get request ID from params
     const params = await context.params
     const requestId = params.id
 
     console.log('🔄 Updating request ID:', requestId)
 
-    // Get user profile
     const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('organization_id, role, full_name')
@@ -190,7 +177,6 @@ export async function PUT(request, context) {
 
     console.log('👤 User:', profile.full_name, '(', profile.role, ')')
 
-    // Get current request
     const { data: currentRequest } = await supabaseAdmin
       .from('maintenance_requests')
       .select(`
@@ -204,7 +190,7 @@ export async function PUT(request, context) {
       return NextResponse.json({ error: 'Request not found' }, { status: 404 })
     }
 
-    // ✅ AUTHORIZATION CHECK - Who can update?
+    // ✅ AUTHORIZATION CHECK
     const canUpdate = 
       profile.role === 'owner' ||
       profile.role === 'manager' ||
@@ -220,7 +206,6 @@ export async function PUT(request, context) {
     console.log('✅ Update authorization passed')
 
     // ✅ HANDLE SELF-ASSIGNMENT
-    // If worker/manager assigns to themselves, auto-update status
     if (updates.assigned_to === user.id && currentRequest.assigned_to !== user.id) {
       console.log('🙋 Self-assignment detected')
       if (currentRequest.status === 'submitted') {
@@ -228,7 +213,12 @@ export async function PUT(request, context) {
       }
     }
 
-    // Update request
+    // Add completion tracking
+    if (updates.status === 'completed' && currentRequest.status !== 'completed') {
+      updates.completed_at = new Date().toISOString()
+      updates.completed_by = user.id
+    }
+
     const { data: updatedRequest, error: updateError } = await supabaseAdmin
       .from('maintenance_requests')
       .update({
@@ -252,9 +242,7 @@ export async function PUT(request, context) {
 
     console.log('✅ Request updated successfully')
 
-    // ✅ SEND NOTIFICATIONS BASED ON WHAT CHANGED
-    
-    // 1. If assigned to a worker
+    // ✅ NOTIFICATIONS
     if (updates.assigned_to && updates.assigned_to !== currentRequest.assigned_to) {
       const worker = updatedRequest.assigned_to_user
       const isSelfAssignment = updates.assigned_to === user.id
@@ -295,7 +283,6 @@ export async function PUT(request, context) {
         }
       }
 
-      // Notify tenant that request has been assigned
       const tenant = currentRequest.tenant
       if (tenant?.email && process.env.RESEND_API_KEY) {
         try {
@@ -334,7 +321,6 @@ export async function PUT(request, context) {
       }
     }
 
-    // 2. If status changed, notify tenant
     if (updates.status && updates.status !== currentRequest.status && updates.status !== 'assigned') {
       const tenant = currentRequest.tenant
       
@@ -389,351 +375,6 @@ export async function PUT(request, context) {
       { status: 500 }
     )
   }
-}
-
-// ============================================
-// DELETE - Delete maintenance request
-// ============================================
-export async function DELETE(request, context) {
-  try {
-    console.log('📥 DELETE request for maintenance request')
-
-    // Get authorization token
-    const authHeader = request.headers.get('authorization')
-    const token = authHeader?.replace('Bearer ', '')
-    
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Verify user
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Get request ID from params
-    const params = await context.params
-    const requestId = params.id
-
-    console.log('🗑️ Deleting request ID:', requestId)
-
-    // Get user profile
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('organization_id, role')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile) {
-      return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
-    }
-
-    // Get current request
-    const { data: currentRequest } = await supabaseAdmin
-      .from('maintenance_requests')
-      .select('organization_id, tenant_id')
-      .eq('id', requestId)
-      .single()
-
-    if (!currentRequest) {
-      return NextResponse.json({ error: 'Request not found' }, { status: 404 })
-    }
-
-    // ✅ AUTHORIZATION CHECK - Only owners/managers can delete
-    const canDelete = 
-      (profile.role === 'owner' || profile.role === 'manager') &&
-      currentRequest.organization_id === profile.organization_id
-
-    if (!canDelete) {
-      console.error('❌ Delete authorization failed')
-      return NextResponse.json({ 
-        error: 'Unauthorized - Only managers/owners can delete requests' 
-      }, { status: 403 })
-    }
-
-    console.log('✅ Delete authorization passed')
-
-    // Delete request (comments will be cascade deleted due to FK)
-    const { error: deleteError } = await supabaseAdmin
-      .from('maintenance_requests')
-      .delete()
-      .eq('id', requestId)
-
-    if (deleteError) {
-      console.error('❌ Delete error:', deleteError)
-      return NextResponse.json({ error: deleteError.message }, { status: 400 })
-    }
-
-    console.log('✅ Request deleted successfully')
-
-    return NextResponse.json({ 
-      success: true,
-      message: 'Request deleted successfully'
-    })
-
-  } catch (error) {
-    console.error('❌ Request DELETE error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to delete request' },
-      { status: 500 }
-    )
-  }
-}
-
-// ============================================
-// POST - Create a new comment
-// ============================================
-export async function POST(request, context) {
-  try {
-    const { comment, is_internal } = await request.json()
-    
-    console.log('📥 POST comment request')
-
-    const authHeader = request.headers.get('authorization')
-    const token = authHeader?.replace('Bearer ', '')
-    
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { data: { user } } = await supabaseAdmin.auth.getUser(token)
-    
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const params = await context.params
-    const requestId = params.id
-
-    console.log('💬 Creating comment for request:', requestId)
-
-    // Get user profile
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('organization_id, role, full_name')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile) {
-      return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
-    }
-
-    console.log('👤 Comment from:', profile.full_name, '(', profile.role, ')')
-
-    // ✅ Validate: Tenants cannot create internal comments
-    if (profile.role === 'tenant' && is_internal) {
-      return NextResponse.json({ 
-        error: 'Tenants cannot create internal comments' 
-      }, { status: 403 })
-    }
-
-    // Get request details for notifications
-    const { data: maintenanceRequest } = await supabaseAdmin
-      .from('maintenance_requests')
-      .select(`
-        *,
-        tenant:profiles!maintenance_requests_tenant_id_fkey(
-          full_name, 
-          email, 
-          phone, 
-          sms_notifications
-        ),
-        assigned_worker:profiles!maintenance_requests_assigned_to_fkey(
-          full_name, 
-          email, 
-          phone, 
-          sms_notifications
-        ),
-        property:properties(name)
-      `)
-      .eq('id', requestId)
-      .single()
-
-    if (!maintenanceRequest) {
-      return NextResponse.json({ error: 'Request not found' }, { status: 404 })
-    }
-
-    // ✅ AUTHORIZATION CHECK - Can user comment on this request?
-    const canComment = 
-      profile.role === 'owner' ||
-      profile.role === 'manager' ||
-      (profile.role === 'worker' && maintenanceRequest.organization_id === profile.organization_id) ||
-      (profile.role === 'tenant' && maintenanceRequest.tenant_id === user.id)
-
-    if (!canComment) {
-      return NextResponse.json({ 
-        error: 'Unauthorized - You cannot comment on this request' 
-      }, { status: 403 })
-    }
-
-    console.log('✅ Comment authorization passed')
-
-    // Create comment
-    const { data: newComment, error: createError } = await supabaseAdmin
-      .from('request_comments')
-      .insert({
-        request_id: requestId,
-        user_id: user.id,
-        organization_id: profile.organization_id,
-        comment,
-        is_internal: is_internal || false,
-      })
-      .select(`
-        *,
-        user:profiles(full_name, role)
-      `)
-      .single()
-
-    if (createError) {
-      console.error('❌ Comment creation error:', createError)
-      return NextResponse.json({ error: createError.message }, { status: 400 })
-    }
-
-    console.log('✅ Comment created:', newComment.id)
-
-    // ✅ SEND NOTIFICATIONS (only for non-internal comments or to staff)
-    if (!is_internal) {
-      console.log('📧 Sending notifications for public comment')
-
-      // Notify tenant if comment is from staff
-      if (profile.role !== 'tenant' && maintenanceRequest.tenant?.email && process.env.RESEND_API_KEY) {
-        try {
-          await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-            },
-            body: JSON.stringify({
-              from: process.env.DEFAULT_FROM_EMAIL,
-              to: maintenanceRequest.tenant.email,
-              subject: `Update on your request: ${maintenanceRequest.title}`,
-              html: generateCommentNotificationEmail(
-                maintenanceRequest.tenant.full_name,
-                profile.full_name,
-                profile.role,
-                maintenanceRequest,
-                comment
-              ),
-            }),
-          })
-
-          console.log('✅ Email sent to tenant')
-
-          // Send SMS if enabled
-          if (maintenanceRequest.tenant.phone && maintenanceRequest.tenant.sms_notifications) {
-            await sendSMS({
-              to: formatPhoneNumber(maintenanceRequest.tenant.phone),
-              message: `Update on your maintenance request from ${profile.full_name}: ${comment.substring(0, 100)}${comment.length > 100 ? '...' : ''}`,
-              organizationId: profile.organization_id,
-              recipientUserId: maintenanceRequest.tenant_id,
-              messageType: 'status_update',
-            })
-            console.log('✅ SMS sent to tenant')
-          }
-        } catch (err) {
-          console.error('❌ Tenant notification error:', err)
-        }
-      }
-
-      // Notify assigned worker if comment is from tenant or manager
-      if (profile.role === 'tenant' && maintenanceRequest.assigned_worker?.email && process.env.RESEND_API_KEY) {
-        try {
-          await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-            },
-            body: JSON.stringify({
-              from: process.env.DEFAULT_FROM_EMAIL,
-              to: maintenanceRequest.assigned_worker.email,
-              subject: `New comment on request: ${maintenanceRequest.title}`,
-              html: generateCommentNotificationEmail(
-                maintenanceRequest.assigned_worker.full_name,
-                profile.full_name,
-                profile.role,
-                maintenanceRequest,
-                comment
-              ),
-            }),
-          })
-
-          console.log('✅ Email sent to worker')
-
-          if (maintenanceRequest.assigned_worker.phone && maintenanceRequest.assigned_worker.sms_notifications) {
-            await sendSMS({
-              to: formatPhoneNumber(maintenanceRequest.assigned_worker.phone),
-              message: `New comment from ${profile.full_name} on request: ${comment.substring(0, 100)}`,
-              organizationId: profile.organization_id,
-              recipientUserId: maintenanceRequest.assigned_to,
-              messageType: 'status_update',
-            })
-            console.log('✅ SMS sent to worker')
-          }
-        } catch (err) {
-          console.error('❌ Worker notification error:', err)
-        }
-      }
-    } else {
-      console.log('🔒 Internal comment - no notifications sent')
-    }
-
-    return NextResponse.json({ 
-      success: true,
-      comment: newComment 
-    })
-
-  } catch (error) {
-    console.error('❌ Comment POST error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to create comment' },
-      { status: 500 }
-    )
-  }
-}
-
-// ============================================
-// EMAIL TEMPLATE
-// ============================================
-function generateCommentNotificationEmail(recipientName, commenterName, commenterRole, request, comment) {
-  const roleLabel = {
-    tenant: 'Tenant',
-    worker: 'Worker',
-    manager: 'Manager',
-    owner: 'Owner'
-  }[commenterRole] || 'Staff Member'
-
-  return `
-    <!DOCTYPE html>
-    <html>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: #2563eb; color: white; padding: 20px; text-align: center;">
-            <h2>New Update on Your Request</h2>
-          </div>
-          <div style="background: #f9fafb; padding: 20px;">
-            <p>Hi ${recipientName},</p>
-            
-            <p><strong>${commenterName}</strong> (${roleLabel}) added a comment:</p>
-            
-            <div style="background: white; padding: 15px; border-left: 4px solid #2563eb; margin: 15px 0;">
-              <p><strong>Request:</strong> ${request.title}</p>
-              <p style="background: #f3f4f6; padding: 10px; border-radius: 4px; margin-top: 10px;">
-                "${comment}"
-              </p>
-            </div>
-
-            <p><a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/requests/${request.id}" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">View Request</a></p>
-
-            <p>Best regards,<br><strong>Gerz Maintenance</strong></p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `
 }
 
 function generateWorkerAssignmentEmail(workerName, request, assignerName) {
