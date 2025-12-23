@@ -7,7 +7,8 @@ import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Mail, Lock, Sparkles } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Mail, Lock, Sparkles, CheckCircle2, ArrowRight } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -61,7 +62,6 @@ export default function LoginPage() {
       if (error) throw error
 
       setMagicLinkSent(true)
-      console.log('✅ Magic link sent to:', formData.email)
     } catch (error) {
       console.error('Magic link error:', error)
       alert(`❌ Failed to send magic link: ${error.message}`)
@@ -72,24 +72,33 @@ export default function LoginPage() {
 
   if (magicLinkSent) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <div className="mx-auto mb-4 p-4 bg-green-100 rounded-full w-16 h-16 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        {/* Background accents */}
+        <div className="pointer-events-none fixed inset-0 -z-10">
+          <div className="absolute left-[-120px] top-[-120px] h-[320px] w-[320px] rounded-full bg-green-500/10 blur-3xl" />
+          <div className="absolute right-[-140px] bottom-[-160px] h-[360px] w-[360px] rounded-full bg-blue-500/10 blur-3xl" />
+        </div>
+
+        <Card className="w-full max-w-md shadow-sm">
+          <CardHeader className="text-center">
+            <div className="grid h-16 w-16 place-items-center rounded-xl bg-green-500/10 mx-auto mb-4">
               <Mail className="h-8 w-8 text-green-600" />
             </div>
-            <CardTitle className="text-2xl text-center">Check Your Email!</CardTitle>
+            <CardTitle className="text-2xl">Check Your Email!</CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               We've sent a magic link to:
             </p>
-            <p className="font-semibold text-lg">{formData.email}</p>
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-left">
-              <p className="text-sm text-blue-900 mb-2">
-                <strong>Click the link in your email to sign in.</strong>
+            <Badge variant="secondary" className="text-base px-4 py-2">
+              {formData.email}
+            </Badge>
+            <div className="p-4 rounded-lg border bg-blue-500/5 border-blue-500/20 text-left space-y-2">
+              <p className="text-sm font-medium flex items-start gap-2">
+                <CheckCircle2 className="h-4 w-4 mt-0.5 text-blue-600" />
+                Click the link in your email to sign in
               </p>
-              <p className="text-xs text-blue-700">
+              <p className="text-xs text-muted-foreground pl-6">
                 The link will expire in 1 hour. Check your spam folder if you don't see it.
               </p>
             </div>
@@ -110,11 +119,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-3xl text-center">Sign In to Gerz</CardTitle>
-          <p className="text-center text-gray-600 mt-2">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      {/* Background accents */}
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute left-[-120px] top-[-120px] h-[320px] w-[320px] rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="absolute right-[-140px] top-[180px] h-[360px] w-[360px] rounded-full bg-indigo-500/10 blur-3xl" />
+      </div>
+
+      <Card className="w-full max-w-md shadow-sm">
+        <CardHeader className="text-center">
+          <Link href="/" className="inline-flex items-center gap-2 justify-center mb-6">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-foreground text-background font-bold">
+              d
+            </div>
+            <div className="leading-tight text-left">
+              <div className="font-semibold">dingy.app</div>
+              <div className="text-xs text-muted-foreground">Maintenance Requests</div>
+            </div>
+          </Link>
+          <CardTitle className="text-3xl tracking-tight">Sign In</CardTitle>
+          <p className="text-muted-foreground mt-2">
             Welcome back! Sign in to your account
           </p>
         </CardHeader>
@@ -127,6 +151,7 @@ export default function LoginPage() {
               variant={!useMagicLink ? 'default' : 'outline'}
               onClick={() => setUseMagicLink(false)}
               className="flex-1"
+              size="sm"
             >
               <Lock className="h-4 w-4 mr-2" />
               Password
@@ -136,6 +161,7 @@ export default function LoginPage() {
               variant={useMagicLink ? 'default' : 'outline'}
               onClick={() => setUseMagicLink(true)}
               className="flex-1"
+              size="sm"
             >
               <Sparkles className="h-4 w-4 mr-2" />
               Magic Link
@@ -171,6 +197,7 @@ export default function LoginPage() {
 
               <Button type="submit" className="w-full" size="lg" disabled={loading}>
                 {loading ? 'Signing in...' : 'Sign In'}
+                {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
               </Button>
 
               <div className="text-center text-sm">
@@ -184,9 +211,10 @@ export default function LoginPage() {
           {/* Magic Link Form */}
           {useMagicLink && (
             <form onSubmit={handleMagicLinkLogin} className="space-y-4">
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
-                <p className="text-sm text-blue-900">
-                  ✨ Enter your email and we'll send you a magic link to sign in - no password needed!
+              <div className="p-3 rounded-lg border bg-blue-500/5 border-blue-500/20 mb-4">
+                <p className="text-sm flex items-start gap-2">
+                  <Sparkles className="h-4 w-4 mt-0.5 text-blue-600" />
+                  <span>Enter your email and we'll send you a magic link to sign in - no password needed!</span>
                 </p>
               </div>
 
@@ -204,11 +232,12 @@ export default function LoginPage() {
 
               <Button type="submit" className="w-full" size="lg" disabled={loading}>
                 {loading ? 'Sending...' : 'Send Magic Link'}
+                {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
               </Button>
             </form>
           )}
 
-          <div className="text-center text-sm text-gray-600 mt-6">
+          <div className="text-center text-sm text-muted-foreground mt-6">
             Don't have an account?{' '}
             <Link href="/signup" className="text-blue-600 hover:underline font-semibold">
               Sign up

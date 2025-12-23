@@ -1,54 +1,39 @@
 'use client'
 
 import Link from 'next/link'
-import { Wrench } from 'lucide-react'
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="bg-white border-t mt-auto">
+    <footer className="border-t mt-auto">
       <div className="px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Logo & Copyright */}
-          <div className="flex items-center gap-2">
-            <Wrench className="h-5 w-5 text-blue-600" />
-            <span className="text-sm text-gray-600">
-              © {currentYear} Gerz. All rights reserved.
-            </span>
+          <div className="text-sm">
+            <span className="font-semibold">dingy.app</span>
+            <span className="text-muted-foreground"> — Maintenance Request Management</span>
           </div>
 
           {/* Links */}
-          <div className="flex items-center gap-6">
-            <Link 
-              href="/dashboard/settings" 
-              className="text-sm text-gray-600 hover:text-gray-900"
-            >
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <Link href="/dashboard/settings" className="hover:text-foreground">
               Settings
             </Link>
-            <Link 
-              href="/help" 
-              className="text-sm text-gray-600 hover:text-gray-900"
-            >
+            <Link href="/help" className="hover:text-foreground">
               Help Center
             </Link>
-            <Link 
-              href="/privacy" 
-              className="text-sm text-gray-600 hover:text-gray-900"
-            >
-              Privacy Policy
+            <Link href="/privacy" className="hover:text-foreground">
+              Privacy
             </Link>
-            <Link 
-              href="/terms" 
-              className="text-sm text-gray-600 hover:text-gray-900"
-            >
-              Terms of Service
+            <Link href="/terms" className="hover:text-foreground">
+              Terms
             </Link>
           </div>
 
           {/* Version */}
-          <div className="text-sm text-gray-500">
-            v1.0.0
+          <div className="text-sm text-muted-foreground">
+            © {currentYear}
           </div>
         </div>
       </div>

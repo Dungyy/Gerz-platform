@@ -8,379 +8,451 @@ import {
   Building2,
   ShieldCheck,
   Sparkles,
+  Camera,
+  Users,
+  Timer,
+  BadgeCheck,
+  ChevronRight,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-// import { Separator } from "@/components/ui/separator";
+
+/** tiny helper (no deps) */
+function cn(...classes) {
+  return classes.filter(Boolean).join(" ");
+}
+
+/* ----------------------------- */
+/* DATA (easy to move later)     */
+/* ----------------------------- */
+
+const FEATURE_LIST = [
+  {
+    icon: ClipboardList,
+    title: "Requests with context",
+    desc: "Unit, category, priority, photos, and notes—captured the first time.",
+  },
+  {
+    icon: MessageSquare,
+    title: "Threaded messaging",
+    desc: "Keep tenants and staff aligned inside each request thread.",
+  },
+  {
+    icon: Wrench,
+    title: "Assignments & status",
+    desc: "Open → Assigned → In Progress → Completed with timestamps.",
+  },
+  {
+    icon: Building2,
+    title: "Unit history",
+    desc: "See every past issue per unit—perfect for recurring problems.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Accountability",
+    desc: "A clean audit trail for managers: who updated what and when.",
+  },
+  {
+    icon: Timer,
+    title: "Faster resolutions",
+    desc: "Less phone-tag. More clarity. Fewer repeat visits.",
+  },
+];
+
+const ROLE_VALUE = [
+  {
+    icon: Users,
+    title: "For Tenants",
+    bullets: ["Submit issues in seconds", "Add photos + notes", "Get updates in one thread"],
+  },
+  {
+    icon: Building2,
+    title: "For Managers",
+    bullets: ["Track requests by unit", "Assign staff instantly", "Keep a documented history"],
+  },
+  {
+    icon: Wrench,
+    title: "For Maintenance",
+    bullets: ["See priorities clearly", "Know what to bring", "Close out with notes/photos"],
+  },
+];
+
+const STEPS = [
+  { n: "1", title: "Tenant submits", desc: "Choose category, add details, upload photos." },
+  { n: "2", title: "Manager assigns", desc: "Route to staff, set priority, message tenant." },
+  { n: "3", title: "Resolve & close", desc: "Update status, log work, keep unit history." },
+];
+
+const TESTIMONIALS = [
+  { quote: "We stopped missing requests. Everything is documented now.", who: "Property Manager" },
+  { quote: "Tenants love the messaging—less calling the office.", who: "Leasing Office" },
+  { quote: "Assignments and status make my day way easier.", who: "Maintenance Tech" },
+];
+
+const PLANS = [
+  {
+    name: "Starter",
+    price: "$0",
+    note: "For testing and small properties",
+    items: ["Unlimited requests", "Tenant messaging", "Basic statuses"],
+  },
+  {
+    name: "Pro",
+    price: "$49/mo",
+    note: "For growing complexes",
+    highlight: true,
+    items: ["Everything in Starter", "Assignments & roles", "Unit history + reporting"],
+  },
+  {
+    name: "Team",
+    price: "Custom",
+    note: "For larger operations",
+    items: ["Multi-property", "Advanced permissions", "Priority support"],
+  },
+];
+
+/* ----------------------------- */
+/* PAGE                          */
+/* ----------------------------- */
 
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-background">
-      {/* Background accents */}
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute left-[-120px] top-[-120px] h-[320px] w-[320px] rounded-full bg-blue-500/10 blur-3xl" />
-        <div className="absolute right-[-140px] top-[180px] h-[360px] w-[360px] rounded-full bg-indigo-500/10 blur-3xl" />
-        <div className="absolute bottom-[-160px] left-[35%] h-[420px] w-[420px] rounded-full bg-slate-500/10 blur-3xl" />
-      </div>
+      <BackgroundAccents />
+      <Header />
 
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-foreground text-background font-bold">
-              d
-            </div>
-            <div className="leading-tight">
-              <div className="text-sm font-semibold">dingy.app</div>
-              <div className="text-xs text-muted-foreground">
-                Maintenance Requests
-              </div>
-            </div>
-          </Link>
-
-          <nav className="hidden items-center gap-6 md:flex">
-            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground">
-              Features
-            </a>
-            <a href="#how" className="text-sm text-muted-foreground hover:text-foreground">
-              How it works
-            </a>
-            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground">
-              Pricing
-            </a>
-          </nav>
-
-          <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" className="hidden sm:inline-flex">
-              <Link href="/login">Sign in</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/signup">
-                Get started <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Hero */}
-      <section className="mx-auto max-w-6xl px-6 pt-14 pb-10">
-        <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary" className="gap-1">
-                <Sparkles className="h-3.5 w-3.5" />
-                Built for apartments & rentals
-              </Badge>
-              <Badge variant="outline" className="gap-1">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Document everything
-              </Badge>
-            </div>
-
-            <h1 className="mt-5 text-4xl font-bold tracking-tight sm:text-5xl">
-              Stop losing maintenance requests in calls & texts.
-            </h1>
-
-            <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-              dingy.app is a simple hub for tenants to submit issues and message staff.
-              Managers get status tracking, assignment, and a clean history for every unit.
-            </p>
-
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Button asChild size="lg">
-                <Link href="/signup">
-                  Create account <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link href="/login">Sign in</Link>
-              </Button>
-            </div>
-
-            <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-              <span className="inline-flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" /> Tenant requests + photos
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" /> Staff messaging
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" /> Status & accountability
-              </span>
-            </div>
-          </div>
-
-          {/* Hero mock */}
-          <Card className="shadow-sm">
-            <CardHeader className="pb-2">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <CardTitle className="text-base">New Request</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Unit 204 • Plumbing • 2 photos
-                  </p>
-                </div>
-                <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/15">
-                  Open
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-xl border bg-muted/30 p-4">
-                <p className="font-medium">Sink leaking under cabinet</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Tenant note: “Water pools after 2 minutes of running.”
-                </p>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-3">
-                <MiniStat label="Assigned to" value="Maintenance" icon={Wrench} />
-                <MiniStat label="Priority" value="Normal" icon={ClipboardList} />
-                <MiniStat label="ETA" value="Today" icon={CheckCircle2} />
-              </div>
-
-              {/* <Separator /> */}
-
-              <div className="flex items-start gap-3">
-                <div className="grid h-9 w-9 place-items-center rounded-full bg-muted">
-                  <MessageSquare className="h-4 w-4" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">Message thread</p>
-                  <p className="text-sm text-muted-foreground">
-                    “We can stop by between 2–4pm. Please confirm access.”
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      {/* Logos / trust bar */}
-      <section className="mx-auto max-w-6xl px-6 pb-6">
-        <div className="rounded-2xl border bg-card p-5">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
-              Made for property teams that want <span className="text-foreground font-medium">simple</span>, not complicated.
-            </p>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <Badge variant="secondary" className="gap-1">
-                <Building2 className="h-3.5 w-3.5" /> Apartments
-              </Badge>
-              <Badge variant="secondary" className="gap-1">
-                <Wrench className="h-3.5 w-3.5" /> Maintenance
-              </Badge>
-              <Badge variant="secondary" className="gap-1">
-                <MessageSquare className="h-3.5 w-3.5" /> Communication
-              </Badge>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="mx-auto max-w-6xl px-6 py-12">
-        <div className="flex items-end justify-between gap-6">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Everything in one place</h2>
-            <p className="mt-2 text-muted-foreground">
-              A clear workflow from “submitted” to “completed”, with a paper trail.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          <FeatureCard
-            icon={ClipboardList}
-            title="Requests with context"
-            desc="Unit, category, priority, photos, notes—captured the first time."
-          />
-          <FeatureCard
-            icon={MessageSquare}
-            title="Threaded messaging"
-            desc="Keep tenants and staff aligned. No more scattered texts."
-          />
-          <FeatureCard
-            icon={Wrench}
-            title="Assignments & status"
-            desc="Open → Assigned → In Progress → Completed, with timestamps."
-          />
-          <FeatureCard
-            icon={Building2}
-            title="Unit history"
-            desc="See every past issue for a unit—great for recurring problems."
-          />
-          <FeatureCard
-            icon={ShieldCheck}
-            title="Accountability"
-            desc="Who changed what, and when—clean audit trail for managers."
-          />
-          <FeatureCard
-            icon={CheckCircle2}
-            title="Faster resolutions"
-            desc="Clear info + quick comms = fewer back-and-forth calls."
-          />
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section id="how" className="mx-auto max-w-6xl px-6 py-12">
-        <div className="rounded-3xl border bg-card p-8">
-          <h2 className="text-2xl font-bold tracking-tight">How it works</h2>
-          <p className="mt-2 text-muted-foreground">
-            Simple flow your tenants and staff can actually use.
-          </p>
-
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            <Step
-              n="1"
-              title="Tenant submits request"
-              desc="Pick unit + category, add notes, upload photos."
-            />
-            <Step
-              n="2"
-              title="Manager assigns & replies"
-              desc="Assign maintenance, message tenant, set expectations."
-            />
-            <Step
-              n="3"
-              title="Resolve & close it out"
-              desc="Track progress and keep a permanent record per unit."
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="mx-auto max-w-6xl px-6 py-12">
-        <div className="grid gap-4 md:grid-cols-3">
-          <Quote
-            quote="We stopped missing requests. Everything is documented now."
-            who="Property Manager"
-          />
-          <Quote
-            quote="Tenants love the messaging—less calling the office."
-            who="Leasing Office"
-          />
-          <Quote
-            quote="Assignments and status make my day way easier."
-            who="Maintenance Tech"
-          />
-        </div>
-      </section>
-
-      {/* Pricing (simple placeholder) */}
-      <section id="pricing" className="mx-auto max-w-6xl px-6 py-12">
-        <div className="rounded-3xl border bg-card p-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">Simple pricing</h2>
-              <p className="mt-2 text-muted-foreground">
-                Start small. Upgrade when you’re ready.
-              </p>
-            </div>
-            <Button asChild>
-              <Link href="/signup">Start free</Link>
-            </Button>
-          </div>
-
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            <Plan
-              name="Starter"
-              price="$0"
-              note="For testing and small properties"
-              items={["Unlimited requests", "Tenant messaging", "Basic statuses"]}
-            />
-            <Plan
-              name="Pro"
-              price="$49/mo"
-              note="For growing complexes"
-              highlight
-              items={[
-                "Everything in Starter",
-                "Staff roles & assignments",
-                "Unit history + reporting",
-              ]}
-            />
-            <Plan
-              name="Team"
-              price="Custom"
-              note="For larger operations"
-              items={[
-                "Multi-property",
-                "Advanced permissions",
-                "Priority support",
-              ]}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="mx-auto max-w-6xl px-6 pb-16 pt-6">
-        <div className="rounded-3xl border bg-gradient-to-b from-blue-600/10 to-transparent p-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">
-                Ready to clean up maintenance requests?
-              </h2>
-              <p className="mt-2 text-muted-foreground">
-                Launch dingy.app for your property in minutes.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button asChild size="lg">
-                <Link href="/signup">Get started</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link href="/login">Sign in</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-10 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-sm">
-            <span className="font-semibold">dingy.app</span>{" "}
-            <span className="text-muted-foreground">
-              — Maintenance Request Management
-            </span>
-          </div>
-          <div className="flex gap-4 text-sm text-muted-foreground">
-            <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
-            <Link href="/terms" className="hover:text-foreground">Terms</Link>
-            <Link href="/contact" className="hover:text-foreground">Contact</Link>
-          </div>
-        </div>
-      </footer>
+      <Hero />
+      <TrustBar />
+      <RoleValue />
+      <Features />
+      <HowItWorks />
+      <Testimonials />
+      <Pricing />
+      <FinalCTA />
+      <Footer />
     </main>
   );
 }
 
-/* --- Small components --- */
+/* ----------------------------- */
+/* SECTIONS                       */
+/* ----------------------------- */
 
-function MiniStat({ label, value, icon: Icon }) {
+function BackgroundAccents() {
   return (
-    <div className="rounded-xl border bg-card p-3">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Icon className="h-4 w-4" />
-        <span>{label}</span>
-      </div>
-      <div className="mt-1 text-sm font-semibold">{value}</div>
+    <div className="pointer-events-none fixed inset-0 -z-10">
+      <div className="absolute left-[-120px] top-[-120px] h-[320px] w-[320px] rounded-full bg-blue-500/10 blur-3xl" />
+      <div className="absolute right-[-140px] top-[180px] h-[360px] w-[360px] rounded-full bg-indigo-500/10 blur-3xl" />
+      <div className="absolute bottom-[-160px] left-[35%] h-[420px] w-[420px] rounded-full bg-slate-500/10 blur-3xl" />
     </div>
+  );
+}
+
+function Header() {
+  return (
+    <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-foreground text-background font-bold">
+            d
+          </div>
+          <div className="leading-tight">
+            <div className="text-sm font-semibold">dingy.app</div>
+            <div className="text-xs text-muted-foreground">Maintenance Requests</div>
+          </div>
+        </Link>
+
+        <nav className="hidden items-center gap-6 md:flex">
+          <NavLink href="#features">Features</NavLink>
+          <NavLink href="#how">How it works</NavLink>
+          <NavLink href="#pricing">Pricing</NavLink>
+        </nav>
+
+        <div className="flex items-center gap-2">
+          <Button asChild variant="ghost" className="hidden sm:inline-flex">
+            <Link href="/login">Sign in</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/signup">
+              Get started <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function Hero() {
+  return (
+    <section className="mx-auto max-w-6xl px-6 pt-14 pb-10">
+      <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary" className="gap-1">
+              <Sparkles className="h-3.5 w-3.5" />
+              Built for rentals & apartments
+            </Badge>
+            <Badge variant="outline" className="gap-1">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Keep a paper trail
+            </Badge>
+          </div>
+
+          <h1 className="mt-5 text-4xl font-bold tracking-tight sm:text-5xl">
+            Maintenance requests, organized—without the chaos.
+          </h1>
+
+          <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
+            Tenants submit issues with photos. Managers assign and track progress.
+            Maintenance stays on the same page. Everything is documented per unit.
+          </p>
+
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Button asChild size="lg">
+              <Link href="/signup">
+                Create account <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+
+            <Button asChild size="lg" variant="outline">
+              <Link href="/login">Sign in</Link>
+            </Button>
+
+            <Button asChild size="lg" variant="ghost" className="justify-start">
+              <a href="#how" className="inline-flex items-center">
+                See how it works <ChevronRight className="ml-1 h-4 w-4" />
+              </a>
+            </Button>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+            <InlineCheck icon={Camera}>Photos + notes</InlineCheck>
+            <InlineCheck icon={MessageSquare}>Messaging</InlineCheck>
+            <InlineCheck icon={BadgeCheck}>Status tracking</InlineCheck>
+          </div>
+        </div>
+
+        <HeroMock />
+      </div>
+    </section>
+  );
+}
+
+function TrustBar() {
+  return (
+    <section className="mx-auto max-w-6xl px-6 pb-6">
+      <div className="rounded-2xl border bg-card p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            Made for teams that want <span className="text-foreground font-medium">simple</span>, not complicated.
+          </p>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="secondary" className="gap-1">
+              <Building2 className="h-3.5 w-3.5" /> Apartments
+            </Badge>
+            <Badge variant="secondary" className="gap-1">
+              <Wrench className="h-3.5 w-3.5" /> Maintenance
+            </Badge>
+            <Badge variant="secondary" className="gap-1">
+              <MessageSquare className="h-3.5 w-3.5" /> Communication
+            </Badge>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RoleValue() {
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-6">
+      <div className="grid gap-4 md:grid-cols-3">
+        {ROLE_VALUE.map((r) => (
+          <Card key={r.title} className="shadow-sm">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-muted">
+                  <r.icon className="h-4 w-4" />
+                </div>
+                <CardTitle className="text-base">{r.title}</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              {r.bullets.map((b) => (
+                <div key={b} className="flex items-start gap-2">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4" />
+                  <span>{b}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Features() {
+  return (
+    <section id="features" className="mx-auto max-w-6xl px-6 py-12">
+      <SectionHeading
+        title="Everything in one place"
+        subtitle="A clean workflow from “submitted” to “completed”, with a paper trail per unit."
+      />
+
+      <div className="mt-8 grid gap-4 md:grid-cols-3">
+        {FEATURE_LIST.map((f) => (
+          <FeatureCard key={f.title} icon={f.icon} title={f.title} desc={f.desc} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function HowItWorks() {
+  return (
+    <section id="how" className="mx-auto max-w-6xl px-6 py-12">
+      <div className="rounded-3xl border bg-card p-8">
+        <SectionHeading
+          title="How it works"
+          subtitle="A flow your tenants and staff will actually use."
+          flush
+        />
+
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {STEPS.map((s) => (
+            <Step key={s.n} n={s.n} title={s.title} desc={s.desc} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Testimonials() {
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-12">
+      <div className="grid gap-4 md:grid-cols-3">
+        {TESTIMONIALS.map((t) => (
+          <Quote key={t.who} quote={t.quote} who={t.who} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Pricing() {
+  return (
+    <section id="pricing" className="mx-auto max-w-6xl px-6 py-12">
+      <div className="rounded-3xl border bg-card p-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <SectionHeading
+            title="Simple pricing"
+            subtitle="Start small. Upgrade when you’re ready."
+            flush
+          />
+          <Button asChild>
+            <Link href="/signup">Start free</Link>
+          </Button>
+        </div>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {PLANS.map((p) => (
+            <Plan
+              key={p.name}
+              name={p.name}
+              price={p.price}
+              note={p.note}
+              items={p.items}
+              highlight={p.highlight}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FinalCTA() {
+  return (
+    <section className="mx-auto max-w-6xl px-6 pb-16 pt-6">
+      <div className="rounded-3xl border bg-gradient-to-b from-blue-600/10 to-transparent p-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">
+              Ready to clean up maintenance requests?
+            </h2>
+            <p className="mt-2 text-muted-foreground">
+              Launch dingy.app for your property in minutes.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button asChild size="lg">
+              <Link href="/signup">Get started</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/login">Sign in</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="border-t">
+      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-10 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-sm">
+          <span className="font-semibold">dingy.app</span>{" "}
+          <span className="text-muted-foreground">— Maintenance Request Management</span>
+        </div>
+        <div className="flex gap-4 text-sm text-muted-foreground">
+          <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
+          <Link href="/terms" className="hover:text-foreground">Terms</Link>
+          <Link href="/contact" className="hover:text-foreground">Contact</Link>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+/* ----------------------------- */
+/* UI building blocks            */
+/* ----------------------------- */
+
+function NavLink({ href, children }) {
+  return (
+    <a href={href} className="text-sm text-muted-foreground hover:text-foreground">
+      {children}
+    </a>
+  );
+}
+
+function SectionHeading({ title, subtitle, flush }) {
+  return (
+    <div className={cn(flush ? "" : "")}>
+      <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
+      {subtitle ? <p className="mt-2 text-muted-foreground">{subtitle}</p> : null}
+    </div>
+  );
+}
+
+function InlineCheck({ children, icon: Icon = CheckCircle2 }) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <Icon className="h-4 w-4" /> {children}
+    </span>
   );
 }
 
 function FeatureCard({ icon: Icon, title, desc }) {
   return (
-    <Card className="shadow-sm">
+    <Card className="shadow-sm hover:shadow-md transition-shadow">
       <CardHeader className="space-y-1">
         <div className="flex items-center gap-2">
           <div className="grid h-9 w-9 place-items-center rounded-xl bg-muted">
@@ -421,9 +493,10 @@ function Quote({ quote, who }) {
 function Plan({ name, price, note, items, highlight }) {
   return (
     <div
-      className={`rounded-2xl border bg-background p-6 ${
-        highlight ? "ring-1 ring-blue-600/40" : ""
-      }`}
+      className={cn(
+        "rounded-2xl border bg-background p-6",
+        highlight && "ring-1 ring-blue-600/40"
+      )}
     >
       <div className="flex items-start justify-between">
         <div>
@@ -451,6 +524,109 @@ function Plan({ name, price, note, items, highlight }) {
       <Button className="mt-6 w-full" variant={highlight ? "default" : "outline"} asChild>
         <Link href="/signup">Choose {name}</Link>
       </Button>
+    </div>
+  );
+}
+
+function HeroMock() {
+  return (
+    <Card className="shadow-sm overflow-hidden">
+      <div className="border-b bg-muted/20 px-5 py-3 flex items-center justify-between">
+        <div className="text-sm font-semibold">Requests</div>
+        <Badge variant="secondary" className="gap-1">
+          <ClipboardList className="h-3.5 w-3.5" />
+          Live
+        </Badge>
+      </div>
+
+      <CardContent className="space-y-4 p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold">New Request</p>
+            <p className="text-sm text-muted-foreground">
+              Unit 204 • Plumbing • 2 photos
+            </p>
+          </div>
+          <StatusPill label="Open" tone="amber" />
+        </div>
+
+        <div className="rounded-xl border bg-muted/30 p-4">
+          <p className="font-medium">Sink leaking under cabinet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Tenant note: “Water pools after 2 minutes of running.”
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Badge variant="secondary" className="gap-1">
+              <Camera className="h-3.5 w-3.5" /> Photos
+            </Badge>
+            <Badge variant="secondary" className="gap-1">
+              <MessageSquare className="h-3.5 w-3.5" /> Thread
+            </Badge>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <MiniStat label="Assigned to" value="Maintenance" icon={Wrench} />
+          <MiniStat label="Priority" value="Normal" icon={ClipboardList} />
+          <MiniStat label="ETA" value="Today" icon={CheckCircle2} />
+        </div>
+
+        <div className="rounded-xl border p-4">
+          <p className="text-sm font-semibold">Timeline</p>
+          <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+            <TimelineRow label="Submitted" value="Just now" />
+            <TimelineRow label="Assigned" value="2 minutes" />
+            <TimelineRow label="In progress" value="Today 2–4pm" />
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3">
+          <div className="grid h-9 w-9 place-items-center rounded-full bg-muted">
+            <MessageSquare className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Message thread</p>
+            <p className="text-sm text-muted-foreground">
+              “We can stop by between 2–4pm. Please confirm access.”
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TimelineRow({ label, value }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span>{label}</span>
+      <span className="text-foreground/80">{value}</span>
+    </div>
+  );
+}
+
+function StatusPill({ label, tone }) {
+  const tones = {
+    amber: "bg-amber-500/15 text-amber-700",
+    blue: "bg-blue-600/15 text-blue-700",
+    green: "bg-green-600/15 text-green-700",
+  };
+
+  return (
+    <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", tones[tone] || tones.blue)}>
+      {label}
+    </span>
+  );
+}
+
+function MiniStat({ label, value, icon: Icon }) {
+  return (
+    <div className="rounded-xl border bg-card p-3">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Icon className="h-4 w-4" />
+        <span>{label}</span>
+      </div>
+      <div className="mt-1 text-sm font-semibold">{value}</div>
     </div>
   );
 }
