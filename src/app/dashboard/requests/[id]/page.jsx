@@ -114,10 +114,13 @@ export default function RequestDetailPage() {
 
       if (response.ok) {
         const data = await response.json()
-        setComments(data)
+        setComments(Array.isArray(data) ? data : [])
+      } else {
+        setComments([])
       }
     } catch (error) {
       console.error('Error loading comments:', error)
+      setComments([])
     }
   }
 

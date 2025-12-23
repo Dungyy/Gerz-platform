@@ -1,45 +1,162 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { sendSMS, formatPhoneNumber } from '@/lib/twilio'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-// GET - Get request detail
-export async function GET(request, { context }) {
-  const { id } = await context.params
+// ============================================
+// GET - Fetch single maintenance request
+// ============================================
+export async function GET(request, context) {
+  try {
+    console.log('📥 GET request for maintenance request')
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Get authorization token
+    const authHeader = request.headers.get('authorization')
+    const token = authHeader?.replace('Bearer ', '')
+    
+    if (!token) {
+      console.error('❌ No authorization token')
+      return NextResponse.json({ error: 'Unauthorized - No token provided' }, { status: 401 })
+    }
+
+    // Verify user
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    
+    if (authError || !user) {
+      console.error('❌ Invalid token:', authError)
+      return NextResponse.json({ error: 'Unauthorized - Invalid token' }, { status: 401 })
+    }
+
+    console.log('✅ Authenticated user:', user.email)
+
+    // Get request ID from params
+    const params = await context.params
+    const requestId = params.id
+
+    console.log('🔍 Fetching request ID:', requestId)
+
+    // Get user's profile and role
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, organization_id, role, full_name')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError || !profile) {
+      console.error('❌ Profile not found:', profileError)
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+    }
+
+    console.log('👤 User role:', profile.role, '| Org:', profile.organization_id)
+
+    // Fetch the maintenance request with all related data
+    const { data: maintenanceRequest, error: requestError } = await supabaseAdmin
+      .from('maintenance_requests')
+      .select(`
+        *,
+        tenant:profiles!maintenance_requests_tenant_id_fkey(
+          id,
+          full_name, 
+          email, 
+          phone
+        ),
+        property:properties(
+          id, 
+          name, 
+          address, 
+          city, 
+          state, 
+          zip,
+          manager_id
+        ),
+        unit:units(
+          id, 
+          unit_number
+        ),
+        assigned_to_user:profiles!maintenance_requests_assigned_to_fkey(
+          id, 
+          full_name, 
+          email, 
+          phone
+        )
+      `)
+      .eq('id', requestId)
+      .single()
+
+    if (requestError) {
+      console.error('❌ Request fetch error:', requestError)
+      
+      if (requestError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Request not found' }, { status: 404 })
+      }
+      
+      return NextResponse.json({ error: requestError.message }, { status: 500 })
+    }
+
+    if (!maintenanceRequest) {
+      console.error('❌ Request not found')
+      return NextResponse.json({ error: 'Request not found' }, { status: 404 })
+    }
+
+    console.log('📄 Request found:', maintenanceRequest.title)
+
+    // ✅ AUTHORIZATION CHECKS BASED ON ROLE
+    let authorized = false
+
+    if (profile.role === 'owner' || profile.role === 'manager') {
+      // Owners/Managers can view all requests in their organization
+      authorized = maintenanceRequest.organization_id === profile.organization_id
+      console.log('🔐 Manager/Owner check:', authorized ? '✅ Authorized' : '❌ Denied')
+      
+    } else if (profile.role === 'worker') {
+      // Workers can view requests in their organization
+      authorized = maintenanceRequest.organization_id === profile.organization_id
+      console.log('🔐 Worker check:', authorized ? '✅ Authorized' : '❌ Denied')
+      
+    } else if (profile.role === 'tenant') {
+      // Tenants can only view their own requests
+      authorized = maintenanceRequest.tenant_id === user.id
+      console.log('🔐 Tenant check:', authorized ? '✅ Authorized (own request)' : '❌ Denied')
+      
+    } else {
+      console.error('❌ Unknown role:', profile.role)
+    }
+
+    if (!authorized) {
+      console.error('❌ Authorization failed')
+      return NextResponse.json({ 
+        error: 'Unauthorized - You do not have permission to view this request' 
+      }, { status: 403 })
+    }
+
+    console.log('✅ Authorization passed')
+
+    // Return the request data
+    return NextResponse.json(maintenanceRequest)
+
+  } catch (error) {
+    console.error('❌ Maintenance request GET error:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch maintenance request' },
+      { status: 500 }
+    )
   }
-
-  const { data: maintenanceRequest, error } = await supabase
-    .from('maintenance_requests')
-    .select(`
-      *,
-      property:properties(*),
-      unit:units(*),
-      tenant:profiles!maintenance_requests_tenant_id_fkey(*),
-      assigned:profiles!maintenance_requests_assigned_to_fkey(*),
-      completed_by_user:profiles!maintenance_requests_completed_by_fkey(*)
-    `)
-    .eq('id', id)
-    .single()
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 404 })
-  }
-
-  return NextResponse.json(maintenanceRequest)
 }
 
-// PUT - Update request
+// ============================================
+// PUT - Update maintenance request
+// ============================================
 export async function PUT(request, context) {
   try {
     const updates = await request.json()
     
+    console.log('📥 PUT request for maintenance request:', updates)
+
+    // Get authorization token
     const authHeader = request.headers.get('authorization')
     const token = authHeader?.replace('Bearer ', '')
     
@@ -47,13 +164,18 @@ export async function PUT(request, context) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: { user } } = await supabaseAdmin.auth.getUser(token)
+    // Verify user
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
     
-    if (!user) {
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id: requestId } = await context.params
+    // Get request ID from params
+    const params = await context.params
+    const requestId = params.id
+
+    console.log('🔄 Updating request ID:', requestId)
 
     // Get user profile
     const { data: profile } = await supabaseAdmin
@@ -61,6 +183,12 @@ export async function PUT(request, context) {
       .select('organization_id, role, full_name')
       .eq('id', user.id)
       .single()
+
+    if (!profile) {
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+    }
+
+    console.log('👤 User:', profile.full_name, '(', profile.role, ')')
 
     // Get current request
     const { data: currentRequest } = await supabaseAdmin
@@ -76,17 +204,20 @@ export async function PUT(request, context) {
       return NextResponse.json({ error: 'Request not found' }, { status: 404 })
     }
 
-    // ✅ AUTHORIZATION CHECK - Allow workers/managers in same org to update
+    // ✅ AUTHORIZATION CHECK - Who can update?
     const canUpdate = 
       profile.role === 'owner' ||
       profile.role === 'manager' ||
       (profile.role === 'worker' && currentRequest.organization_id === profile.organization_id)
 
     if (!canUpdate) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+      console.error('❌ Update authorization failed')
+      return NextResponse.json({ 
+        error: 'Unauthorized - Insufficient permissions to update this request' 
+      }, { status: 403 })
     }
 
-    console.log('✅ Authorization passed for:', profile.full_name, '(', profile.role, ')')
+    console.log('✅ Update authorization passed')
 
     // ✅ HANDLE SELF-ASSIGNMENT
     // If worker/manager assigns to themselves, auto-update status
@@ -108,7 +239,9 @@ export async function PUT(request, context) {
       .select(`
         *,
         tenant:profiles!maintenance_requests_tenant_id_fkey(full_name, email, phone, sms_notifications),
-        assigned_to_user:profiles!maintenance_requests_assigned_to_fkey(id, full_name, email, phone, sms_notifications)
+        assigned_to_user:profiles!maintenance_requests_assigned_to_fkey(id, full_name, email, phone, sms_notifications),
+        property:properties(id, name, address, city, state),
+        unit:units(id, unit_number)
       `)
       .single()
 
@@ -117,88 +250,91 @@ export async function PUT(request, context) {
       return NextResponse.json({ error: updateError.message }, { status: 400 })
     }
 
-    console.log('✅ Request updated by:', profile.full_name)
+    console.log('✅ Request updated successfully')
 
-    // Send notifications based on what changed
+    // ✅ SEND NOTIFICATIONS BASED ON WHAT CHANGED
     
-    // 1. If assigned to a worker (including self-assignment)
+    // 1. If assigned to a worker
     if (updates.assigned_to && updates.assigned_to !== currentRequest.assigned_to) {
       const worker = updatedRequest.assigned_to_user
       const isSelfAssignment = updates.assigned_to === user.id
       
-      if (worker?.email && process.env.RESEND_API_KEY) {
+      if (worker?.email && process.env.RESEND_API_KEY && !isSelfAssignment) {
         try {
-          // Only send email if NOT self-assignment (they already know!)
-          if (!isSelfAssignment) {
-            await fetch('https://api.resend.com/emails', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-              },
-              body: JSON.stringify({
-                from: process.env.DEFAULT_FROM_EMAIL,
-                to: worker.email,
-                subject: `New Request Assigned: ${updatedRequest.title}`,
-                html: generateWorkerAssignmentEmail(
-                  worker.full_name, 
-                  updatedRequest,
-                  profile.full_name
-                ),
-              }),
-            })
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+            },
+            body: JSON.stringify({
+              from: process.env.DEFAULT_FROM_EMAIL,
+              to: worker.email,
+              subject: `New Request Assigned: ${updatedRequest.title}`,
+              html: generateWorkerAssignmentEmail(
+                worker.full_name, 
+                updatedRequest,
+                profile.full_name
+              ),
+            }),
+          })
 
-            if (worker.phone && worker.sms_notifications) {
-              await sendSMS({
-                to: formatPhoneNumber(worker.phone),
-                message: `You've been assigned a ${updatedRequest.priority} priority maintenance request by ${profile.full_name}: ${updatedRequest.title}. Check your dashboard for details.`,
-                organizationId: profile.organization_id,
-                recipientUserId: worker.id,
-                messageType: 'new_request',
-              })
-            }
-          } else {
-            console.log('✅ Self-assignment - skipping notification to worker')
+          if (worker.phone && worker.sms_notifications) {
+            await sendSMS({
+              to: formatPhoneNumber(worker.phone),
+              message: `You've been assigned a ${updatedRequest.priority} priority maintenance request by ${profile.full_name}: ${updatedRequest.title}. Check your dashboard for details.`,
+              organizationId: profile.organization_id,
+              recipientUserId: worker.id,
+              messageType: 'new_request',
+            })
           }
 
-          // Notify tenant that request has been assigned
-          const tenant = currentRequest.tenant
-          if (tenant?.email) {
-            await fetch('https://api.resend.com/emails', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-              },
-              body: JSON.stringify({
-                from: process.env.DEFAULT_FROM_EMAIL,
-                to: tenant.email,
-                subject: `Worker Assigned to Your Request: ${updatedRequest.title}`,
-                html: generateTenantAssignmentEmail(
-                  tenant.full_name,
-                  updatedRequest,
-                  worker.full_name
-                ),
-              }),
-            })
-
-            if (tenant.phone && tenant.sms_notifications) {
-              await sendSMS({
-                to: formatPhoneNumber(tenant.phone),
-                message: `Your maintenance request has been assigned to ${worker.full_name}. They will be in touch soon.`,
-                organizationId: profile.organization_id,
-                recipientUserId: currentRequest.tenant_id,
-                messageType: 'status_update',
-              })
-            }
-          }
+          console.log('✅ Worker notification sent')
         } catch (err) {
-          console.error('❌ Assignment notification error:', err)
+          console.error('❌ Worker notification error:', err)
+        }
+      }
+
+      // Notify tenant that request has been assigned
+      const tenant = currentRequest.tenant
+      if (tenant?.email && process.env.RESEND_API_KEY) {
+        try {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+            },
+            body: JSON.stringify({
+              from: process.env.DEFAULT_FROM_EMAIL,
+              to: tenant.email,
+              subject: `Worker Assigned to Your Request: ${updatedRequest.title}`,
+              html: generateTenantAssignmentEmail(
+                tenant.full_name,
+                updatedRequest,
+                worker.full_name
+              ),
+            }),
+          })
+
+          if (tenant.phone && tenant.sms_notifications) {
+            await sendSMS({
+              to: formatPhoneNumber(tenant.phone),
+              message: `Your maintenance request has been assigned to ${worker.full_name}. They will be in touch soon.`,
+              organizationId: profile.organization_id,
+              recipientUserId: currentRequest.tenant_id,
+              messageType: 'status_update',
+            })
+          }
+
+          console.log('✅ Tenant assignment notification sent')
+        } catch (err) {
+          console.error('❌ Tenant notification error:', err)
         }
       }
     }
 
-    // 2. If status changed, notify tenant (unless it's just auto-assigned)
+    // 2. If status changed, notify tenant
     if (updates.status && updates.status !== currentRequest.status && updates.status !== 'assigned') {
       const tenant = currentRequest.tenant
       
@@ -232,6 +368,8 @@ export async function PUT(request, context) {
               messageType: 'status_update',
             })
           }
+
+          console.log('✅ Status update notification sent')
         } catch (err) {
           console.error('❌ Status notification error:', err)
         }
@@ -253,6 +391,100 @@ export async function PUT(request, context) {
   }
 }
 
+// ============================================
+// DELETE - Delete maintenance request
+// ============================================
+export async function DELETE(request, context) {
+  try {
+    console.log('📥 DELETE request for maintenance request')
+
+    // Get authorization token
+    const authHeader = request.headers.get('authorization')
+    const token = authHeader?.replace('Bearer ', '')
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Verify user
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get request ID from params
+    const params = await context.params
+    const requestId = params.id
+
+    console.log('🗑️ Deleting request ID:', requestId)
+
+    // Get user profile
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('organization_id, role')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile) {
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+    }
+
+    // Get current request
+    const { data: currentRequest } = await supabaseAdmin
+      .from('maintenance_requests')
+      .select('organization_id, tenant_id')
+      .eq('id', requestId)
+      .single()
+
+    if (!currentRequest) {
+      return NextResponse.json({ error: 'Request not found' }, { status: 404 })
+    }
+
+    // ✅ AUTHORIZATION CHECK - Only owners/managers can delete
+    const canDelete = 
+      (profile.role === 'owner' || profile.role === 'manager') &&
+      currentRequest.organization_id === profile.organization_id
+
+    if (!canDelete) {
+      console.error('❌ Delete authorization failed')
+      return NextResponse.json({ 
+        error: 'Unauthorized - Only managers/owners can delete requests' 
+      }, { status: 403 })
+    }
+
+    console.log('✅ Delete authorization passed')
+
+    // Delete request (comments will be cascade deleted due to FK)
+    const { error: deleteError } = await supabaseAdmin
+      .from('maintenance_requests')
+      .delete()
+      .eq('id', requestId)
+
+    if (deleteError) {
+      console.error('❌ Delete error:', deleteError)
+      return NextResponse.json({ error: deleteError.message }, { status: 400 })
+    }
+
+    console.log('✅ Request deleted successfully')
+
+    return NextResponse.json({ 
+      success: true,
+      message: 'Request deleted successfully'
+    })
+
+  } catch (error) {
+    console.error('❌ Request DELETE error:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to delete request' },
+      { status: 500 }
+    )
+  }
+}
+
+// ============================================
+// EMAIL TEMPLATES
+// ============================================
 function generateWorkerAssignmentEmail(workerName, request, assignerName) {
   const priorityColors = {
     low: '#10b981',

@@ -209,6 +209,18 @@ export async function PUT(request, context) {
   }
 }
 
+//
+
+
+
+
+
+
+
+
+
+
+
 function generateWorkerAssignmentEmail(workerName, request) {
   const priorityColors = {
     low: '#10b981',
