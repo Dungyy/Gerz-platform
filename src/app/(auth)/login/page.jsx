@@ -47,28 +47,36 @@ export default function LoginPage() {
     }
   }
 
-  async function handleMagicLinkLogin(e) {
-    e.preventDefault()
-    setLoading(true)
+async function handleMagicLinkLogin(e) {
+  e.preventDefault()
+  setLoading(true)
 
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: formData.email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-        }
-      })
+  try {
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || "https://dingy.app"
 
-      if (error) throw error
+    const redirectTo = `${siteUrl}/auth/callback`
 
-      setMagicLinkSent(true)
-    } catch (error) {
-      console.error('Magic link error:', error)
-      alert(`❌ Failed to send magic link: ${error.message}`)
-    } finally {
-      setLoading(false)
-    }
+    console.log("✨ Sending magic link redirectTo:", redirectTo)
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: formData.email,
+      options: {
+        emailRedirectTo: redirectTo,
+      },
+    })
+
+    if (error) throw error
+
+    setMagicLinkSent(true)
+  } catch (error) {
+    console.error("Magic link error:", error)
+    alert(`❌ Failed to send magic link: ${error.message}`)
+  } finally {
+    setLoading(false)
   }
+}
+
 
   if (magicLinkSent) {
     return (

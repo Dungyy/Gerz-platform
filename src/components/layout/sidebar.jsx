@@ -12,7 +12,8 @@ import {
   Settings, 
   LogOut,
   Menu,
-  X
+  X,
+  Rocket
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -41,6 +42,7 @@ export default function Sidebar({ profile, currentPath }) {
     if (profile?.role === 'worker') {
       return [
         ...baseNav,
+        { name: 'Reports', href: '/dashboard/reports', icon: Rocket },
         { name: 'Settings', href: '/dashboard/settings', icon: Settings },
       ]
     }
@@ -50,6 +52,7 @@ export default function Sidebar({ profile, currentPath }) {
       { name: 'Properties', href: '/dashboard/properties', icon: Building2 },
       { name: 'Tenants', href: '/dashboard/tenants', icon: Users },
       { name: 'Workers', href: '/dashboard/workers', icon: UserCog },
+      { name: 'Reports', href: '/dashboard/reports', icon: Rocket },
       { name: 'Settings', href: '/dashboard/settings', icon: Settings },
     ]
   }
