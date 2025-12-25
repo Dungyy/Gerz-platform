@@ -1,228 +1,307 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { fetchWithAuth } from '@/lib/api-helper'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { ArrowLeft } from 'lucide-react'
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { fetchWithAuth } from "@/lib/api-helper";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 
 export default function EditPropertyPage() {
-  const params = useParams()
-  const router = useRouter()
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState(null)
+  const params = useParams();
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
-    name: '',
-    address: '',
-    city: '',
-    state: '',
-    zip: '',
-    property_type: 'apartment',
-    year_built: '',
-    description: '',
-  })
+    name: "",
+    address: "",
+    city: "",
+    state: "",
+    zip: "",
+    property_type: "apartment",
+    year_built: "",
+    description: "",
+  });
 
   useEffect(() => {
-    loadProperty()
-  }, [params.id])
+    loadProperty();
+  }, [params.id]);
 
   async function loadProperty() {
     try {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
       const response = await fetchWithAuth(`/api/properties/${params.id}`, {
-        method: 'GET'
-      })
+        method: "GET",
+      });
 
       if (response.status === 401) {
-        router.push('/login')
-        return
+        router.push("/login");
+        return;
       }
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.error || 'Failed to load property')
+        throw new Error(data?.error || "Failed to load property");
       }
 
       // Populate form with existing data
       setFormData({
-        name: data.name || '',
-        address: data.address || '',
-        city: data.city || '',
-        state: data.state || '',
-        zip: data.zip || '',
-        property_type: data.property_type || 'apartment',
-        year_built: data.year_built || '',
-        description: data.description || '',
-      })
+        name: data.name || "",
+        address: data.address || "",
+        city: data.city || "",
+        state: data.state || "",
+        zip: data.zip_code || data.zip || "",
+        property_type: data.property_type || "apartment",
+        year_built: data.year_built || "",
+        description: data.description || "",
+      });
     } catch (err) {
-      console.error('Error loading property:', err)
-      setError(err.message)
+      console.error("Error loading property:", err);
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   function handleChange(e) {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   }
 
   async function handleSubmit(e) {
-    e.preventDefault()
-    setSaving(true)
+    e.preventDefault();
+    setSaving(true);
 
     try {
       const response = await fetchWithAuth(`/api/properties/${params.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(formData),
-      })
+        method: "PUT",
+        body: JSON.stringify({
+          ...formData,
+          zip_code: formData.zip, // Map zip to zip_code for DB
+        }),
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.error || 'Failed to update property')
+        throw new Error(data?.error || "Failed to update property");
       }
 
-      alert('✅ Property updated successfully!')
-      router.push(`/dashboard/properties/${params.id}`)
+      alert("✅ Property updated successfully!");
+      router.push(`/dashboard/properties/${params.id}`);
     } catch (err) {
-      console.error('Error updating property:', err)
-      alert(`❌ Error: ${err.message}`)
+      console.error("Error updating property:", err);
+      alert(`❌ Error: ${err.message}`);
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
   if (loading) {
-    return <div className="flex justify-center py-12">Loading...</div>
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading property...</p>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="space-y-6">
-        <Button variant="outline" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="py-4 text-red-700">Error: {error}</CardContent>
+      <div className="max-w-4xl mx-auto space-y-6">
+        <button
+          onClick={() => router.back()}
+          className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <Card className="shadow-sm border-red-500/20 bg-red-500/5">
+          <CardContent className="py-4 text-red-700">
+            Error: {error}
+          </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {/* Header */}
       <div className="flex items-center gap-4">
         <button
           onClick={() => router.back()}
-          className="p-2 hover:bg-gray-100 rounded-lg"
+          className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-3xl font-bold">Edit Property</h1>
-          <p className="text-gray-600 mt-1">Update property information</p>
+          <h1 className="text-3xl font-bold tracking-tight">Edit Property</h1>
+          <p className="text-muted-foreground mt-1">
+            Update property information
+          </p>
         </div>
       </div>
 
+      {/* Info Box */}
+      <Card className="shadow-sm border-blue-500/20 bg-blue-500/5">
+        <CardContent className="pt-6">
+          <div className="flex gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-lg bg-blue-500/10 flex-shrink-0">
+              <AlertCircle className="h-5 w-5 text-blue-600" />
+            </div>
+            <div className="text-sm">
+              <p className="font-semibold mb-1">Note</p>
+              <p className="text-muted-foreground">
+                Changes to the property will be saved immediately. Units can be
+                managed from the property detail page.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Card>
+        <Card className="shadow-sm">
           <CardHeader>
-            <CardTitle>Property Details</CardTitle>
+            <CardTitle className="text-lg">Property Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Input
-                name="name"
-                placeholder="Property Name *"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                className="col-span-2"
-              />
+              <div className="col-span-2">
+                <label className="block text-sm font-medium mb-2">
+                  Property Name <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  name="name"
+                  placeholder="Property Name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
 
-              <Input
-                name="address"
-                placeholder="Street Address *"
-                value={formData.address}
-                onChange={handleChange}
-                required
-                className="col-span-2"
-              />
+              <div className="col-span-2">
+                <label className="block text-sm font-medium mb-2">
+                  Street Address <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  name="address"
+                  placeholder="Street Address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
 
-              <Input
-                name="city"
-                placeholder="City *"
-                value={formData.city}
-                onChange={handleChange}
-                required
-              />
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  City <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  name="city"
+                  placeholder="City"
+                  value={formData.city}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
 
-              <Input
-                name="state"
-                placeholder="State *"
-                value={formData.state}
-                onChange={handleChange}
-                required
-              />
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  State <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  name="state"
+                  placeholder="State"
+                  value={formData.state}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
 
-              <Input
-                name="zip"
-                placeholder="ZIP Code *"
-                value={formData.zip}
-                onChange={handleChange}
-                required
-              />
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  ZIP Code <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  name="zip"
+                  placeholder="ZIP Code"
+                  value={formData.zip}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
 
-              <select
-                name="property_type"
-                value={formData.property_type}
-                onChange={handleChange}
-                className="px-3 py-2 border rounded-lg"
-              >
-                <option value="apartment">Apartment Building</option>
-                <option value="house">Single Family Home</option>
-                <option value="condo">Condo</option>
-                <option value="commercial">Commercial</option>
-                <option value="mixed">Mixed Use</option>
-              </select>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Property Type
+                </label>
+                <select
+                  name="property_type"
+                  value={formData.property_type}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-foreground/20"
+                >
+                  <option value="apartment">Apartment Building</option>
+                  <option value="house">Single Family Home</option>
+                  <option value="condo">Condo</option>
+                  <option value="commercial">Commercial</option>
+                  <option value="mixed">Mixed Use</option>
+                </select>
+              </div>
 
-              <Input
-                type="number"
-                name="year_built"
-                placeholder="Year Built"
-                value={formData.year_built}
-                onChange={handleChange}
-              />
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Year Built
+                </label>
+                <Input
+                  type="number"
+                  name="year_built"
+                  placeholder="Year Built"
+                  value={formData.year_built}
+                  onChange={handleChange}
+                  min="1800"
+                  max={new Date().getFullYear()}
+                />
+              </div>
 
-              <Textarea
-                name="description"
-                placeholder="Description (optional)"
-                value={formData.description}
-                onChange={handleChange}
-                className="col-span-2"
-                rows={3}
-              />
+              <div className="col-span-2">
+                <label className="block text-sm font-medium mb-2">
+                  Description
+                </label>
+                <Textarea
+                  name="description"
+                  placeholder="Optional description of the property..."
+                  value={formData.description}
+                  onChange={handleChange}
+                  rows={4}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
 
         <div className="flex gap-4">
-          <Button type="submit" disabled={saving}>
-            {saving ? 'Saving...' : 'Save Changes'}
+          <Button type="submit" disabled={saving} className="gap-2">
+            {saving ? "Saving Changes..." : "Save Changes"}
           </Button>
-          <Button type="button" variant="outline" onClick={() => router.back()}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.back()}
+            disabled={saving}
+          >
             Cancel
           </Button>
         </div>
       </form>
     </div>
-  )
+  );
 }
