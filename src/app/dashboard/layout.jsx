@@ -89,20 +89,18 @@ export default function DashboardLayout({ children }) {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Sidebar */}
       <Sidebar profile={profile} currentPath={pathname} />
-      
+
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col lg:pl-64">
         {/* Header */}
         <Header profile={profile} />
-        
+
         {/* Main Content */}
-        <main className="flex-1 py-6 px-4 sm:px-6 lg:px-8">
-          {children}
-        </main>
+        <main className="flex-1 py-6 px-4 sm:px-6 lg:px-8">{children}</main>
 
         {/* Footer */}
-        <Footer />
+        <Footer profile={profile} />
       </div>
     </div>
-  )
+  );
 }

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Building2, Search, CheckCircle2, User, Wrench, ArrowLeft, ArrowRight } from 'lucide-react'
+import Navbar from "@/components/layout/navbar";
 
 export default function SignupPage() {
   const router = useRouter()
@@ -146,131 +147,141 @@ export default function SignupPage() {
   // STEP 1: Choose Account Type
   if (step === 1) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        {/* Background accents */}
-        <div className="pointer-events-none fixed inset-0 -z-10">
-          <div className="absolute left-[-120px] top-[-120px] h-[320px] w-[320px] rounded-full bg-blue-500/10 blur-3xl" />
-          <div className="absolute right-[-140px] top-[180px] h-[360px] w-[360px] rounded-full bg-indigo-500/10 blur-3xl" />
-        </div>
-
-        <div className="max-w-4xl w-full">
-          <div className="text-center mb-8">
-            <Link href="/" className="inline-flex items-center gap-2 mb-6">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-foreground text-background font-bold">
-                d
-              </div>
-              <div className="leading-tight text-left">
-                <div className="font-semibold">dingy.app</div>
-                <div className="text-xs text-muted-foreground">Maintenance Requests</div>
-              </div>
-            </Link>
-            <h1 className="text-4xl font-bold tracking-tight mt-6">
-              Welcome to dingy.app
-            </h1>
-            <p className="text-muted-foreground text-lg mt-2">
-              Choose your account type to get started
-            </p>
+      <div>
+        <Navbar />
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          {/* Background accents */}
+          <div className="pointer-events-none fixed inset-0 -z-10">
+            <div className="absolute left-[-120px] top-[-120px] h-[320px] w-[320px] rounded-full bg-blue-500/10 blur-3xl" />
+            <div className="absolute right-[-140px] top-[180px] h-[360px] w-[360px] rounded-full bg-indigo-500/10 blur-3xl" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Property Owner/Manager */}
-            <Card 
-              className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-foreground/20"
-              onClick={() => {
-                setAccountType('owner')
-                setStep(2)
-              }}
-            >
-              <CardHeader className="text-center pb-4">
-                <div className="grid h-16 w-16 place-items-center rounded-xl bg-blue-500/10 mx-auto mb-4">
-                  <Building2 className="h-8 w-8 text-blue-600" />
+          <div className="max-w-4xl w-full">
+            <div className="text-center mb-8">
+              <Link href="/" className="inline-flex items-center gap-2 mb-6">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-foreground text-background font-bold">
+                  d
                 </div>
-                <CardTitle className="text-xl">Property Owner/Manager</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-center text-sm mb-4">
-                  Manage properties, tenants, and maintenance requests
-                </p>
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>Create and manage properties</span>
-                  </li>
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>Invite tenants and workers</span>
-                  </li>
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>Track maintenance requests</span>
-                  </li>
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>Assign work to maintenance staff</span>
-                  </li>
-                </ul>
-                <Button className="w-full mt-6">
-                  Continue as Owner/Manager
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Maintenance Worker */}
-            <Card 
-              className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-foreground/20"
-              onClick={() => {
-                setAccountType('worker')
-                setStep(2)
-              }}
-            >
-              <CardHeader className="text-center pb-4">
-                <div className="grid h-16 w-16 place-items-center rounded-xl bg-green-500/10 mx-auto mb-4">
-                  <Wrench className="h-8 w-8 text-green-600" />
+                <div className="leading-tight text-left">
+                  <div className="font-semibold">dingy.app</div>
+                  <div className="text-xs text-muted-foreground">
+                    Maintenance Requests
+                  </div>
                 </div>
-                <CardTitle className="text-xl">Maintenance Worker</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-center text-sm mb-4">
-                  Join your organization and manage maintenance tasks
-                </p>
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>View assigned maintenance requests</span>
-                  </li>
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>Update request status in real-time</span>
-                  </li>
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>Communicate with tenants</span>
-                  </li>
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>Self-assign available work</span>
-                  </li>
-                </ul>
-                <Button className="w-full mt-6 bg-green-600 hover:bg-green-700">
-                  Continue as Worker
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="text-center mt-6">
-            <p className="text-muted-foreground text-sm">
-              Already have an account?{' '}
-              <Link href="/login" className="text-blue-600 hover:underline font-semibold">
-                Sign in
               </Link>
-            </p>
+              <h1 className="text-4xl font-bold tracking-tight mt-6">
+                Welcome to dingy.app
+              </h1>
+              <p className="text-muted-foreground text-lg mt-2">
+                Choose your account type to get started
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Property Owner/Manager */}
+              <Card
+                className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-foreground/20"
+                onClick={() => {
+                  setAccountType("owner");
+                  setStep(2);
+                }}
+              >
+                <CardHeader className="text-center pb-4">
+                  <div className="grid h-16 w-16 place-items-center rounded-xl bg-blue-500/10 mx-auto mb-4">
+                    <Building2 className="h-8 w-8 text-blue-600" />
+                  </div>
+                  <CardTitle className="text-xl">
+                    Property Owner/Manager
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground text-center text-sm mb-4">
+                    Manage properties, tenants, and maintenance requests
+                  </p>
+                  <ul className="space-y-2">
+                    <li className="flex items-start gap-2 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span>Create and manage properties</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span>Invite tenants and workers</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span>Track maintenance requests</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span>Assign work to maintenance staff</span>
+                    </li>
+                  </ul>
+                  <Button className="w-full mt-6">
+                    Continue as Owner/Manager
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Maintenance Worker */}
+              <Card
+                className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-foreground/20"
+                onClick={() => {
+                  setAccountType("worker");
+                  setStep(2);
+                }}
+              >
+                <CardHeader className="text-center pb-4">
+                  <div className="grid h-16 w-16 place-items-center rounded-xl bg-green-500/10 mx-auto mb-4">
+                    <Wrench className="h-8 w-8 text-green-600" />
+                  </div>
+                  <CardTitle className="text-xl">Maintenance Worker</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground text-center text-sm mb-4">
+                    Join your organization and manage maintenance tasks
+                  </p>
+                  <ul className="space-y-2">
+                    <li className="flex items-start gap-2 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span>View assigned maintenance requests</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span>Update request status in real-time</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span>Communicate with tenants</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span>Self-assign available work</span>
+                    </li>
+                  </ul>
+                  <Button className="w-full mt-6 bg-green-600 hover:bg-green-700">
+                    Continue as Worker
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="text-center mt-6">
+              <p className="text-muted-foreground text-sm">
+                Already have an account?{" "}
+                <Link
+                  href="/login"
+                  className="text-blue-600 hover:underline font-semibold"
+                >
+                  Sign in
+                </Link>
+              </p>
+            </div>
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   // STEP 2: Fill Details

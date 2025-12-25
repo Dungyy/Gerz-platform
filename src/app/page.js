@@ -18,6 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Navbar from "@/components/layout/navbar";
+import Footer from "@/components/layout/footer";
 
 /** tiny helper (no deps) */
 function cn(...classes) {
@@ -121,7 +123,7 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-background">
       <BackgroundAccents />
-      <Header />
+      <Navbar />
 
       <Hero />
       <TrustBar />
@@ -147,41 +149,6 @@ function BackgroundAccents() {
       <div className="absolute right-[-140px] top-[180px] h-[360px] w-[360px] rounded-full bg-indigo-500/10 blur-3xl" />
       <div className="absolute bottom-[-160px] left-[35%] h-[420px] w-[420px] rounded-full bg-slate-500/10 blur-3xl" />
     </div>
-  );
-}
-
-function Header() {
-  return (
-    <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-foreground text-background font-bold">
-            d
-          </div>
-          <div className="leading-tight">
-            <div className="text-sm font-semibold">dingy.app</div>
-            <div className="text-xs text-muted-foreground">Maintenance Requests</div>
-          </div>
-        </Link>
-
-        <nav className="hidden items-center gap-6 md:flex">
-          <NavLink href="#features">Features</NavLink>
-          <NavLink href="#how">How it works</NavLink>
-          <NavLink href="#pricing">Pricing</NavLink>
-        </nav>
-
-        <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" className="hidden sm:inline-flex">
-            <Link href="/login">Sign in</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/signup">
-              Get started <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-      </div>
-    </header>
   );
 }
 
@@ -400,24 +367,6 @@ function FinalCTA() {
         </div>
       </div>
     </section>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="border-t">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-10 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-sm">
-          <span className="font-semibold">dingy.app</span>{" "}
-          <span className="text-muted-foreground">— Maintenance Request Management</span>
-        </div>
-        <div className="flex gap-4 text-sm text-muted-foreground">
-          <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
-          <Link href="/terms" className="hover:text-foreground">Terms</Link>
-          <Link href="/contact" className="hover:text-foreground">Contact</Link>
-        </div>
-      </div>
-    </footer>
   );
 }
 
