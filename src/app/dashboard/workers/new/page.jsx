@@ -1,189 +1,255 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { fetchWithAuth } from '@/lib/api-helper'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { ArrowLeft, Mail, MessageSquare, AlertCircle } from 'lucide-react'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { fetchWithAuth } from "@/lib/api-helper";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  ArrowLeft,
+  Mail,
+  Phone,
+  User,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
 
 export default function InviteWorkerPage() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    full_name: '',
-    email: '',
-    phone: '',
-  })
+    full_name: "",
+    email: "",
+    phone: "",
+    password: "",
+  });
 
-  const [sendSMS, setSendSMS] = useState(false)
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  async function checkAuth() {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      // Check if user is manager/owner
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profileData?.role !== "manager" && profileData?.role !== "owner") {
+        router.push("/dashboard");
+        return;
+      }
+    } catch (error) {
+      console.error("Auth error:", error);
+      router.push("/login");
+    }
+  }
 
   function handleChange(e) {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   }
 
   async function handleSubmit(e) {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
 
     try {
-      const payload = {
-        ...formData,
-        send_sms: sendSMS && formData.phone,
+      // Validate password
+      if (formData.password.length < 6) {
+        alert("Password must be at least 6 characters");
+        setLoading(false);
+        return;
       }
 
-      console.log('📤 Sending worker invitation:', payload)
+      const response = await fetchWithAuth("/api/workers", {
+        method: "POST",
+        body: JSON.stringify(formData),
+      });
 
-      const response = await fetchWithAuth('/api/workers', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      })
-
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.error || 'Failed to invite worker')
+        throw new Error(data?.error || "Failed to create worker");
       }
 
-      console.log('✅ Invitation response:', data)
-
-      alert(`✅ Worker invitation sent to ${formData.full_name}!`)
-      router.push('/dashboard/workers')
+      alert(
+        `✅ Worker account created for ${formData.full_name}!\n\nThey can now log in with:\nEmail: ${formData.email}\nPassword: (the one you set)`
+      );
+      router.push("/dashboard/workers");
     } catch (err) {
-      console.error('Error inviting worker:', err)
-      alert(`❌ Error: ${err.message}`)
+      console.error("Error creating worker:", err);
+      alert(`❌ Error: ${err.message}`);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {/* Header */}
       <div className="flex items-center gap-4">
         <button
           onClick={() => router.back()}
-          className="p-2 hover:bg-gray-100 rounded-lg"
+          className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-3xl font-bold">Invite Worker</h1>
-          <p className="text-gray-600 mt-1">Add a maintenance worker to your team</p>
+          <h1 className="text-3xl font-bold tracking-tight">Add Worker</h1>
+          <p className="text-muted-foreground mt-1">
+            Create a new maintenance worker account
+          </p>
         </div>
       </div>
 
       {/* Info Box */}
-      <Card className="border-blue-200 bg-blue-50">
+      <Card className="shadow-sm border-blue-500/20 bg-blue-500/5">
         <CardContent className="pt-6">
           <div className="flex gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-900">
-              <p className="font-semibold mb-2">How worker invitations work:</p>
-              <ol className="list-decimal list-inside space-y-1 ml-2">
-                <li>Worker receives an email with a secure link</li>
-                <li>They set their password and access the system</li>
-                <li>You can assign maintenance requests to them</li>
-                <li>They can update request status and communicate with tenants</li>
-              </ol>
+            <div className="grid h-10 w-10 place-items-center rounded-lg bg-blue-500/10 flex-shrink-0">
+              <AlertCircle className="h-5 w-5 text-blue-600" />
+            </div>
+            <div className="text-sm">
+              <p className="font-semibold mb-2">How worker accounts work:</p>
+              <ul className="space-y-1 text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <span>
+                    Worker receives login credentials to access the system
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <span>You can assign maintenance requests to them</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <span>They can update request status and add comments</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <span>
+                    Share the password securely after account creation
+                  </span>
+                </li>
+              </ul>
             </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Worker Information */}
-        <Card>
+        <Card className="shadow-sm">
           <CardHeader>
-            <CardTitle>Worker Information</CardTitle>
+            <CardTitle className="text-lg">Worker Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-2">
                 Full Name <span className="text-red-500">*</span>
               </label>
-              <Input
-                name="full_name"
-                placeholder="John Smith"
-                value={formData.full_name}
-                onChange={handleChange}
-                required
-              />
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  name="full_name"
+                  placeholder="John Smith"
+                  value={formData.full_name}
+                  onChange={handleChange}
+                  className="pl-10"
+                  required
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-2">
                 Email <span className="text-red-500">*</span>
               </label>
-              <div className="flex items-center gap-2">
-                <Mail className="h-5 w-5 text-gray-400" />
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   type="email"
                   name="email"
                   placeholder="john.smith@example.com"
                   value={formData.email}
                   onChange={handleChange}
+                  className="pl-10"
                   required
-                  className="flex-1"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Invitation link will be sent to this email
+              <p className="text-xs text-muted-foreground mt-1">
+                Used for login and notifications
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-2">
                 Phone (optional)
               </label>
-              <div className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-gray-400" />
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   type="tel"
                   name="phone"
                   placeholder="(555) 123-4567"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="flex-1"
+                  className="pl-10"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                For SMS notifications about assigned requests
+              <p className="text-xs text-muted-foreground mt-1">
+                For contact purposes and SMS notifications
               </p>
             </div>
 
-            {/* SMS Toggle */}
-            {formData.phone && (
-              <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
-                <input
-                  type="checkbox"
-                  id="send-sms"
-                  checked={sendSMS}
-                  onChange={(e) => setSendSMS(e.target.checked)}
-                  className="rounded h-5 w-5"
-                />
-                <label htmlFor="send-sms" className="text-sm cursor-pointer">
-                  <span className="font-medium">Send SMS invitation</span>
-                  <p className="text-gray-600">
-                    Send a text message in addition to email
-                  </p>
-                </label>
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Password <span className="text-red-500">*</span>
+              </label>
+              <Input
+                type="password"
+                name="password"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                minLength={6}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Minimum 6 characters. Share this securely with the worker.
+              </p>
+            </div>
           </CardContent>
         </Card>
 
         {/* Actions */}
         <div className="flex gap-4">
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Sending Invitation...' : 'Send Invitation'}
+          <Button type="submit" disabled={loading} className="gap-2">
+            {loading ? "Creating Account..." : "Create Worker Account"}
           </Button>
-          <Button type="button" variant="outline" onClick={() => router.back()}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.back()}
+            disabled={loading}
+          >
             Cancel
           </Button>
         </div>
       </form>
     </div>
-  )
+  );
 }

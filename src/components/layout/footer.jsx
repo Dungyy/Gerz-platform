@@ -114,7 +114,7 @@ export default function Footer() {
               href={isAuthenticated ? "/dashboard" : "/"}
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-sm">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-foreground text-background font-bold">
                 d
               </div>
               <span className="hidden sm:inline font-medium">
