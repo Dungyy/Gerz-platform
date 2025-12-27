@@ -7,13 +7,11 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// POST /api/managers
-// Only OWNERS can create managers
 export async function POST(request) {
   try {
     const { email, full_name, phone, send_sms } = await request.json();
 
-    console.log("👔 Starting manager creation for:", email);
+    console.log("👔 Starting manager invitation for:", email);
 
     // Get current user from auth header
     const authHeader = request.headers.get("authorization");
@@ -24,67 +22,58 @@ export async function POST(request) {
     }
 
     const {
-      data: { user: currentUser },
+      data: { user: owner },
       error: authError,
     } = await supabaseAdmin.auth.getUser(token);
 
-    if (authError || !currentUser) {
+    if (authError || !owner) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get current user's profile/org
-    const { data: currentProfile, error: profileError } = await supabaseAdmin
+    // Get owner's profile
+    const { data: ownerProfile } = await supabaseAdmin
       .from("profiles")
       .select("organization_id, role, organization:organizations(name)")
-      .eq("id", currentUser.id)
+      .eq("id", owner.id)
       .single();
 
-    if (profileError) {
-      console.error("❌ Current profile error:", profileError);
+    if (!ownerProfile || ownerProfile.role !== "owner") {
       return NextResponse.json(
-        { error: "Failed to load current profile" },
-        { status: 400 }
-      );
-    }
-
-    // Only owners can create managers
-    if (!currentProfile || currentProfile.role !== "owner") {
-      return NextResponse.json(
-        { error: "Only owners can create managers" },
+        { error: "Only owners can invite managers" },
         { status: 403 }
       );
     }
 
-    console.log("👤 Owner org:", currentProfile.organization?.name);
+    console.log("👤 Owner org:", ownerProfile.organization.name);
 
+    // Create manager invite
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-    // Create manager invite in Supabase auth
     const { data: inviteData, error: inviteError } =
       await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
         data: {
           full_name,
-          invited_by: currentUser.id,
-          organization_id: currentProfile.organization_id,
-          role: "manager", // 🔐 hard-coded manager role
+          invited_by: owner.id,
+          organization_id: ownerProfile.organization_id,
+          role: "manager",
         },
         redirectTo: `${baseUrl}/auth/callback?next=/auth/set-password`,
       });
 
     if (inviteError) {
-      console.error("❌ Manager invite error:", inviteError);
+      console.error("❌ Invite error:", inviteError);
       throw inviteError;
     }
 
     const userId = inviteData.user.id;
     console.log("✅ Manager invite created:", userId);
 
-    // Create manager profile row
-    const { error: newProfileError } = await supabaseAdmin
+    // Create manager profile
+    const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .insert({
         id: userId,
-        organization_id: currentProfile.organization_id,
+        organization_id: ownerProfile.organization_id,
         full_name,
         email,
         phone: phone ? formatPhoneNumber(phone) : null,
@@ -92,16 +81,15 @@ export async function POST(request) {
         sms_notifications: !!phone,
       });
 
-    if (newProfileError) {
-      console.error("❌ Manager profile creation error:", newProfileError);
-      // roll back auth user if profile insert fails
+    if (profileError) {
+      console.error("❌ Profile creation error:", profileError);
       await supabaseAdmin.auth.admin.deleteUser(userId);
-      throw newProfileError;
+      throw profileError;
     }
 
     console.log("✅ Manager profile created");
 
-    // Create notification preferences (optional, same as worker)
+    // Create notification preferences
     await supabaseAdmin.from("notification_preferences").insert({
       user_id: userId,
       sms_new_request: !!phone,
@@ -121,53 +109,51 @@ export async function POST(request) {
           body: JSON.stringify({
             from: process.env.DEFAULT_FROM_EMAIL,
             to: email,
-            subject: `Welcome as a manager at ${currentProfile.organization.name}`,
+            subject: `Welcome to ${ownerProfile.organization.name} Management Team`,
             html: generateManagerWelcomeEmail(
               full_name,
-              currentProfile.organization.name
+              ownerProfile.organization.name
             ),
           }),
         });
-        console.log("✅ Manager welcome email sent");
+        console.log("✅ Welcome email sent");
       } catch (emailError) {
-        console.error("❌ Manager email error:", emailError);
+        console.error("❌ Email error:", emailError);
       }
     }
 
     // Send SMS if requested
     if (phone && send_sms) {
       try {
-        const smsMessage = `You’ve been added as a manager at ${currentProfile.organization.name}. Check your email (${email}) to set your password and access the system. - Gerz`;
+        const smsMessage = `Welcome to ${ownerProfile.organization.name} management team! You've been added as a manager. Check your email (${email}) to set your password and access the system. - Gerz`;
 
         await sendSMS({
           to: formatPhoneNumber(phone),
           message: smsMessage,
-          organizationId: currentProfile.organization_id,
+          organizationId: ownerProfile.organization_id,
           recipientUserId: userId,
           messageType: "invitation",
         });
-        console.log("✅ Manager SMS sent");
+        console.log("✅ SMS sent");
       } catch (smsError) {
-        console.error("❌ Manager SMS error:", smsError);
+        console.error("❌ SMS error:", smsError);
       }
     }
 
     return NextResponse.json({
       success: true,
       user_id: userId,
-      message: "Manager created successfully",
+      message: "Manager invited successfully",
     });
   } catch (error) {
-    console.error("❌ Manager creation error:", error);
+    console.error("❌ Manager invitation error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to create manager" },
+      { error: error.message || "Failed to invite manager" },
       { status: 400 }
     );
   }
 }
 
-// GET /api/managers
-// Owners & managers can see all managers in their org
 export async function GET(request) {
   try {
     const authHeader = request.headers.get("authorization");
@@ -185,19 +171,11 @@ export async function GET(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { data: profile } = await supabaseAdmin
       .from("profiles")
       .select("organization_id, role")
       .eq("id", user.id)
       .single();
-
-    if (profileError) {
-      console.error("❌ Profile error:", profileError);
-      return NextResponse.json(
-        { error: "Failed to load profile" },
-        { status: 400 }
-      );
-    }
 
     if (profile.role !== "owner" && profile.role !== "manager") {
       return NextResponse.json(
@@ -206,21 +184,13 @@ export async function GET(request) {
       );
     }
 
-    // Get all managers in this organization
-    const { data: managers, error: managersError } = await supabaseAdmin
+    // Get all managers in organization
+    const { data: managers } = await supabaseAdmin
       .from("profiles")
       .select("*")
       .eq("organization_id", profile.organization_id)
       .eq("role", "manager")
       .order("full_name");
-
-    if (managersError) {
-      console.error("❌ Managers query error:", managersError);
-      return NextResponse.json(
-        { error: "Failed to fetch managers" },
-        { status: 500 }
-      );
-    }
 
     return NextResponse.json(managers || []);
   } catch (error) {
@@ -248,23 +218,25 @@ function generateManagerWelcomeEmail(fullName, orgName) {
       <body>
         <div class="container">
           <div class="header">
-            <h1>Welcome as a Manager</h1>
+            <h1>Welcome to the Management Team!</h1>
           </div>
           <div class="content">
             <p>Hi ${fullName},</p>
             
-            <p>You've been added to <strong>${orgName}</strong> as a manager.</p>
+            <p>You've been added to the ${orgName} management team as a manager.</p>
             
             <div class="info-box">
               <strong>📧 Check your email inbox</strong> for a separate message with the subject <strong>"Confirm your signup"</strong>. Click the link in that email to set your password.
             </div>
 
-            <p><strong>As a manager you can:</strong></p>
+            <p><strong>Once you're set up, you'll be able to:</strong></p>
             <ul>
               <li>View and manage maintenance requests</li>
-              <li>Assign work to staff and workers</li>
-              <li>Update request status and communicate with tenants</li>
-              <li>Monitor activity for your organization</li>
+              <li>Assign tasks to workers</li>
+              <li>Update request status and add notes</li>
+              <li>Communicate with tenants and workers</li>
+              <li>Monitor organization activity</li>
+              <li>Invite and manage workers</li>
             </ul>
 
             <p>If you have any questions, please contact the account owner.</p>

@@ -11,63 +11,133 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { fetchWithAuth } from "@/lib/api-helper";
-import { Mail, UserPlus, Phone, CheckCircle } from "lucide-react";
+import { Mail, UserPlus, Copy, CheckCircle, User } from "lucide-react";
 
 export function InviteManagerModal({ isOpen, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
+  const [inviteUrl, setInviteUrl] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [invitedEmail, setInvitedEmail] = useState("");
+  const [mode, setMode] = useState("invite"); // "invite" or "create"
 
   const [formData, setFormData] = useState({
-    full_name: "",
     email: "",
-    phone: "",
-    send_sms: false,
+    full_name: "",
+    password: "",
+    confirm_password: "",
   });
 
-  function handleChange(e) {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+  async function handleInvite(e) {
+    e.preventDefault();
+    setLoading(true);
+    setInviteUrl(null);
+    setCopied(false);
+
+    try {
+      const response = await fetchWithAuth("/api/invitations", {
+        method: "POST",
+        body: JSON.stringify({
+          email: formData.email,
+          role: "manager",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send invitation");
+      }
+
+      toast.success(`Manager invitation sent to ${formData.email}`);
+      setInvitedEmail(formData.email);
+      setInviteUrl(data.invite_url);
+
+      // Reset form
+      setFormData({
+        email: "",
+        full_name: "",
+        password: "",
+        confirm_password: "",
+      });
+
+      if (onSuccess) onSuccess();
+    } catch (error) {
+      console.error("Error sending invitation:", error);
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  async function handleSubmit(e) {
+  async function handleCreate(e) {
     e.preventDefault();
     setLoading(true);
 
     try {
-      if (!formData.full_name.trim()) {
-        throw new Error("Full name is required");
+      // Validate passwords match
+      if (formData.password !== formData.confirm_password) {
+        throw new Error("Passwords do not match");
       }
 
-      const response = await fetchWithAuth("/api/managers", {
+      // Validate password length
+      if (formData.password.length < 8) {
+        throw new Error("Password must be at least 8 characters");
+      }
+
+      const response = await fetchWithAuth("/api/managers/create", {
         method: "POST",
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          email: formData.email,
+          full_name: formData.full_name,
+          password: formData.password,
+        }),
       });
 
-      const data = await response.json().catch(() => ({}));
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to invite manager");
+        throw new Error(data.error || "Failed to create manager");
       }
 
-      toast.success(`Manager invite sent to ${formData.email}`);
+      toast.success(`Manager account created for ${formData.email}`);
 
       // Reset form
       setFormData({
-        full_name: "",
         email: "",
-        phone: "",
-        send_sms: false,
+        full_name: "",
+        password: "",
+        confirm_password: "",
       });
 
       if (onSuccess) onSuccess();
       onClose();
     } catch (error) {
-      console.error("Error sending manager invite:", error);
-      toast.error(error.message || "Failed to invite manager");
+      console.error("Error creating manager:", error);
+      toast.error(error.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  function handleDone() {
+    setInviteUrl(null);
+    setCopied(false);
+    setInvitedEmail("");
+    setFormData({
+      email: "",
+      full_name: "",
+      password: "",
+      confirm_password: "",
+    });
+    onClose();
+  }
+
+  function copyInviteUrl() {
+    if (inviteUrl) {
+      navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      toast.success("Invite link copied!");
+      setTimeout(() => setCopied(false), 2000);
     }
   }
 
@@ -77,109 +147,237 @@ export function InviteManagerModal({ isOpen, onClose, onSuccess }) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
-            Invite Manager
+            {mode === "invite" ? "Invite Manager" : "Create Manager"}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Full Name */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Full Name <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                name="full_name"
-                placeholder="Jane Manager"
-                className="pl-9"
-                value={formData.full_name}
-                onChange={handleChange}
-                required
-              />
+        {inviteUrl ? (
+          <div className="space-y-4">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2 text-green-900 mb-2">
+                <CheckCircle className="h-5 w-5" />
+                <span className="font-semibold">Invitation Sent!</span>
+              </div>
+              <p className="text-sm text-green-700">
+                An email has been sent to <strong>{invitedEmail}</strong>
+              </p>
             </div>
-          </div>
 
-          {/* Email */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Email Address <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="email"
-                name="email"
-                placeholder="manager@example.com"
-                className="pl-9"
-                value={formData.email}
-                onChange={handleChange}
-                required
-              />
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Invitation Link
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  value={inviteUrl}
+                  readOnly
+                  className="font-mono text-xs"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={copyInviteUrl}
+                  className="flex-shrink-0"
+                >
+                  {copied ? (
+                    <CheckCircle className="h-4 w-4" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                You can also share this link directly
+              </p>
             </div>
-          </div>
 
-          {/* Phone (optional) */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Phone (optional)
-            </label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="tel"
-                name="phone"
-                placeholder="(555) 123-4567"
-                className="pl-9"
-                value={formData.phone}
-                onChange={handleChange}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Used for contact and optional SMS notifications.
-            </p>
-          </div>
-
-          {/* SMS toggle */}
-          <div className="flex items-center gap-2">
-            <input
-              id="send_sms"
-              name="send_sms"
-              type="checkbox"
-              checked={formData.send_sms}
-              onChange={handleChange}
-              className="h-4 w-4"
-            />
-            <label htmlFor="send_sms" className="text-sm text-muted-foreground">
-              Send SMS welcome message (if phone is provided)
-            </label>
-          </div>
-
-          {/* Info box */}
-          <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
-            <CheckCircle className="h-4 w-4 mt-0.5" />
-            <p>
-              The manager will receive an email to set their password and join
-              your organization as a manager. Only owners can send manager
-              invites.
-            </p>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <Button type="submit" disabled={loading} className="flex-1">
-              {loading ? "Sending..." : "Send Manager Invite"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={loading}
-            >
-              Cancel
+            <Button onClick={handleDone} className="w-full">
+              Done
             </Button>
           </div>
-        </form>
+        ) : (
+          <>
+            {/* Mode Toggle */}
+            <div className="flex gap-2 p-1 bg-muted rounded-lg mb-4">
+              <button
+                type="button"
+                onClick={() => setMode("invite")}
+                className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  mode === "invite"
+                    ? "bg-background shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Send Invite
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("create")}
+                className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  mode === "create"
+                    ? "bg-background shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Create Now
+              </button>
+            </div>
+
+            {mode === "invite" ? (
+              <form onSubmit={handleInvite} className="space-y-4">
+                <div className="text-center mb-2">
+                  <p className="text-sm text-muted-foreground">
+                    Send an invitation email for the manager to set up their own
+                    account.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="email"
+                      placeholder="manager@example.com"
+                      className="pl-9"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+                  <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <p>
+                    The manager will receive an email with a link to set their
+                    password and join your organization.
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Button type="submit" disabled={loading} className="flex-1">
+                    {loading ? "Sending..." : "Send Invitation"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onClose}
+                    disabled={loading}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleCreate} className="space-y-4">
+                <div className="text-center mb-2">
+                  <p className="text-sm text-muted-foreground">
+                    Create a manager account immediately with a password you
+                    set.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Full Name
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      placeholder="John Manager"
+                      className="pl-9"
+                      value={formData.full_name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, full_name: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="email"
+                      placeholder="manager@example.com"
+                      className="pl-9"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Password
+                  </label>
+                  <Input
+                    type="password"
+                    placeholder="Min 8 characters"
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Confirm Password
+                  </label>
+                  <Input
+                    type="password"
+                    placeholder="Re-enter password"
+                    value={formData.confirm_password}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        confirm_password: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                </div>
+
+                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <p>
+                    The account will be created immediately and the manager can
+                    log in right away with the password you set.
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Button type="submit" disabled={loading} className="flex-1">
+                    {loading ? "Creating..." : "Create Manager"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onClose}
+                    disabled={loading}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            )}
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

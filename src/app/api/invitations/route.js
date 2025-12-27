@@ -38,14 +38,26 @@ export async function POST(request) {
       );
     }
 
-    if (profile.role !== "owner" && profile.role !== "manager") {
-      return NextResponse.json(
-        { error: "Unauthorized - Only managers can invite" },
-        { status: 403 }
-      );
-    }
-
     const { email, role, property_id, unit_id } = await request.json();
+
+    // Validate permissions based on role being invited
+    if (role === "manager") {
+      // Only owners can invite managers
+      if (profile.role !== "owner") {
+        return NextResponse.json(
+          { error: "Only owners can invite managers" },
+          { status: 403 }
+        );
+      }
+    } else {
+      // Managers and owners can invite tenants/workers
+      if (profile.role !== "owner" && profile.role !== "manager") {
+        return NextResponse.json(
+          { error: "Unauthorized - Only managers can invite" },
+          { status: 403 }
+        );
+      }
+    }
 
     // Validate inputs
     if (!email || !role) {
@@ -55,7 +67,7 @@ export async function POST(request) {
       );
     }
 
-    if (!["tenant", "worker"].includes(role)) {
+    if (!["tenant", "worker", "manager"].includes(role)) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 
@@ -125,6 +137,13 @@ export async function POST(request) {
 
     if (process.env.RESEND_API_KEY) {
       try {
+        // Get organization name for email
+        const { data: orgData } = await supabaseAdmin
+          .from("organizations")
+          .select("name")
+          .eq("id", profile.organization_id)
+          .single();
+
         await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -139,7 +158,7 @@ export async function POST(request) {
               email,
               role,
               inviteUrl,
-              profile.organization_id
+              orgData?.name || "Gerz Maintenance"
             ),
           }),
         });
@@ -227,7 +246,16 @@ export async function GET(request) {
   }
 }
 
-function generateInvitationEmail(email, role, inviteUrl, organizationId) {
+function generateInvitationEmail(email, role, inviteUrl, organizationName) {
+  const roleDescriptions = {
+    tenant:
+      "manage your maintenance requests and communicate with your property manager",
+    worker:
+      "view assigned maintenance requests, update status, and communicate with tenants and managers",
+    manager:
+      "manage properties, assign tasks to workers, and oversee maintenance requests",
+  };
+
   return `
     <!DOCTYPE html>
     <html>
@@ -239,7 +267,9 @@ function generateInvitationEmail(email, role, inviteUrl, organizationId) {
           <div style="background: #f9fafb; padding: 20px;">
             <p>Hello,</p>
             
-            <p>You've been invited to join as a <strong>${role}</strong>.</p>
+            <p>You've been invited to join <strong>${organizationName}</strong> as a <strong>${role}</strong>.</p>
+            
+            <p>Once you accept, you'll be able to ${roleDescriptions[role]}.</p>
             
             <p>Click the button below to accept your invitation and set up your account:</p>
 
@@ -255,7 +285,7 @@ function generateInvitationEmail(email, role, inviteUrl, organizationId) {
               If you didn't expect this invitation, you can safely ignore this email.
             </p>
 
-            <p>Best regards,<br><strong>Gerz Maintenance</strong></p>
+            <p>Best regards,<br><strong>${organizationName}</strong></p>
           </div>
         </div>
       </body>

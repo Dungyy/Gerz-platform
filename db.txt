@@ -634,7 +634,14 @@ CREATE POLICY "Anyone can view invitation by token"
     AND accepted_at IS NULL
   );
 
+-- First, drop the old constraint
+ALTER TABLE invitations 
+DROP CONSTRAINT IF EXISTS invitations_role_check;
 
+-- Add the new constraint that includes 'manager'
+ALTER TABLE invitations 
+ADD CONSTRAINT invitations_role_check 
+CHECK (role IN ('tenant', 'worker', 'manager'));
 
 -----
 
