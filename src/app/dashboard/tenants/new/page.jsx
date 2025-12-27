@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   MessageSquare,
 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function InviteTenantPage() {
   const router = useRouter();
@@ -57,7 +58,7 @@ export default function InviteTenantPage() {
         .single();
 
       if (profile?.role !== "owner" && profile?.role !== "manager") {
-        alert("You do not have permission to invite tenants");
+        toast.error("You do not have permission to invite tenants");
         router.push("/dashboard/tenants");
         return;
       }
@@ -117,7 +118,7 @@ export default function InviteTenantPage() {
         throw new Error(data?.error || "Failed to invite tenant");
       }
 
-      alert(
+      toast.success(
         `✅ Invitation sent to ${formData.full_name}!\n\nThey will receive ${
           invitationMethod === "magic_link"
             ? "a magic link"
@@ -127,7 +128,7 @@ export default function InviteTenantPage() {
       router.push("/dashboard/tenants");
     } catch (err) {
       console.error("Error inviting tenant:", err);
-      alert(`❌ Error: ${err.message}`);
+      toast.error(`❌ Error: ${err.message}`);
     } finally {
       setLoading(false);
     }

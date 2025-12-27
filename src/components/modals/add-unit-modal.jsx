@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { fetchWithAuth } from "@/lib/api-helper";
+import { toast } from "sonner";
 
 export function AddUnitModal({ isOpen, onClose, propertyId, onSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -65,7 +66,7 @@ export function AddUnitModal({ isOpen, onClose, propertyId, onSuccess }) {
       onClose();
     } catch (err) {
       console.error("Error creating unit:", err);
-      alert(`❌ Error: ${err.message}`);
+      toast.error(`❌ Error: ${err.message}`);
     } finally {
       setLoading(false);
     }

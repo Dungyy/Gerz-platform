@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Mail, Lock, Sparkles, CheckCircle2, ArrowRight } from "lucide-react";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -43,7 +44,7 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (error) {
       console.error("Login error:", error);
-      alert(`❌ Login failed: ${error.message}`);
+      toast.error(`❌ Login failed: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -72,7 +73,7 @@ export default function LoginPage() {
       setMagicLinkSent(true);
     } catch (error) {
       console.error("Magic link error:", error);
-      alert(`❌ Failed to send magic link: ${error.message}`);
+      toast.error(`❌ Failed to send magic link: ${error.message}`);
     } finally {
       setLoading(false);
     }

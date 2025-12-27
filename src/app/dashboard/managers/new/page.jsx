@@ -17,14 +17,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function InviteWorkerPage() {
+export default function InviteManagerPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
     phone: "",
-    password: "",
+    send_sms: false,
   });
 
   useEffect(() => {
@@ -41,14 +41,14 @@ export default function InviteWorkerPage() {
         return;
       }
 
-      // Check if user is manager/owner
       const { data: profileData } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", user.id)
         .single();
 
-      if (profileData?.role !== "manager" && profileData?.role !== "owner") {
+      // Only owners can create managers
+      if (profileData?.role !== "owner") {
         router.push("/dashboard");
         return;
       }
@@ -59,7 +59,11 @@ export default function InviteWorkerPage() {
   }
 
   function handleChange(e) {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   }
 
   async function handleSubmit(e) {
@@ -67,14 +71,7 @@ export default function InviteWorkerPage() {
     setLoading(true);
 
     try {
-      // Validate password
-      if (formData.password.length < 6) {
-        toast.error("Password must be at least 6 characters");
-        setLoading(false);
-        return;
-      }
-
-      const response = await fetchWithAuth("/api/workers", {
+      const response = await fetchWithAuth("/api/managers", {
         method: "POST",
         body: JSON.stringify(formData),
       });
@@ -82,15 +79,15 @@ export default function InviteWorkerPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.error || "Failed to create worker");
+        throw new Error(data?.error || "Failed to create manager");
       }
 
       toast.success(
-        `✅ Worker account created for ${formData.full_name}!\n\nThey can now log in with:\nEmail: ${formData.email}\nPassword: (the one you set)`
+        `✅ Manager invite created for ${formData.full_name}!\n\nThey'll receive an email to set their password and finish setup.`
       );
-      router.push("/dashboard/workers");
+      router.push("/dashboard/managers");
     } catch (err) {
-      console.error("Error creating worker:", err);
+      console.error("Error creating manager:", err);
       toast.error(`❌ Error: ${err.message}`);
     } finally {
       setLoading(false);
@@ -108,9 +105,9 @@ export default function InviteWorkerPage() {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Add Worker</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Add Manager</h1>
           <p className="text-muted-foreground mt-1">
-            Create a new maintenance worker account
+            Create a new manager account for your organization
           </p>
         </div>
       </div>
@@ -123,26 +120,26 @@ export default function InviteWorkerPage() {
               <AlertCircle className="h-5 w-5 text-blue-600" />
             </div>
             <div className="text-sm">
-              <p className="font-semibold mb-2">How worker accounts work:</p>
+              <p className="font-semibold mb-2">How manager accounts work:</p>
               <ul className="space-y-1 text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
                   <span>
-                    Worker receives login credentials to access the system
+                    Manager receives an email invite to set their password and
+                    complete setup
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <span>You can assign maintenance requests to them</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <span>They can update request status and add comments</span>
+                  <span>
+                    Managers can view and manage maintenance requests,
+                    properties, and workers
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
                   <span>
-                    Share the password securely after account creation
+                    They belong to the same organization as your owner account
                   </span>
                 </li>
               </ul>
@@ -155,7 +152,7 @@ export default function InviteWorkerPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card className="shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Worker Information</CardTitle>
+            <CardTitle className="text-lg">Manager Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
@@ -166,7 +163,7 @@ export default function InviteWorkerPage() {
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   name="full_name"
-                  placeholder="John Smith"
+                  placeholder="Jane Manager"
                   value={formData.full_name}
                   onChange={handleChange}
                   className="pl-10"
@@ -184,7 +181,7 @@ export default function InviteWorkerPage() {
                 <Input
                   type="email"
                   name="email"
-                  placeholder="john.smith@example.com"
+                  placeholder="jane.manager@example.com"
                   value={formData.email}
                   onChange={handleChange}
                   className="pl-10"
@@ -192,7 +189,7 @@ export default function InviteWorkerPage() {
                 />
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Used for login and notifications
+                Used for login and email notifications
               </p>
             </div>
 
@@ -216,22 +213,21 @@ export default function InviteWorkerPage() {
               </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Password <span className="text-red-500">*</span>
-              </label>
-              <Input
-                type="password"
-                name="password"
-                placeholder="••••••••"
-                value={formData.password}
+            <div className="flex items-center gap-2">
+              <input
+                id="send_sms"
+                name="send_sms"
+                type="checkbox"
+                className="h-4 w-4"
+                checked={formData.send_sms}
                 onChange={handleChange}
-                required
-                minLength={6}
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Minimum 6 characters. Share this securely with the worker.
-              </p>
+              <label
+                htmlFor="send_sms"
+                className="text-sm text-muted-foreground"
+              >
+                Send a welcome SMS if a phone number is provided
+              </label>
             </div>
           </CardContent>
         </Card>
@@ -239,7 +235,7 @@ export default function InviteWorkerPage() {
         {/* Actions */}
         <div className="flex gap-4">
           <Button type="submit" disabled={loading} className="gap-2">
-            {loading ? "Creating Account..." : "Create Worker Account"}
+            {loading ? "Creating Manager..." : "Create Manager"}
           </Button>
           <Button
             type="button"

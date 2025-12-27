@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Upload, X, AlertCircle, Home } from 'lucide-react'
+import { toast } from "sonner";
 
 export default function NewRequestPage() {
   const router = useRouter()
@@ -65,7 +66,7 @@ export default function NewRequestPage() {
 
       // Check if tenant has a unit assigned
       if (profileData?.role === 'tenant' && (!profileData.unit || profileData.unit.length === 0)) {
-        alert('You do not have a unit assigned. Please contact your property manager.')
+        toast.error('You do not have a unit assigned. Please contact your property manager.')
         router.push('/dashboard')
       }
     } catch (error) {
@@ -107,7 +108,7 @@ export default function NewRequestPage() {
       setImages([...images, ...uploadedImages])
     } catch (error) {
       console.error('Error uploading images:', error)
-      alert('Error uploading images. Please try again.')
+      toast.error('Error uploading images. Please try again.')
     } finally {
       setUploading(false)
     }
@@ -150,11 +151,11 @@ export default function NewRequestPage() {
 
       console.log('✅ Request submitted:', data)
 
-      alert('✅ Maintenance request submitted successfully!')
+      toast.success('✅ Maintenance request submitted successfully!')
       router.push('/dashboard/requests')
     } catch (error) {
       console.error('Error submitting request:', error)
-      alert(`❌ Error: ${error.message}`)
+      toast.error(`❌ Error: ${error.message}`)
     } finally {
       setLoading(false)
     }

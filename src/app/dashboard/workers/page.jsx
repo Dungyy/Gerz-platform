@@ -21,6 +21,7 @@ import {
   Clock,
   ArrowRight,
 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function WorkersPage() {
   const router = useRouter();
@@ -89,7 +90,7 @@ export default function WorkersPage() {
       }
 
       if (response.status === 403) {
-        alert("You do not have permission to view workers");
+        toast.error("You do not have permission to view workers");
         router.push("/dashboard");
         return;
       }

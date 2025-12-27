@@ -19,6 +19,7 @@ import {
   Edit,
   Trash2
 } from 'lucide-react'
+import { toast } from "sonner";
 
 export default function TenantDetailPage() {
   const params = useParams()
@@ -90,11 +91,11 @@ export default function TenantDetailPage() {
           .eq('id', tenant.unit[0].id)
       }
 
-      alert('Tenant removed from unit successfully')
+      toast.success('Tenant removed from unit successfully')
       router.push('/dashboard/tenants')
     } catch (error) {
       console.error('Error removing tenant:', error)
-      alert('Error removing tenant')
+      toast.error('Error removing tenant')
     }
   }
 

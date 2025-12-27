@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { User, Building2, CreditCard, Bell, Shield, LogOut } from 'lucide-react'
 import { fetchWithAuth } from '@/lib/api-helper'
+import { toast } from "sonner";
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -78,10 +79,10 @@ export default function SettingsPage() {
       .eq('id', profile.id)
 
     if (!error) {
-      alert('Profile updated successfully!')
+      toast.success('Profile updated successfully!')
       loadProfile()
     } else {
-      alert('Error updating profile')
+      toast.error('Error updating profile')
     }
 
     setSaving(false)
@@ -98,10 +99,10 @@ export default function SettingsPage() {
     })
 
     if (response.ok) {
-      alert('Organization updated successfully!')
+      toast.success('Organization updated successfully!')
       loadProfile()
     } else {
-      alert('Error updating organization')
+      toast.error('Error updating organization')
     }
 
     setSaving(false)
@@ -111,7 +112,7 @@ export default function SettingsPage() {
     e.preventDefault()
 
     if (passwordForm.new_password !== passwordForm.confirm_password) {
-      alert('Passwords do not match')
+      toast.error('Passwords do not match')
       return
     }
 
@@ -122,14 +123,14 @@ export default function SettingsPage() {
     })
 
     if (!error) {
-      alert('Password updated successfully!')
+      toast.success('Password updated successfully!')
       setPasswordForm({
         current_password: '',
         new_password: '',
         confirm_password: '',
       })
     } else {
-      alert('Error updating password: ' + error.message)
+      toast.error('Error updating password: ' + error.message)
     }
 
     setSaving(false)

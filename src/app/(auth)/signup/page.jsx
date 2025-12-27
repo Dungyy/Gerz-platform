@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Building2, Search, CheckCircle2, User, Wrench, ArrowLeft, ArrowRight } from 'lucide-react'
 import Navbar from "@/components/layout/navbar";
+import { toast } from 'sonner'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -76,7 +77,7 @@ export default function SignupPage() {
 
     try {
       if (accountType === 'worker' && !selectedOrg) {
-        alert('Please select your organization')
+        toast.error('Please select your organization')
         setLoading(false)
         return
       }
@@ -133,12 +134,12 @@ export default function SignupPage() {
         sms_emergency: !!formData.phone,
       })
 
-      alert(`✅ Account created successfully!`)
+      toast.success(`✅ Account created successfully!`)
       router.push('/dashboard')
 
     } catch (error) {
       console.error('Signup error:', error)
-      alert(`❌ Signup failed: ${error.message}`)
+      toast.error(`❌ Signup failed: ${error.message}`)
     } finally {
       setLoading(false)
     }

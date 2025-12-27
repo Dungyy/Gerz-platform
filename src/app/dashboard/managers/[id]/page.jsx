@@ -22,25 +22,23 @@ import {
   TrendingUp,
   Building2,
   BarChart3,
-  Edit,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function WorkerDetailPage() {
+export default function ManagerDetailPage() {
   const params = useParams();
   const router = useRouter();
 
-  const [worker, setWorker] = useState(null);
+  const [manager, setManager] = useState(null);
   const [requests, setRequests] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
     completed: 0,
-    avgCompletionTime: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [role, setRole] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -55,9 +53,7 @@ export default function WorkerDetailPage() {
         router.push("/login");
         return;
       }
-      setCurrentUser(user);
 
-      // Check if user is manager/owner
       const { data: profileData } = await supabase
         .from("profiles")
         .select("role")
@@ -69,7 +65,9 @@ export default function WorkerDetailPage() {
         return;
       }
 
-      await loadWorker();
+      setRole(profileData.role);
+
+      await loadManager();
       await loadRequests();
       setLoading(false);
     } catch (error) {
@@ -78,7 +76,7 @@ export default function WorkerDetailPage() {
     }
   }
 
-  async function loadWorker() {
+  async function loadManager() {
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -89,13 +87,13 @@ export default function WorkerDetailPage() {
         `
         )
         .eq("id", params.id)
-        .eq("role", "worker")
+        .eq("role", "manager")
         .single();
 
       if (error) throw error;
-      setWorker(data);
+      setManager(data);
     } catch (error) {
-      console.error("Error loading worker:", error);
+      console.error("Error loading manager:", error);
     }
   }
 
@@ -105,54 +103,60 @@ export default function WorkerDetailPage() {
       if (!response.ok) throw new Error("Failed to load requests");
 
       const allRequests = await response.json();
-      const workerRequests = allRequests.filter(
-        (r) => r.assigned_to === params.id
+
+      // Assuming requests table has created_by = manager id
+      const managerRequests = allRequests.filter(
+        (r) => r.created_by === params.id
       );
 
-      setRequests(workerRequests);
+      setRequests(managerRequests);
 
-      // Calculate stats
-      const active = workerRequests.filter(
+      const active = managerRequests.filter(
         (r) => r.status !== "completed" && r.status !== "cancelled"
       ).length;
-      const completed = workerRequests.filter(
+      const completed = managerRequests.filter(
         (r) => r.status === "completed"
       ).length;
 
       setStats({
-        total: workerRequests.length,
+        total: managerRequests.length,
         active,
         completed,
-        avgCompletionTime: 0, // TODO: Calculate from completed requests
       });
     } catch (error) {
       console.error("Error loading requests:", error);
     }
   }
 
-  async function handleDeleteWorker() {
+  async function handleDeleteManager() {
+    if (role !== "owner") {
+      toast.error("Only owners can delete managers.");
+      return;
+    }
+
     if (
       !confirm(
-        `Are you sure you want to delete ${worker.full_name}? This cannot be undone.`
+        `Are you sure you want to delete ${manager.full_name}? This cannot be undone.`
       )
     ) {
       return;
     }
 
     try {
-      const response = await fetchWithAuth(`/api/workers/${params.id}`, {
+      const response = await fetchWithAuth(`/api/managers/${params.id}`, {
         method: "DELETE",
       });
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data?.error || "Failed to delete worker");
+        throw new Error(data?.error || "Failed to delete manager");
       }
 
-      toast.success("✅ Worker deleted successfully");
-      router.push("/dashboard/workers");
+      toast.success("✅ Manager deleted successfully");
+      router.push("/dashboard/managers");
     } catch (error) {
-      console.error("Error deleting worker:", error);
+      console.error("Error deleting manager:", error);
       toast.error(`❌ Error: ${error.message}`);
     }
   }
@@ -162,23 +166,23 @@ export default function WorkerDetailPage() {
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading worker details...</p>
+          <p className="text-muted-foreground">Loading manager details...</p>
         </div>
       </div>
     );
   }
 
-  if (!worker) {
+  if (!manager) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
           <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Worker Not Found</h2>
+          <h2 className="text-xl font-semibold mb-2">Manager Not Found</h2>
           <p className="text-muted-foreground mb-4">
-            This worker may have been deleted or doesn't exist.
+            This manager may have been deleted or doesn&apos;t exist.
           </p>
-          <Link href="/dashboard/workers">
-            <Button>Back to Workers</Button>
+          <Link href="/dashboard/managers">
+            <Button>Back to Managers</Button>
           </Link>
         </div>
       </div>
@@ -198,28 +202,30 @@ export default function WorkerDetailPage() {
           </button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
-              {worker.full_name}
+              {manager.full_name}
             </h1>
-            <p className="text-muted-foreground mt-1">Maintenance Worker</p>
+            <p className="text-muted-foreground mt-1">Property Manager</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            className="gap-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200 dark:border-red-900"
-            onClick={handleDeleteWorker}
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </Button>
-        </div>
+        {role === "owner" && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="gap-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200 dark:border-red-900"
+              onClick={handleDeleteManager}
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard
-          title="Total Requests"
+          title="Total Requests Created"
           value={stats.total}
           icon={Wrench}
           color="blue"
@@ -264,15 +270,15 @@ export default function WorkerDetailPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Email</p>
                   <a
-                    href={`mailto:${worker.email}`}
+                    href={`mailto:${manager.email}`}
                     className="text-sm font-medium hover:underline"
                   >
-                    {worker.email}
+                    {manager.email}
                   </a>
                 </div>
               </div>
 
-              {worker.phone && (
+              {manager.phone && (
                 <div className="flex items-center gap-3">
                   <div className="grid h-10 w-10 place-items-center rounded-lg bg-green-500/10">
                     <Phone className="h-5 w-5 text-green-600" />
@@ -280,10 +286,10 @@ export default function WorkerDetailPage() {
                   <div>
                     <p className="text-sm text-muted-foreground">Phone</p>
                     <a
-                      href={`tel:${worker.phone}`}
+                      href={`tel:${manager.phone}`}
                       className="text-sm font-medium hover:underline"
                     >
-                      {worker.phone}
+                      {manager.phone}
                     </a>
                   </div>
                 </div>
@@ -296,7 +302,7 @@ export default function WorkerDetailPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Joined</p>
                   <p className="text-sm font-medium">
-                    {new Date(worker.created_at).toLocaleDateString("en-US", {
+                    {new Date(manager.created_at).toLocaleDateString("en-US", {
                       month: "long",
                       day: "numeric",
                       year: "numeric",
@@ -307,21 +313,18 @@ export default function WorkerDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Assigned Requests */}
+          {/* Requests Created */}
           <Card className="shadow-sm">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Wrench className="h-5 w-5" />
-                  Assigned Requests ({requests.length})
+                  Requests Created ({requests.length})
                 </CardTitle>
                 {requests.length > 0 && (
-                  <Link
-                    href={`/dashboard/requests?worker=${params.id}`}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    View All
-                  </Link>
+                  <span className="text-xs text-muted-foreground">
+                    Showing latest {Math.min(requests.length, 5)}
+                  </span>
                 )}
               </div>
             </CardHeader>
@@ -331,9 +334,9 @@ export default function WorkerDetailPage() {
                   <div className="grid h-16 w-16 place-items-center rounded-xl bg-muted mx-auto mb-4">
                     <Wrench className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <h3 className="font-semibold mb-2">No Requests Assigned</h3>
+                  <h3 className="font-semibold mb-2">No Requests Created</h3>
                   <p className="text-muted-foreground text-sm">
-                    This worker hasn't been assigned any requests yet.
+                    This manager hasn&apos;t created any maintenance requests yet.
                   </p>
                 </div>
               ) : (
@@ -341,13 +344,6 @@ export default function WorkerDetailPage() {
                   {requests.slice(0, 5).map((request) => (
                     <RequestCard key={request.id} request={request} />
                   ))}
-                  {requests.length > 5 && (
-                    <Link href={`/dashboard/requests?worker=${params.id}`}>
-                      <Button variant="outline" className="w-full">
-                        View All {requests.length} Requests
-                      </Button>
-                    </Link>
-                  )}
                 </div>
               )}
             </CardContent>
@@ -360,12 +356,12 @@ export default function WorkerDetailPage() {
           <Card className="shadow-sm">
             <CardContent className="pt-6">
               <div className="text-center mb-4">
-                <div className="grid h-20 w-20 place-items-center rounded-full bg-foreground from-blue-600 to-indigo-600 text-white font-bold text-2xl mx-auto mb-3 shadow-lg">
-                  {worker.full_name?.[0]?.toUpperCase() || "W"}
+                <div className="grid h-20 w-20 place-items-center rounded-full bg-foreground text-white font-bold text-2xl mx-auto mb-3 shadow-lg">
+                  {manager.full_name?.[0]?.toUpperCase() || "M"}
                 </div>
-                <h3 className="font-semibold text-lg">{worker.full_name}</h3>
+                <h3 className="font-semibold text-lg">{manager.full_name}</h3>
                 <Badge variant="secondary" className="mt-2">
-                  Maintenance Worker
+                  Manager
                 </Badge>
               </div>
 
@@ -375,7 +371,7 @@ export default function WorkerDetailPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Organization</span>
                   <span className="font-medium">
-                    {worker.organization?.name || "N/A"}
+                    {manager.organization?.name || "N/A"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -393,7 +389,7 @@ export default function WorkerDetailPage() {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <BarChart3 className="h-5 w-5" />
-                Performance
+                Activity Overview
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">

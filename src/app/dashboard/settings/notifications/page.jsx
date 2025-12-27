@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Bell, Mail, MessageSquare, Save } from 'lucide-react'
+import { toast } from "sonner";
 
 export default function NotificationSettingsPage() {
   const [loading, setLoading] = useState(true)
@@ -72,9 +73,9 @@ export default function NotificationSettingsPage() {
     if (!error) {
       setProfile({ ...profile, phone: newPhone })
       setPhoneEdit(false)
-      alert('Phone number updated successfully!')
+      toast.success('Phone number updated successfully!')
     } else {
-      alert('Error updating phone number')
+      toast.error('Error updating phone number')
     }
     setSaving(false)
   }

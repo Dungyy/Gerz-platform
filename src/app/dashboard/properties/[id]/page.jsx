@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { AddUnitModal } from "@/components/modals/add-unit-modal";
-import { ConfirmationModal } from "@/components/modals/confrimation-modal";
+import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import {
   ArrowLeft,
   MapPin,

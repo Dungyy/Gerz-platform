@@ -16,6 +16,7 @@ import {
   Download,
 } from "lucide-react";
 import { fetchWithAuth } from "@/lib/api-helper";
+import { toast } from "sonner";
 
 export default function NewPropertyPage() {
   const router = useRouter();
@@ -116,7 +117,7 @@ export default function NewPropertyPage() {
     const end = parseInt(endUnit, 10);
 
     if (isNaN(start) || isNaN(end) || start > end) {
-      alert("Invalid range");
+      toast.error("Invalid range");
       return;
     }
 
@@ -137,7 +138,7 @@ export default function NewPropertyPage() {
     }
 
     setUnits(newUnits);
-    alert(`${newUnits.length} units generated!`);
+    toast.success(`${newUnits.length} units generated!`);
   }
 
   function handleCSVImport(e) {
@@ -168,9 +169,9 @@ export default function NewPropertyPage() {
 
       if (importedUnits.length) {
         setUnits(importedUnits);
-        alert(`${importedUnits.length} units imported!`);
+        toast.success(`${importedUnits.length} units imported!`);
       } else {
-        alert("No valid units found in CSV");
+        toast.error("No valid units found in CSV");
       }
     };
 
@@ -198,7 +199,7 @@ export default function NewPropertyPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     if (!orgId) {
-      alert("Missing organization. Please re-login.");
+      toast.error("Missing organization. Please re-login.");
       return;
     }
 
@@ -229,7 +230,7 @@ export default function NewPropertyPage() {
         throw new Error(data.error || "Failed to create property");
       }
 
-      alert(
+      toast.success(
         `✅ Property created with ${
           data.units_created ?? payload.units.length
         } units!`
@@ -237,7 +238,7 @@ export default function NewPropertyPage() {
       router.push("/dashboard/properties");
     } catch (err) {
       console.error("Error creating property:", err);
-      alert(`❌ Error: ${err.message}`);
+      toast.error(`❌ Error: ${err.message}`);
     } finally {
       setLoading(false);
     }

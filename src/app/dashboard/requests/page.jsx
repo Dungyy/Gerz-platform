@@ -16,6 +16,7 @@ import {
   User,
   Clock
 } from 'lucide-react'
+import { toast } from "sonner";
 
 export default function RequestsPage() {
   const router = useRouter()
@@ -89,11 +90,11 @@ export default function RequestsPage() {
         throw new Error(data?.error || 'Failed to assign')
       }
 
-      alert('✅ Request assigned to you!')
+      toast.success('✅ Request assigned to you!')
       await loadRequests()
     } catch (error) {
       console.error('Error assigning:', error)
-      alert(`❌ Error: ${error.message}`)
+      toast.error(`❌ Error: ${error.message}`)
     }
   }
 

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { toast } from "sonner";
 
 export default function NewStaffPage() {
   const router = useRouter()
@@ -102,14 +103,14 @@ export default function NewStaffPage() {
       const data = await res.json().catch(() => ({}))
 
       if (!res.ok) {
-        alert('Error: ' + (data.error || 'Failed to add staff'))
+        toast.error('Error: ' + (data.error || 'Failed to add staff'))
         return
       }
 
       router.push('/dashboard/staff')
     } catch (err) {
       console.error('Error creating staff:', err)
-      alert('Error creating staff. See console.')
+      toast.error('Error creating staff. See console.')
     } finally {
       setLoading(false)
     }

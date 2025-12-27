@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
+
 
 export default function EditPropertyPage() {
   const params = useParams();
@@ -92,11 +94,11 @@ export default function EditPropertyPage() {
         throw new Error(data?.error || "Failed to update property");
       }
 
-      alert("✅ Property updated successfully!");
+      toast.success("✅ Property updated successfully!");
       router.push(`/dashboard/properties/${params.id}`);
     } catch (err) {
       console.error("Error updating property:", err);
-      alert(`❌ Error: ${err.message}`);
+      toast.error(`❌ Error: ${err.message}`);
     } finally {
       setSaving(false);
     }

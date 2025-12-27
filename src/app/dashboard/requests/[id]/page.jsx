@@ -22,6 +22,7 @@ import {
   // Unlock
 } from 'lucide-react'
 import Image from 'next/image'
+import { toast } from "sonner";
 
 export default function RequestDetailPage() {
   const params = useParams()
@@ -167,7 +168,7 @@ export default function RequestDetailPage() {
       await loadComments()
     } catch (error) {
       console.error('Error adding comment:', error)
-      alert(`❌ Error: ${error.message}`)
+      toast.error(`❌ Error: ${error.message}`)
     } finally {
       setCommenting(false)
     }
@@ -188,7 +189,7 @@ export default function RequestDetailPage() {
       }
 
       if (Object.keys(updates).length === 0) {
-        alert('No changes to save')
+        toast.error('No changes to save')
         setUpdating(false)
         return
       }
@@ -205,11 +206,11 @@ export default function RequestDetailPage() {
       }
 
       console.log('✅ Request updated')
-      alert('✅ Request updated successfully!')
+      toast.success('✅ Request updated successfully!')
       await loadRequest()
     } catch (error) {
       console.error('Error updating request:', error)
-      alert(`❌ Error: ${error.message}`)
+      toast.error(`❌ Error: ${error.message}`)
     } finally {
       setUpdating(false)
     }
@@ -350,12 +351,12 @@ export default function RequestDetailPage() {
                   throw new Error(data?.error || 'Failed to assign')
                 }
 
-                alert('✅ Request assigned to you!')
+                toast.success('✅ Request assigned to you!')
                 await loadRequest()
                 await loadComments()
               } catch (error) {
                 console.error('Error self-assigning:', error)
-                alert(`❌ Error: ${error.message}`)
+                toast.error(`❌ Error: ${error.message}`)
               } finally {
                 setUpdating(false)
               }
@@ -454,12 +455,12 @@ export default function RequestDetailPage() {
                 throw new Error(data?.error || 'Failed to update')
               }
 
-              alert('✅ Request marked as completed!')
+              toast.success('✅ Request marked as completed!')
               await loadRequest()
               await loadComments()
             } catch (error) {
               console.error('Error completing request:', error)
-              alert(`❌ Error: ${error.message}`)
+              toast.error(`❌ Error: ${error.message}`)
             } finally {
               setUpdating(false)
             }
