@@ -57,7 +57,10 @@ export default function Footer() {
     }
   
   useEffect(() => {
-    checkAuth();
+    const run = async () => {
+      await checkAuth();
+    };
+    run();
   }, []);
 
   const currentYear = new Date().getFullYear();
