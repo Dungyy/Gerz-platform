@@ -1,114 +1,182 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bell, Search, HelpCircle } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import {
+  Home,
+  Wrench,
+  Building2,
+  Users,
+  UserCog,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  BarChart3,
+  HelpCircle,
+} from "lucide-react";
+import { useState } from "react";
 
-export default function Header({ profile }) {
+export default function Sidebar({ profile, currentPath }) {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  function handleSearch(e) {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(
-        `/dashboard/requests?search=${encodeURIComponent(searchQuery)}`
-      );
-    }
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.push("/login");
   }
 
-  // Get role-specific help link
-  const getHelpLink = () => {
-    switch (profile?.role) {
-      case "tenant":
-        return "/help/tenants";
-      case "worker":
-        return "/help/workers";
-      case "manager":
-      case "owner":
-        return "/help/managers";
-      default:
-        return "/help";
+  const getNavigation = () => {
+    const baseNav = [
+      { name: "Dashboard", href: "/dashboard", icon: Home },
+      { name: "Requests", href: "/dashboard/requests", icon: Wrench },
+    ];
+
+    if (profile?.role === "tenant") {
+      return [
+        ...baseNav,
+        { name: "Settings", href: "/dashboard/settings", icon: Settings },
+      ];
     }
+
+    if (profile?.role === "worker") {
+      return [
+        ...baseNav,
+        { name: "Reports", href: "/dashboard/reports", icon: BarChart3 },
+        { name: "Settings", href: "/dashboard/settings", icon: Settings },
+      ];
+    }
+
+    return [
+      ...baseNav,
+      { name: "Properties", href: "/dashboard/properties", icon: Building2 },
+      { name: "Tenants", href: "/dashboard/tenants", icon: Users },
+      { name: "Workers", href: "/dashboard/workers", icon: UserCog },
+      { name: "Managers", href: "/dashboard/managers", icon: UserCog },
+      { name: "Reports", href: "/dashboard/reports", icon: BarChart3 },
+      { name: "Settings", href: "/dashboard/settings", icon: Settings },
+    ];
   };
 
+  const navigation = getNavigation();
+
   return (
-    <header className="sticky top-0 z-30 bg-background/80 backdrop-blur border-b">
-      <div className="px-4 sm:px-6 lg:px-8 py-4 mt-16 lg:mt-0">
-        <div className="flex items-center justify-between gap-4">
-          {/* Welcome Message */}
-          <div className="hidden lg:block">
-            <h1 className="text-xl font-bold tracking-tight">
-              Welcome back, {profile?.full_name?.split(" ")[0] || "User"}!
-            </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {new Date().toLocaleDateString("en-US", {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-              })}
-            </p>
+    <>
+      {/* Mobile menu button */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 rounded-lg hover:bg-muted transition-colors"
+          >
+            {mobileMenuOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
+          </button>
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <div className="grid h-8 w-8 place-items-center rounded-xl bg-foreground text-background font-bold text-sm">
+              d
+            </div>
+            <div className="leading-tight">
+              <div className="text-sm font-semibold">dingy.app</div>
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      {/* Sidebar */}
+      <div
+        className={`
+          fixed top-0 left-0 bottom-0 z-40 w-64 bg-background border-r transform transition-transform duration-300 ease-in-out
+          ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
+          lg:translate-x-0
+        `}
+      >
+        <div className="flex flex-col h-full">
+          {/* Logo */}
+          <div className="p-6 border-b">
+            <Link href="/dashboard" className="flex items-center gap-2">
+              <div className="grid h-8 w-8 place-items-center rounded-xl bg-foreground text-background font-bold text-sm">
+                d
+              </div>
+              <div className="leading-tight">
+                <div className="font-semibold">dingy.app</div>
+                <div className="text-xs text-muted-foreground">
+                  {profile?.organization?.name || "Maintenance"}
+                </div>
+              </div>
+            </Link>
           </div>
 
-          {/* Search Bar (Desktop) - Only for non-tenants */}
-          {profile?.role !== "tenant" && (
-            <form
-              onSubmit={handleSearch}
-              className="hidden md:flex flex-1 max-w-md"
-            >
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search requests, properties..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-foreground/20"
-                />
+          {/* Profile Info */}
+          <div className="p-4 border-b">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-transparent hover:border-border transition-colors">
+              <div className="grid h-8 w-8 place-items-center rounded-full bg-foreground text-background font-semibold text-sm shadow-sm">
+                {profile?.full_name?.[0]?.toUpperCase() || "U"}
               </div>
-            </form>
-          )}
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate text-sm">
+                  {profile?.full_name}
+                </p>
+                <p className="text-xs text-muted-foreground capitalize">
+                  {profile?.role}
+                </p>
+              </div>
+            </div>
+          </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2">
-            {/* Help - Role-specific */}
-            <Link href={getHelpLink()}>
-              <button className="grid h-9 w-9 place-items-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                <HelpCircle className="h-5 w-5" />
-              </button>
-            </Link>
+          {/* Navigation */}
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            {navigation.map((item) => {
+              const isActive =
+                currentPath === item.href ||
+                currentPath?.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`
+                    flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm border border-transparent
+                    ${
+                      isActive
+                        ? "bg-muted font-medium border-border"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground hover:border-border"
+                    }
+                  `}
+                >
+                  <item.icon className="h-4 w-4" />
+                  <span>{item.name}</span>
+                </Link>
+              );
+            })}
+          </nav>
 
-            {/* Notifications - Placeholder for future */}
-            <Link href="/dashboard/notifications">
-              <button className="relative grid h-9 w-9 place-items-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                <Bell className="h-5 w-5" />
-                {/* Placeholder badge - you can connect this to real data later */}
-                {/* <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-red-500 hover:bg-red-500">
-                  3
-                </Badge> */}
-              </button>
-            </Link>
+          {/* Bottom Actions */}
+          <div className="p-4 border-t space-y-2">
+
+            {/* Logout */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-3 py-2 w-full text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors text-sm border border-transparent hover:border-red-200 dark:hover:border-red-900"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Logout</span>
+            </button>
           </div>
         </div>
-
-        {/* Search Bar (Mobile) - Only for non-tenants */}
-        {profile?.role !== "tenant" && (
-          <form onSubmit={handleSearch} className="md:hidden mt-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-foreground/20"
-              />
-            </div>
-          </form>
-        )}
       </div>
-    </header>
+
+      {/* Mobile overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+    </>
   );
 }

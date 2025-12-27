@@ -14,7 +14,6 @@ import {
   Menu,
   X,
   BarChart3,
-  HelpCircle,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -48,11 +47,12 @@ export default function Sidebar({ profile, currentPath }) {
       ];
     }
 
+    // Manager / Owner
     return [
       ...baseNav,
       { name: "Properties", href: "/dashboard/properties", icon: Building2 },
       { name: "Tenants", href: "/dashboard/tenants", icon: Users },
-      { name: "Workers", href: "/dashboard/workers", icon: UserCog },
+      { name: "Workers", href: "/dashboard/workers", icon: Users },
       { name: "Managers", href: "/dashboard/managers", icon: UserCog },
       { name: "Reports", href: "/dashboard/reports", icon: BarChart3 },
       { name: "Settings", href: "/dashboard/settings", icon: Settings },
@@ -157,8 +157,6 @@ export default function Sidebar({ profile, currentPath }) {
 
           {/* Bottom Actions */}
           <div className="p-4 border-t space-y-2">
-
-            {/* Logout */}
             <button
               onClick={handleLogout}
               className="flex items-center gap-3 px-3 py-2 w-full text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors text-sm border border-transparent hover:border-red-200 dark:hover:border-red-900"
