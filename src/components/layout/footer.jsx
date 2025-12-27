@@ -89,7 +89,8 @@ export default function Footer() {
       links.push(
         { href: "/dashboard/properties", label: "Properties", icon: Building2 },
         { href: "/dashboard/tenants", label: "Tenants", icon: Users },
-        { href: "/dashboard/workers", label: "Workers", icon: Users }
+        { href: "/dashboard/workers", label: "Workers", icon: Users },
+        { href: "/dashboard/managers", label: "Managers", icon: Users }
       );
     }
 

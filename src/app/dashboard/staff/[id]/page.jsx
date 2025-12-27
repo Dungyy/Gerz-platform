@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { fetchWithAuth } from '@/lib/api-helper'
-
+import { toast } from "sonner";
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -86,11 +86,11 @@ export default function StaffDetailPage() {
         throw new Error(data?.error || 'Failed to remove staff member')
       }
 
-      alert('Staff member removed successfully')
+      toast.success('Staff member removed successfully')
       router.push('/dashboard/staff')
     } catch (err) {
       console.error('Delete staff error:', err)
-      alert(err.message || 'Error removing staff member')
+      toast.error(err.message || 'Error removing staff member')
     }
   }
 

@@ -53,6 +53,7 @@ export default function Sidebar({ profile, currentPath }) {
       { name: "Properties", href: "/dashboard/properties", icon: Building2 },
       { name: "Tenants", href: "/dashboard/tenants", icon: Users },
       { name: "Workers", href: "/dashboard/workers", icon: UserCog },
+      { name: "Managers", href: "/dashboard/managers", icon: UserCog },
       { name: "Reports", href: "/dashboard/reports", icon: BarChart3 },
       { name: "Settings", href: "/dashboard/settings", icon: Settings },
     ];

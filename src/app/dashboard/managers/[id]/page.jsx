@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft,
-  User,
   Mail,
   Phone,
   Calendar,
@@ -25,6 +24,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 
 export default function ManagerDetailPage() {
   const params = useParams();
@@ -40,6 +40,9 @@ export default function ManagerDetailPage() {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState(null);
 
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   useEffect(() => {
     loadData();
   }, [params.id]);
@@ -54,11 +57,15 @@ export default function ManagerDetailPage() {
         return;
       }
 
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", user.id)
         .single();
+
+      if (profileError) {
+        console.error("Error loading current user profile:", profileError);
+      }
 
       if (profileData?.role !== "manager" && profileData?.role !== "owner") {
         router.push("/dashboard");
@@ -69,9 +76,9 @@ export default function ManagerDetailPage() {
 
       await loadManager();
       await loadRequests();
-      setLoading(false);
     } catch (error) {
       console.error("Error loading data:", error);
+    } finally {
       setLoading(false);
     }
   }
@@ -128,21 +135,16 @@ export default function ManagerDetailPage() {
     }
   }
 
-  async function handleDeleteManager() {
+  async function handleDeleteManagerConfirmed() {
     if (role !== "owner") {
       toast.error("Only owners can delete managers.");
-      return;
-    }
-
-    if (
-      !confirm(
-        `Are you sure you want to delete ${manager.full_name}? This cannot be undone.`
-      )
-    ) {
+      setShowDeleteModal(false);
       return;
     }
 
     try {
+      setDeleteLoading(true);
+
       const response = await fetchWithAuth(`/api/managers/${params.id}`, {
         method: "DELETE",
       });
@@ -158,6 +160,9 @@ export default function ManagerDetailPage() {
     } catch (error) {
       console.error("Error deleting manager:", error);
       toast.error(`❌ Error: ${error.message}`);
+    } finally {
+      setDeleteLoading(false);
+      setShowDeleteModal(false);
     }
   }
 
@@ -190,267 +195,292 @@ export default function ManagerDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.back()}
-            className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              {manager.full_name}
-            </h1>
-            <p className="text-muted-foreground mt-1">Property Manager</p>
+    <>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.back()}
+              className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">
+                {manager.full_name}
+              </h1>
+              <p className="text-muted-foreground mt-1">Property Manager</p>
+            </div>
           </div>
+
+          {role === "owner" && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="gap-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200 dark:border-red-900"
+                onClick={() => setShowDeleteModal(true)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            </div>
+          )}
         </div>
 
-        {role === "owner" && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              className="gap-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200 dark:border-red-900"
-              onClick={handleDeleteManager}
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete
-            </Button>
-          </div>
-        )}
-      </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StatCard
+            title="Total Requests Created"
+            value={stats.total}
+            icon={Wrench}
+            color="blue"
+          />
+          <StatCard
+            title="Active"
+            value={stats.active}
+            icon={Clock}
+            color="amber"
+          />
+          <StatCard
+            title="Completed"
+            value={stats.completed}
+            icon={CheckCircle2}
+            color="green"
+          />
+          <StatCard
+            title="Completion Rate"
+            value={
+              stats.total > 0
+                ? `${Math.round((stats.completed / stats.total) * 100)}%`
+                : "0%"
+            }
+            icon={TrendingUp}
+            color="purple"
+          />
+        </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Requests Created"
-          value={stats.total}
-          icon={Wrench}
-          color="blue"
-        />
-        <StatCard
-          title="Active"
-          value={stats.active}
-          icon={Clock}
-          color="amber"
-        />
-        <StatCard
-          title="Completed"
-          value={stats.completed}
-          icon={CheckCircle2}
-          color="green"
-        />
-        <StatCard
-          title="Completion Rate"
-          value={
-            stats.total > 0
-              ? `${Math.round((stats.completed / stats.total) * 100)}%`
-              : "0%"
-          }
-          icon={TrendingUp}
-          color="purple"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Contact Information */}
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Contact Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-lg bg-blue-500/10">
-                  <Mail className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Email</p>
-                  <a
-                    href={`mailto:${manager.email}`}
-                    className="text-sm font-medium hover:underline"
-                  >
-                    {manager.email}
-                  </a>
-                </div>
-              </div>
-
-              {manager.phone && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Contact Information */}
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg">Contact Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-lg bg-green-500/10">
-                    <Phone className="h-5 w-5 text-green-600" />
+                  <div className="grid h-10 w-10 place-items-center rounded-lg bg-blue-500/10">
+                    <Mail className="h-5 w-5 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Phone</p>
+                    <p className="text-sm text-muted-foreground">Email</p>
                     <a
-                      href={`tel:${manager.phone}`}
+                      href={`mailto:${manager.email}`}
                       className="text-sm font-medium hover:underline"
                     >
-                      {manager.phone}
+                      {manager.email}
                     </a>
                   </div>
                 </div>
-              )}
 
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-lg bg-purple-500/10">
-                  <Calendar className="h-5 w-5 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Joined</p>
-                  <p className="text-sm font-medium">
-                    {new Date(manager.created_at).toLocaleDateString("en-US", {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Requests Created */}
-          <Card className="shadow-sm">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Wrench className="h-5 w-5" />
-                  Requests Created ({requests.length})
-                </CardTitle>
-                {requests.length > 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    Showing latest {Math.min(requests.length, 5)}
-                  </span>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {requests.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="grid h-16 w-16 place-items-center rounded-xl bg-muted mx-auto mb-4">
-                    <Wrench className="h-8 w-8 text-muted-foreground" />
+                {manager.phone && (
+                  <div className="flex items-center gap-3">
+                    <div className="grid h-10 w-10 place-items-center rounded-lg bg-green-500/10">
+                      <Phone className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Phone</p>
+                      <a
+                        href={`tel:${manager.phone}`}
+                        className="text-sm font-medium hover:underline"
+                      >
+                        {manager.phone}
+                      </a>
+                    </div>
                   </div>
-                  <h3 className="font-semibold mb-2">No Requests Created</h3>
-                  <p className="text-muted-foreground text-sm">
-                    This manager hasn&apos;t created any maintenance requests yet.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {requests.slice(0, 5).map((request) => (
-                    <RequestCard key={request.id} request={request} />
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                )}
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Profile Card */}
-          <Card className="shadow-sm">
-            <CardContent className="pt-6">
-              <div className="text-center mb-4">
-                <div className="grid h-20 w-20 place-items-center rounded-full bg-foreground text-white font-bold text-2xl mx-auto mb-3 shadow-lg">
-                  {manager.full_name?.[0]?.toUpperCase() || "M"}
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-lg bg-purple-500/10">
+                    <Calendar className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Joined</p>
+                    <p className="text-sm font-medium">
+                      {new Date(manager.created_at).toLocaleDateString(
+                        "en-US",
+                        {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        }
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <h3 className="font-semibold text-lg">{manager.full_name}</h3>
-                <Badge variant="secondary" className="mt-2">
-                  Manager
-                </Badge>
-              </div>
+              </CardContent>
+            </Card>
 
-              <Separator className="my-4" />
-
-              <div className="space-y-3 text-sm">
+            {/* Requests Created */}
+            <Card className="shadow-sm">
+              <CardHeader>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Organization</span>
-                  <span className="font-medium">
-                    {manager.organization?.name || "N/A"}
-                  </span>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Wrench className="h-5 w-5" />
+                    Requests Created ({requests.length})
+                  </CardTitle>
+                  {requests.length > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      Showing latest {Math.min(requests.length, 5)}
+                    </span>
+                  )}
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Status</span>
-                  <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/15">
-                    Active
+              </CardHeader>
+              <CardContent>
+                {requests.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="grid h-16 w-16 place-items-center rounded-xl bg-muted mx-auto mb-4">
+                      <Wrench className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="font-semibold mb-2">No Requests Created</h3>
+                    <p className="text-muted-foreground text-sm">
+                      This manager hasn&apos;t created any maintenance requests
+                      yet.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {requests.slice(0, 5).map((request) => (
+                      <RequestCard key={request.id} request={request} />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Profile Card */}
+            <Card className="shadow-sm">
+              <CardContent className="pt-6">
+                <div className="text-center mb-4">
+                  <div className="grid h-20 w-20 place-items-center rounded-full bg-foreground text-white font-bold text-2xl mx-auto mb-3 shadow-lg">
+                    {manager.full_name?.[0]?.toUpperCase() || "M"}
+                  </div>
+                  <h3 className="font-semibold text-lg">{manager.full_name}</h3>
+                  <Badge variant="secondary" className="mt-2">
+                    Manager
                   </Badge>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* Quick Stats */}
-          <Card className="shadow-sm border-blue-500/20 bg-blue-500/5">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Activity Overview
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">
-                    Active Requests
-                  </span>
-                  <span className="text-sm font-semibold">{stats.active}</span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-amber-500 transition-all"
-                    style={{
-                      width: `${
-                        stats.total > 0 ? (stats.active / stats.total) * 100 : 0
-                      }%`,
-                    }}
-                  />
-                </div>
-              </div>
+                <Separator className="my-4" />
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">
-                    Completed
-                  </span>
-                  <span className="text-sm font-semibold">
-                    {stats.completed}
-                  </span>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Organization</span>
+                    <span className="font-medium">
+                      {manager.organization?.name || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Status</span>
+                    <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/15">
+                      Active
+                    </Badge>
+                  </div>
                 </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-green-500 transition-all"
-                    style={{
-                      width: `${
-                        stats.total > 0
-                          ? (stats.completed / stats.total) * 100
-                          : 0
-                      }%`,
-                    }}
-                  />
+              </CardContent>
+            </Card>
+
+            {/* Quick Stats */}
+            <Card className="shadow-sm border-blue-500/20 bg-blue-500/5">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Activity Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">
+                      Active Requests
+                    </span>
+                    <span className="text-sm font-semibold">
+                      {stats.active}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-amber-500 transition-all"
+                      style={{
+                        width: `${
+                          stats.total > 0
+                            ? (stats.active / stats.total) * 100
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <Separator />
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">
+                      Completed
+                    </span>
+                    <span className="text-sm font-semibold">
+                      {stats.completed}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-green-500 transition-all"
+                      style={{
+                        width: `${
+                          stats.total > 0
+                            ? (stats.completed / stats.total) * 100
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                </div>
 
-              <div className="text-center">
-                <p className="text-3xl font-bold">
-                  {stats.total > 0
-                    ? Math.round((stats.completed / stats.total) * 100)
-                    : 0}
-                  %
-                </p>
-                <p className="text-sm text-muted-foreground">Success Rate</p>
-              </div>
-            </CardContent>
-          </Card>
+                <Separator />
+
+                <div className="text-center">
+                  <p className="text-3xl font-bold">
+                    {stats.total > 0
+                      ? Math.round((stats.completed / stats.total) * 100)
+                      : 0}
+                    %
+                  </p>
+                  <p className="text-sm text-muted-foreground">Success Rate</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Delete manager modal (owner only) */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          if (!deleteLoading) setShowDeleteModal(false);
+        }}
+        onConfirm={handleDeleteManagerConfirmed}
+        title={`Delete ${manager.full_name}?`}
+        description="This will permanently remove this manager from your organization. This action cannot be undone."
+        confirmText="Delete Manager"
+        cancelText="Cancel"
+        variant="danger"
+        loading={deleteLoading}
+      />
+    </>
   );
 }
 
