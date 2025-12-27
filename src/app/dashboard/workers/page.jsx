@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { InviteUserModal } from "@/components/modals/invite-user-modal";
 import {
   User,
   Mail,
@@ -27,10 +28,27 @@ export default function WorkersPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [properties, setProperties] = useState([]);
 
   useEffect(() => {
     checkAuthAndLoad();
+    loadProperties();
   }, []);
+
+  async function loadProperties() {
+    try {
+      const response = await fetchWithAuth("/api/properties", {
+        method: "GET",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setProperties(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error("Failed to load properties:", err);
+    }
+  }
 
   async function checkAuthAndLoad() {
     try {
@@ -43,7 +61,6 @@ export default function WorkersPage() {
       }
       setCurrentUser(user);
 
-      // Check if user is manager/owner
       const { data: profileData } = await supabase
         .from("profiles")
         .select("role")
@@ -115,12 +132,18 @@ export default function WorkersPage() {
           </p>
         </div>
 
-        <Link href="/dashboard/workers/new">
-          <Button className="gap-2">
-            <Plus className="h-5 w-5" />
+        <div className="flex gap-2">
+          {/* <Link href="/dashboard/workers/new">
+            <Button variant="outline" className="gap-2">
+              <Plus className="h-5 w-5" />
+              Add Worker
+            </Button>
+          </Link> */}
+          <Button onClick={() => setShowInviteModal(true)} className="gap-2">
+            <Mail className="h-5 w-5" />
             Invite Worker
           </Button>
-        </Link>
+        </div>
       </div>
 
       {/* Search */}
@@ -152,12 +175,21 @@ export default function WorkersPage() {
                 : "Invite your first worker to get started"}
             </p>
             {!searchQuery && (
-              <Link href="/dashboard/workers/new">
-                <Button className="gap-2">
-                  <Plus className="h-5 w-5" />
+              <div className="flex gap-2 justify-center">
+                {/* <Link href="/dashboard/workers/new">
+                  <Button variant="outline" className="gap-2">
+                    <Plus className="h-5 w-5" />
+                    Add Worker
+                  </Button>
+                </Link> */}
+                <Button
+                  onClick={() => setShowInviteModal(true)}
+                  className="gap-2"
+                >
+                  <Mail className="h-5 w-5" />
                   Invite Worker
                 </Button>
-              </Link>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -167,7 +199,6 @@ export default function WorkersPage() {
             <Link key={worker.id} href={`/dashboard/workers/${worker.id}`}>
               <Card className="shadow-sm hover:shadow-md transition-all cursor-pointer h-full border border-transparent hover:border-border">
                 <CardContent className="pt-6">
-                  {/* Header */}
                   <div className="flex items-start gap-3 mb-4">
                     <div className="grid h-12 w-12 place-items-center rounded-full bg-foreground from-blue-600 to-indigo-600 text-white font-semibold text-lg shadow-sm">
                       {worker.full_name?.[0]?.toUpperCase() || "W"}
@@ -182,7 +213,6 @@ export default function WorkersPage() {
                     </div>
                   </div>
 
-                  {/* Contact Info */}
                   <div className="space-y-2 mb-4">
                     {worker.email && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -199,7 +229,6 @@ export default function WorkersPage() {
                     )}
                   </div>
 
-                  {/* Stats */}
                   {worker.stats && (
                     <div className="grid grid-cols-3 gap-2 mb-4 pb-4 border-b">
                       <div className="text-center">
@@ -229,7 +258,6 @@ export default function WorkersPage() {
                     </div>
                   )}
 
-                  {/* Footer */}
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-muted-foreground">
                       Joined {new Date(worker.created_at).toLocaleDateString()}
@@ -242,6 +270,14 @@ export default function WorkersPage() {
           ))}
         </div>
       )}
+
+      {/* Invite Modal */}
+      <InviteUserModal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        onSuccess={loadWorkers}
+        properties={properties}
+      />
     </div>
   );
 }

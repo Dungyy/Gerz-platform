@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { InviteUserModal } from "@/components/modals/invite-user-modal";
 import {
   User,
   Mail,
@@ -26,10 +27,27 @@ export default function TenantsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState("");
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [properties, setProperties] = useState([]);
 
   useEffect(() => {
     checkAuthAndLoad();
+    loadProperties();
   }, []);
+
+  async function loadProperties() {
+    try {
+      const response = await fetchWithAuth("/api/properties", {
+        method: "GET",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setProperties(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error("Failed to load properties:", err);
+    }
+  }
 
   async function checkAuthAndLoad() {
     try {
@@ -41,7 +59,6 @@ export default function TenantsPage() {
         return;
       }
 
-      // Check if user is manager/owner
       const { data: profileData } = await supabase
         .from("profiles")
         .select("role")
@@ -117,12 +134,18 @@ export default function TenantsPage() {
           </p>
         </div>
 
-        <Link href="/dashboard/tenants/new">
-          <Button className="gap-2">
-            <Plus className="h-5 w-5" />
+        <div className="flex gap-2">
+          {/* <Link href="/dashboard/tenants/new">
+            <Button variant="outline" className="gap-2">
+              <Plus className="h-5 w-5" />
+              Add Tenant
+            </Button>
+          </Link> */}
+          <Button onClick={() => setShowInviteModal(true)} className="gap-2">
+            <Mail className="h-5 w-5" />
             Invite Tenant
           </Button>
-        </Link>
+        </div>
       </div>
 
       {/* Error Message */}
@@ -161,12 +184,21 @@ export default function TenantsPage() {
                 : "Invite your first tenant to get started"}
             </p>
             {!searchQuery && (
-              <Link href="/dashboard/tenants/new">
-                <Button className="gap-2">
-                  <Plus className="h-5 w-5" />
+              <div className="flex gap-2 justify-center">
+                {/* <Link href="/dashboard/tenants/new">
+                  <Button variant="outline" className="gap-2">
+                    <Plus className="h-5 w-5" />
+                    Add Tenant
+                  </Button>
+                </Link> */}
+                <Button
+                  onClick={() => setShowInviteModal(true)}
+                  className="gap-2"
+                >
+                  <Mail className="h-5 w-5" />
                   Invite Tenant
                 </Button>
-              </Link>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -180,7 +212,6 @@ export default function TenantsPage() {
               <Link key={tenant.id} href={`/dashboard/tenants/${tenant.id}`}>
                 <Card className="shadow-sm hover:shadow-md transition-all cursor-pointer h-full border border-transparent hover:border-border">
                   <CardContent className="pt-6">
-                    {/* Header */}
                     <div className="flex items-start gap-3 mb-4">
                       <div className="grid h-12 w-12 place-items-center rounded-full bg-foreground text-background font-semibold text-lg">
                         {tenant.full_name?.[0]?.toUpperCase() || "T"}
@@ -201,7 +232,6 @@ export default function TenantsPage() {
                       </div>
                     </div>
 
-                    {/* Contact Info */}
                     <div className="space-y-2 mb-4">
                       {tenant.email && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -227,7 +257,6 @@ export default function TenantsPage() {
                       )}
                     </div>
 
-                    {/* Footer */}
                     <div className="flex items-center justify-between pt-4 border-t">
                       <p className="text-xs text-muted-foreground">
                         Joined{" "}
@@ -244,6 +273,14 @@ export default function TenantsPage() {
           })}
         </div>
       )}
+
+      {/* Invite Modal */}
+      <InviteUserModal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        onSuccess={loadTenants}
+        properties={properties}
+      />
     </div>
   );
 }

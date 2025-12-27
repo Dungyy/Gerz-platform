@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import { fetchWithAuth } from "@/lib/api-helper";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { AddUnitModal } from "@/components/modals/add-unit-modal";
+import { ConfirmationModal } from "@/components/modals/confrimation-modal";
 import {
   ArrowLeft,
   MapPin,
@@ -44,6 +46,11 @@ export default function PropertyDetailPage() {
   const [showAddUnitModal, setShowAddUnitModal] = useState(false);
   const [deletingUnitId, setDeletingUnitId] = useState(null);
 
+  // ✅ CONFIRMATION MODALS STATE
+  const [showDeletePropertyModal, setShowDeletePropertyModal] = useState(false);
+  const [showDeleteUnitModal, setShowDeleteUnitModal] = useState(false);
+  const [unitToDelete, setUnitToDelete] = useState(null);
+
   const unitsPerPage = 20;
 
   // ✅ ALL EFFECTS TOGETHER (AFTER STATE HOOKS)
@@ -52,7 +59,6 @@ export default function PropertyDetailPage() {
   }, [params.id]);
 
   useEffect(() => {
-    // Reset to page 1 when filters change
     setCurrentPage(1);
   }, [unitSearch, unitFilter]);
 
@@ -76,49 +82,17 @@ export default function PropertyDetailPage() {
         throw new Error(data?.error || "Failed to load property");
       }
 
-      console.log("✅ Property loaded:", data);
       setProperty(data);
     } catch (err) {
       console.error("Error loading property:", err);
       setError(err.message);
+      toast.error(`Failed to load property: ${err.message}`);
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleDelete() {
-    const units = property?.units || [];
-    const occupiedUnits = units.filter((u) => u.tenant_id).length;
-
-    if (occupiedUnits > 0) {
-      const confirmWithTenants = confirm(
-        `⚠️ WARNING: This property has ${occupiedUnits} occupied unit${
-          occupiedUnits > 1 ? "s" : ""
-        }.\n\n` +
-          `Deleting this property will:\n` +
-          `• Remove all ${units.length} units\n` +
-          `• Unassign ${occupiedUnits} tenant${
-            occupiedUnits > 1 ? "s" : ""
-          }\n` +
-          `• Delete all maintenance requests for this property\n\n` +
-          `This action CANNOT be undone!\n\n` +
-          `Are you absolutely sure you want to delete "${property.name}"?`
-      );
-
-      if (!confirmWithTenants) return;
-    } else {
-      const confirmed = confirm(
-        `Are you sure you want to delete "${property.name}"?\n\n` +
-          `This will permanently delete:\n` +
-          `• The property\n` +
-          `• All ${units.length} unit${units.length !== 1 ? "s" : ""}\n` +
-          `• All maintenance requests\n\n` +
-          `This action cannot be undone.`
-      );
-
-      if (!confirmed) return;
-    }
-
+  async function handleDeleteProperty() {
     setDeleting(true);
 
     try {
@@ -132,28 +106,24 @@ export default function PropertyDetailPage() {
         throw new Error(data?.error || "Failed to delete property");
       }
 
-      alert("✅ Property deleted successfully");
+      toast.success("Property deleted successfully");
       router.push("/dashboard/properties");
     } catch (err) {
       console.error("Delete error:", err);
-      alert(`❌ Error: ${err.message}`);
+      toast.error(`Failed to delete property: ${err.message}`);
     } finally {
       setDeleting(false);
+      setShowDeletePropertyModal(false);
     }
   }
 
-  async function handleDeleteUnit(unitId, unitNumber) {
-    const confirmed = confirm(
-      `Are you sure you want to delete Unit ${unitNumber}?\n\n` +
-        `This action cannot be undone.`
-    );
+  async function handleDeleteUnit() {
+    if (!unitToDelete) return;
 
-    if (!confirmed) return;
-
-    setDeletingUnitId(unitId);
+    setDeletingUnitId(unitToDelete.id);
 
     try {
-      const response = await fetchWithAuth(`/api/units/${unitId}`, {
+      const response = await fetchWithAuth(`/api/units/${unitToDelete.id}`, {
         method: "DELETE",
       });
 
@@ -162,14 +132,21 @@ export default function PropertyDetailPage() {
         throw new Error(data?.error || "Failed to delete unit");
       }
 
-      alert("✅ Unit deleted successfully");
-      await loadProperty(); // Reload property data
+      toast.success(`Unit ${unitToDelete.unit_number} deleted successfully`);
+      await loadProperty();
     } catch (err) {
       console.error("Delete unit error:", err);
-      alert(`❌ Error: ${err.message}`);
+      toast.error(`Failed to delete unit: ${err.message}`);
     } finally {
       setDeletingUnitId(null);
+      setShowDeleteUnitModal(false);
+      setUnitToDelete(null);
     }
+  }
+
+  function openDeleteUnitModal(unit) {
+    setUnitToDelete(unit);
+    setShowDeleteUnitModal(true);
   }
 
   // ✅ LOADING STATE
@@ -231,7 +208,6 @@ export default function PropertyDetailPage() {
   // ✅ FILTER UNITS
   const filteredUnits = units
     .filter((unit) => {
-      // Filter by search
       const searchLower = unitSearch.toLowerCase();
       const matchesSearch =
         unit.unit_number?.toLowerCase().includes(searchLower) ||
@@ -240,13 +216,11 @@ export default function PropertyDetailPage() {
 
       if (!matchesSearch) return false;
 
-      // Filter by occupancy
       if (unitFilter === "occupied") return unit.tenant_id;
       if (unitFilter === "vacant") return !unit.tenant_id;
       return true;
     })
     .sort((a, b) => {
-      // Sort by unit number (numeric)
       const aNum = parseInt(a.unit_number, 10);
       const bNum = parseInt(b.unit_number, 10);
       if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
@@ -292,14 +266,33 @@ export default function PropertyDetailPage() {
           <Button
             variant="outline"
             className="gap-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200 dark:border-red-900"
-            onClick={handleDelete}
-            disabled={deleting}
+            onClick={() => setShowDeletePropertyModal(true)}
           >
             <Trash2 className="h-4 w-4" />
-            {deleting ? "Deleting..." : "Delete"}
+            Delete
           </Button>
         </div>
       </div>
+
+      {/* Warning for occupied units */}
+      {occupiedUnits > 0 && (
+        <Card className="shadow-sm border-orange-500/20 bg-orange-500/5">
+          <CardContent className="py-4 flex items-start gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-lg bg-orange-500/10">
+              <User className="h-5 w-5 text-orange-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-orange-900">
+                {occupiedUnits} Occupied Unit{occupiedUnits > 1 ? "s" : ""}
+              </p>
+              <p className="text-sm text-orange-700 mt-1">
+                This property has active tenants. Make sure to notify them
+                before making changes.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -488,9 +481,7 @@ export default function PropertyDetailPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() =>
-                                  handleDeleteUnit(unit.id, unit.unit_number)
-                                }
+                                onClick={() => openDeleteUnitModal(unit)}
                                 disabled={deletingUnitId === unit.id}
                                 className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                               >
@@ -532,9 +523,7 @@ export default function PropertyDetailPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() =>
-                                    handleDeleteUnit(unit.id, unit.unit_number)
-                                  }
+                                  onClick={() => openDeleteUnitModal(unit)}
                                   disabled={deletingUnitId === unit.id}
                                   className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                                 >
@@ -732,24 +721,92 @@ export default function PropertyDetailPage() {
               <Button
                 variant="outline"
                 className="w-full gap-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-700 border-red-200 dark:border-red-900"
-                onClick={handleDelete}
-                disabled={deleting}
+                onClick={() => setShowDeletePropertyModal(true)}
               >
                 <Trash2 className="h-4 w-4" />
-                {deleting ? "Deleting..." : "Delete Property"}
+                Delete Property
               </Button>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Add Unit Modal */}
+      {/* ✅ ADD UNIT MODAL */}
       <AddUnitModal
         isOpen={showAddUnitModal}
         onClose={() => setShowAddUnitModal(false)}
         propertyId={params.id}
-        onSuccess={loadProperty}
+        onSuccess={() => {
+          loadProperty();
+          toast.success("Unit added successfully");
+        }}
       />
+
+      {/* ✅ DELETE PROPERTY CONFIRMATION */}
+      <ConfirmationModal
+        isOpen={showDeletePropertyModal}
+        onClose={() => setShowDeletePropertyModal(false)}
+        onConfirm={handleDeleteProperty}
+        title="Delete Property?"
+        variant="danger"
+        confirmText="Delete Property"
+        loading={deleting}
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            You are about to permanently delete{" "}
+            <span className="font-semibold text-foreground">
+              {property.name}
+            </span>
+            .
+          </p>
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm font-medium text-red-900 mb-2">
+              This will permanently remove:
+            </p>
+            <ul className="text-sm text-red-700 space-y-1">
+              <li>
+                • All {units.length} unit{units.length !== 1 ? "s" : ""}
+              </li>
+              {occupiedUnits > 0 && (
+                <li className="font-semibold">
+                  • {occupiedUnits} tenant assignment
+                  {occupiedUnits > 1 ? "s" : ""}
+                </li>
+              )}
+              <li>• All maintenance requests</li>
+              <li>• All property history</li>
+            </ul>
+          </div>
+          <p className="text-sm font-semibold text-red-600">
+            This action cannot be undone!
+          </p>
+        </div>
+      </ConfirmationModal>
+
+      {/* ✅ DELETE UNIT CONFIRMATION */}
+      <ConfirmationModal
+        isOpen={showDeleteUnitModal}
+        onClose={() => {
+          setShowDeleteUnitModal(false);
+          setUnitToDelete(null);
+        }}
+        onConfirm={handleDeleteUnit}
+        title="Delete Unit?"
+        variant="danger"
+        confirmText="Delete Unit"
+        loading={deletingUnitId !== null}
+      >
+        {unitToDelete && (
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete{" "}
+            <span className="font-semibold text-foreground">
+              Unit {unitToDelete.unit_number}
+            </span>
+            ? This action cannot be undone.
+          </p>
+        )}
+      </ConfirmationModal>
     </div>
   );
 }

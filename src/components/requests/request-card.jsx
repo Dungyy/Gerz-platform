@@ -12,23 +12,60 @@ import {
   Radio,
 } from "lucide-react";
 
+function StatusBadge({ status }) {
+  const variants = {
+    submitted: {
+      label: "Open",
+      class: "bg-amber-500/15 text-amber-700 hover:bg-amber-500/15",
+    },
+    assigned: {
+      label: "Assigned",
+      class: "bg-blue-500/15 text-blue-700 hover:bg-blue-500/15",
+    },
+    in_progress: {
+      label: "In Progress",
+      class: "bg-purple-500/15 text-purple-700 hover:bg-purple-500/15",
+    },
+    completed: {
+      label: "Completed",
+      class: "bg-green-500/15 text-green-700 hover:bg-green-500/15",
+    },
+    cancelled: {
+      label: "Cancelled",
+      class: "bg-gray-500/10 text-gray-700 hover:bg-gray-500/10",
+    },
+  };
+
+  const config = variants[status] || variants.submitted;
+
+  return <Badge className={config.class}>{config.label}</Badge>;
+}
+
+function PriorityBadge({ priority }) {
+  return (
+    <p className="font-medium capitalize">
+      {priority === "low" ? "Normal" : priority || "Normal"}
+    </p>
+  );
+}
+
+
 export default function RequestCard({
   request,
   showProperty = false,
   showTenant = false,
   available = false,
 }) {
-  const [isLive, setIsLive] = useState(false);
-
-  useEffect(() => {
-    // Check if request was updated in last 5 minutes
+  // Compute isLive directly based on updated_at
+  const isLive = (() => {
     if (request.updated_at) {
       const updatedAt = new Date(request.updated_at);
       const now = new Date();
       const diffInMinutes = Math.floor((now - updatedAt) / (1000 * 60));
-      setIsLive(diffInMinutes < 5);
+      return diffInMinutes < 5;
     }
-  }, [request.updated_at]);
+    return false;
+  })();
 
   return (
     <Link href={`/dashboard/requests/${request.id}`}>
@@ -79,7 +116,7 @@ export default function RequestCard({
           <p className="font-medium mb-1 line-clamp-2">{request.title}</p>
           {request.tenant_notes && (
             <p className="text-sm text-muted-foreground line-clamp-2">
-              Tenant note: "{request.tenant_notes}"
+              Tenant note: &quot;{request.tenant_notes}&quot;
             </p>
           )}
 
@@ -157,7 +194,7 @@ export default function RequestCard({
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">Message thread</p>
                 <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                  "{request.latest_message}"
+                  &quot;{request.latest_message}&quot;
                 </p>
               </div>
             </div>
@@ -165,42 +202,5 @@ export default function RequestCard({
         )}
       </div>
     </Link>
-  );
-}
-
-function StatusBadge({ status }) {
-  const variants = {
-    submitted: {
-      label: "Open",
-      class: "bg-amber-500/15 text-amber-700 hover:bg-amber-500/15",
-    },
-    assigned: {
-      label: "Assigned",
-      class: "bg-blue-500/15 text-blue-700 hover:bg-blue-500/15",
-    },
-    in_progress: {
-      label: "In Progress",
-      class: "bg-purple-500/15 text-purple-700 hover:bg-purple-500/15",
-    },
-    completed: {
-      label: "Completed",
-      class: "bg-green-500/15 text-green-700 hover:bg-green-500/15",
-    },
-    cancelled: {
-      label: "Cancelled",
-      class: "bg-gray-500/10 text-gray-700 hover:bg-gray-500/10",
-    },
-  };
-
-  const config = variants[status] || variants.submitted;
-
-  return <Badge className={config.class}>{config.label}</Badge>;
-}
-
-function PriorityBadge({ priority }) {
-  return (
-    <p className="font-medium capitalize">
-      {priority === "low" ? "Normal" : priority || "Normal"}
-    </p>
   );
 }

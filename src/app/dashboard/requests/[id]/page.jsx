@@ -21,6 +21,7 @@ import {
   Lock,
   // Unlock
 } from 'lucide-react'
+import Image from 'next/image'
 
 export default function RequestDetailPage() {
   const params = useParams()
@@ -303,9 +304,11 @@ export default function RequestDetailPage() {
                         rel="noopener noreferrer"
                         className="group"
                       >
-                        <img
+                        <Image
                           src={url}
                           alt={`Photo ${index + 1}`}
+                          width={400}
+                          height={128}
                           className="w-full h-32 object-cover rounded-lg border group-hover:shadow-lg transition-shadow"
                         />
                       </a>
