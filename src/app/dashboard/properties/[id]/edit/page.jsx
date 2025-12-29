@@ -105,7 +105,7 @@ export default function EditPropertyPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh] mt-16 lg:mt-0">
+      <div className="flex justify-center items-center min-h-[60vh] ">
         <div className="text-center px-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto mb-4" />
           <p className="text-muted-foreground text-sm">Loading property...</p>
@@ -116,7 +116,7 @@ export default function EditPropertyPage() {
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6 mt-16 lg:mt-0 px-2 sm:px-0">
+      <div className="max-w-4xl mx-auto space-y-6  px-2 sm:px-0">
         <button
           onClick={() => router.back()}
           className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
@@ -133,7 +133,7 @@ export default function EditPropertyPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 mt-16 lg:mt-0 px-2 sm:px-0">
+    <div className="max-w-4xl mx-auto space-y-6  px-2 sm:px-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <button

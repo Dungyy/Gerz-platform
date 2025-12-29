@@ -157,3 +157,51 @@ export async function DELETE(request, context) {
     )
   }
 }
+
+export async function PUT(request, context) {
+  try {
+    const { profile, error } = await getAuthedProfile(request)
+    if (error) return error
+
+    if (!['owner', 'manager'].includes(profile.role)) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    // ✅ AWAIT PARAMS FOR NEXT.JS 15+
+    const { id: tenantId } = await context.params
+    
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Missing tenant id' }, { status: 400 })
+    }
+
+    const body = await request.json()
+    const { full_name, email, phone } = body
+
+    console.log('✏️ Updating tenant:', tenantId)
+
+    const { error: uErr } = await supabaseAdmin
+      .from('profiles')
+      .update({ full_name, email, phone })
+      .eq('id', tenantId)
+      .eq('role', 'tenant')
+
+    if (uErr) {
+      console.error('❌ Tenant update error:', uErr)
+      return NextResponse.json({ error: 'Failed to update tenant' }, { status: 500 })
+    }
+
+    console.log('✅ Tenant updated:', tenantId)
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Tenant updated successfully' 
+    })
+    
+  } catch (e) {
+    console.error('❌ Tenant [id] PUT error:', e)
+    return NextResponse.json(
+      { error: e.message || 'Failed to update tenant' },
+      { status: 500 }
+    )
+  }
+}

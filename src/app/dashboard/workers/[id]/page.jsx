@@ -1,3 +1,4 @@
+// app/dashboard/workers/[id]/page.jsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -23,6 +24,8 @@ import {
   Building2,
   BarChart3,
   Trash2,
+  Edit,
+  MoreVertical,
 } from "lucide-react";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import { toast } from "sonner";
@@ -40,7 +43,6 @@ export default function WorkerDetailPage() {
     avgCompletionTime: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState(null);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -58,7 +60,6 @@ export default function WorkerDetailPage() {
         router.push("/login");
         return;
       }
-      setCurrentUser(user);
 
       // Check if user is manager/owner
       const { data: profileData } = await supabase
@@ -114,7 +115,6 @@ export default function WorkerDetailPage() {
 
       setRequests(workerRequests);
 
-      // Calculate stats
       const active = workerRequests.filter(
         (r) => r.status !== "completed" && r.status !== "cancelled"
       ).length;
@@ -126,7 +126,7 @@ export default function WorkerDetailPage() {
         total: workerRequests.length,
         active,
         completed,
-        avgCompletionTime: 0, // TODO: calculate later
+        avgCompletionTime: 0,
       });
     } catch (error) {
       console.error("Error loading requests:", error);
@@ -161,10 +161,12 @@ export default function WorkerDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="flex justify-center items-center min-h-[60vh]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading worker details...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Loading worker details...
+          </p>
         </div>
       </div>
     );
@@ -172,15 +174,17 @@ export default function WorkerDetailPage() {
 
   if (!worker) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="flex justify-center items-center min-h-[60vh] px-4">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Worker Not Found</h2>
-          <p className="text-muted-foreground mb-4">
+          <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-lg sm:text-xl font-semibold mb-2">
+            Worker Not Found
+          </h2>
+          <p className="text-muted-foreground mb-4 text-sm sm:text-base">
             This worker may have been deleted or doesn&apos;t exist.
           </p>
           <Link href="/dashboard/workers">
-            <Button>Back to Workers</Button>
+            <Button className="text-sm sm:text-base">Back to Workers</Button>
           </Link>
         </div>
       </div>
@@ -189,40 +193,52 @@ export default function WorkerDetailPage() {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6 pb-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <button
               onClick={() => router.back()}
-              className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
+              className="grid h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight truncate">
                 {worker.full_name}
               </h1>
-              <p className="text-muted-foreground mt-1">Maintenance Worker</p>
+              <p className="text-muted-foreground mt-0.5 sm:mt-1 text-xs sm:text-sm">
+                Maintenance Worker
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              className="gap-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200 dark:border-red-900"
+              className="gap-2 flex-1 sm:flex-none text-sm"
+              onClick={() =>
+                router.push(`/dashboard/workers/${params.id}/edit`)
+              }
+            >
+              <Edit className="h-4 w-4" />
+              <span className="hidden xs:inline">Edit</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2 flex-1 sm:flex-none text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
               onClick={() => setShowDeleteModal(true)}
             >
               <Trash2 className="h-4 w-4" />
-              Delete
+              <span className="hidden xs:inline">Delete</span>
             </Button>
           </div>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
           <StatCard
-            title="Total Requests"
+            title="Total"
             value={stats.total}
             icon={Wrench}
             color="blue"
@@ -234,13 +250,13 @@ export default function WorkerDetailPage() {
             color="amber"
           />
           <StatCard
-            title="Completed"
+            title="Done"
             value={stats.completed}
             icon={CheckCircle2}
             color="green"
           />
           <StatCard
-            title="Completion Rate"
+            title="Rate"
             value={
               stats.total > 0
                 ? `${Math.round((stats.completed / stats.total) * 100)}%`
@@ -251,24 +267,28 @@ export default function WorkerDetailPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Contact Info */}
             <Card className="shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-lg">Contact Information</CardTitle>
+              <CardHeader className="pb-3 sm:pb-4">
+                <CardTitle className="text-base sm:text-lg">
+                  Contact Information
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 sm:space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-lg bg-blue-500/10">
-                    <Mail className="h-5 w-5 text-blue-600" />
+                  <div className="grid h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 place-items-center rounded-lg bg-blue-500/10">
+                    <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Email</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Email
+                    </p>
                     <a
                       href={`mailto:${worker.email}`}
-                      className="text-sm font-medium hover:underline"
+                      className="text-xs sm:text-sm font-medium hover:underline truncate block"
                     >
                       {worker.email}
                     </a>
@@ -277,14 +297,16 @@ export default function WorkerDetailPage() {
 
                 {worker.phone && (
                   <div className="flex items-center gap-3">
-                    <div className="grid h-10 w-10 place-items-center rounded-lg bg-green-500/10">
-                      <Phone className="h-5 w-5 text-green-600" />
+                    <div className="grid h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 place-items-center rounded-lg bg-green-500/10">
+                      <Phone className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Phone</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        Phone
+                      </p>
                       <a
                         href={`tel:${worker.phone}`}
-                        className="text-sm font-medium hover:underline"
+                        className="text-xs sm:text-sm font-medium hover:underline"
                       >
                         {worker.phone}
                       </a>
@@ -293,12 +315,14 @@ export default function WorkerDetailPage() {
                 )}
 
                 <div className="flex items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-lg bg-purple-500/10">
-                    <Calendar className="h-5 w-5 text-purple-600" />
+                  <div className="grid h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 place-items-center rounded-lg bg-purple-500/10">
+                    <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Joined</p>
-                    <p className="text-sm font-medium">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Joined
+                    </p>
+                    <p className="text-xs sm:text-sm font-medium">
                       {new Date(worker.created_at).toLocaleDateString("en-US", {
                         month: "long",
                         day: "numeric",
@@ -312,16 +336,18 @@ export default function WorkerDetailPage() {
 
             {/* Assigned Requests */}
             <Card className="shadow-sm">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Wrench className="h-5 w-5" />
-                    Assigned Requests ({requests.length})
+              <CardHeader className="pb-3 sm:pb-4">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                    <Wrench className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                    <span className="truncate">
+                      Requests ({requests.length})
+                    </span>
                   </CardTitle>
                   {requests.length > 0 && (
                     <Link
                       href={`/dashboard/requests?worker=${params.id}`}
-                      className="text-sm text-blue-600 hover:underline"
+                      className="text-xs sm:text-sm text-blue-600 hover:underline whitespace-nowrap"
                     >
                       View All
                     </Link>
@@ -330,23 +356,29 @@ export default function WorkerDetailPage() {
               </CardHeader>
               <CardContent>
                 {requests.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="grid h-16 w-16 place-items-center rounded-xl bg-muted mx-auto mb-4">
-                      <Wrench className="h-8 w-8 text-muted-foreground" />
+                  <div className="text-center py-8 sm:py-12">
+                    <div className="grid h-12 w-12 sm:h-16 sm:w-16 place-items-center rounded-xl bg-muted mx-auto mb-3 sm:mb-4">
+                      <Wrench className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
                     </div>
-                    <h3 className="font-semibold mb-2">No Requests Assigned</h3>
-                    <p className="text-muted-foreground text-sm">
+                    <h3 className="font-semibold mb-2 text-sm sm:text-base">
+                      No Requests Assigned
+                    </h3>
+                    <p className="text-muted-foreground text-xs sm:text-sm px-4">
                       This worker hasn&apos;t been assigned any requests yet.
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {requests.slice(0, 5).map((request) => (
                       <RequestCard key={request.id} request={request} />
                     ))}
                     {requests.length > 5 && (
                       <Link href={`/dashboard/requests?worker=${params.id}`}>
-                        <Button variant="outline" className="w-full">
+                        <Button
+                          variant="outline"
+                          className="w-full text-sm"
+                          size="sm"
+                        >
                           View All {requests.length} Requests
                         </Button>
                       </Link>
@@ -358,32 +390,36 @@ export default function WorkerDetailPage() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Profile Card */}
             <Card className="shadow-sm">
-              <CardContent className="pt-6">
-                <div className="text-center mb-4">
-                  <div className="grid h-20 w-20 place-items-center rounded-full bg-foreground text-white font-bold text-2xl mx-auto mb-3 shadow-lg">
+              <CardContent className="pt-4 sm:pt-6">
+                <div className="text-center mb-3 sm:mb-4">
+                  <div className="grid h-16 w-16 sm:h-20 sm:w-20 place-items-center rounded-full bg-foreground text-white font-bold text-xl sm:text-2xl mx-auto mb-2 sm:mb-3 shadow-lg">
                     {worker.full_name?.[0]?.toUpperCase() || "W"}
                   </div>
-                  <h3 className="font-semibold text-lg">{worker.full_name}</h3>
-                  <Badge variant="secondary" className="mt-2">
+                  <h3 className="font-semibold text-base sm:text-lg truncate px-2">
+                    {worker.full_name}
+                  </h3>
+                  <Badge variant="secondary" className="mt-2 text-xs">
                     Maintenance Worker
                   </Badge>
                 </div>
 
-                <Separator className="my-4" />
+                <Separator className="my-3 sm:my-4" />
 
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Organization</span>
-                    <span className="font-medium">
+                <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground truncate">
+                      Organization
+                    </span>
+                    <span className="font-medium truncate text-right">
                       {worker.organization?.name || "N/A"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Status</span>
-                    <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/15">
+                    <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/15 text-xs">
                       Active
                     </Badge>
                   </div>
@@ -393,19 +429,19 @@ export default function WorkerDetailPage() {
 
             {/* Performance */}
             <Card className="shadow-sm border-blue-500/20 bg-blue-500/5">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
+              <CardHeader className="pb-3 sm:pb-4">
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
                   Performance
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 sm:space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-xs sm:text-sm text-muted-foreground">
                       Active Requests
                     </span>
-                    <span className="text-sm font-semibold">
+                    <span className="text-xs sm:text-sm font-semibold">
                       {stats.active}
                     </span>
                   </div>
@@ -425,10 +461,10 @@ export default function WorkerDetailPage() {
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-xs sm:text-sm text-muted-foreground">
                       Completed
                     </span>
-                    <span className="text-sm font-semibold">
+                    <span className="text-xs sm:text-sm font-semibold">
                       {stats.completed}
                     </span>
                   </div>
@@ -449,13 +485,15 @@ export default function WorkerDetailPage() {
                 <Separator />
 
                 <div className="text-center">
-                  <p className="text-3xl font-bold">
+                  <p className="text-2xl sm:text-3xl font-bold">
                     {stats.total > 0
                       ? Math.round((stats.completed / stats.total) * 100)
                       : 0}
                     %
                   </p>
-                  <p className="text-sm text-muted-foreground">Success Rate</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Success Rate
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -463,7 +501,7 @@ export default function WorkerDetailPage() {
         </div>
       </div>
 
-      {/* 🔴 Delete confirmation modal */}
+      {/* Delete confirmation modal */}
       <ConfirmationModal
         isOpen={showDeleteModal}
         onClose={() => {
@@ -491,16 +529,20 @@ function StatCard({ title, value, icon: Icon, color }) {
 
   return (
     <Card className="shadow-sm">
-      <CardContent className="pt-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold mt-2">{value}</p>
+      <CardContent className="pt-4 sm:pt-6 pb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">
+              {title}
+            </p>
+            <p className="text-xl sm:text-2xl lg:text-3xl font-bold mt-1 sm:mt-2">
+              {value}
+            </p>
           </div>
           <div
-            className={`grid h-12 w-12 place-items-center rounded-xl ${colors[color]}`}
+            className={`grid h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 place-items-center rounded-xl ${colors[color]}`}
           >
-            <Icon className="h-6 w-6" />
+            <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
         </div>
       </CardContent>
@@ -512,25 +554,32 @@ function RequestCard({ request }) {
   return (
     <Link
       href={`/dashboard/requests/${request.id}`}
-      className="block rounded-xl border bg-card p-4 hover:bg-muted/30 transition-colors"
+      className="block rounded-lg sm:rounded-xl border bg-card p-3 sm:p-4 hover:bg-muted/30 transition-colors"
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-3 sm:gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-2">
-            <h4 className="font-semibold text-sm">{request.title}</h4>
+            <h4 className="font-semibold text-xs sm:text-sm truncate">
+              {request.title}
+            </h4>
+          </div>
+
+          <div className="flex items-center gap-2 mb-2">
             <PriorityBadge priority={request.priority} />
             <StatusBadge status={request.status} />
           </div>
 
-          <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+          <div className="flex items-start sm:items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground flex-col sm:flex-row">
             {request.property && (
-              <span className="flex items-center gap-1">
-                <Building2 className="h-3 w-3" />
-                {request.property.name} - Unit {request.unit?.unit_number}
+              <span className="flex items-center gap-1 truncate max-w-full">
+                <Building2 className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">
+                  {request.property.name} - Unit {request.unit?.unit_number}
+                </span>
               </span>
             )}
-            <span className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
+            <span className="flex items-center gap-1 whitespace-nowrap">
+              <Clock className="h-3 w-3 flex-shrink-0" />
               {formatDate(request.created_at)}
             </span>
           </div>
@@ -549,7 +598,9 @@ function PriorityBadge({ priority }) {
   };
 
   return (
-    <Badge className={`${variants[priority] || variants.low} text-xs`}>
+    <Badge
+      className={`${variants[priority] || variants.low} text-[10px] sm:text-xs`}
+    >
       {priority}
     </Badge>
   );
@@ -565,7 +616,11 @@ function StatusBadge({ status }) {
   };
 
   return (
-    <Badge className={`${variants[status] || variants.submitted} text-xs`}>
+    <Badge
+      className={`${
+        variants[status] || variants.submitted
+      } text-[10px] sm:text-xs`}
+    >
       {status?.replace("_", " ")}
     </Badge>
   );

@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 "use client";
 
 import { useState } from "react";
@@ -8,7 +9,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Lock, Sparkles, CheckCircle2, ArrowRight } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Mail,
+  Lock,
+  ArrowRight,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import { toast } from "sonner";
@@ -16,8 +30,9 @@ import { toast } from "sonner";
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [useMagicLink, setUseMagicLink] = useState(false);
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
 
   const [formData, setFormData] = useState({
     email: "",
@@ -28,7 +43,7 @@ export default function LoginPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   }
 
-  async function handlePasswordLogin(e) {
+  async function handleLogin(e) {
     e.preventDefault();
     setLoading(true);
 
@@ -40,252 +55,289 @@ export default function LoginPage() {
 
       if (error) throw error;
 
-      console.log("✅ Logged in:", data.user.email);
+      toast.success("Welcome back!");
       router.push("/dashboard");
     } catch (error) {
       console.error("Login error:", error);
-      toast.error(`❌ Login failed: ${error.message}`);
+
+      // Provide user-friendly error messages
+      let errorMessage = "Login failed. Please try again.";
+      if (error.message.includes("Invalid login credentials")) {
+        errorMessage =
+          "Invalid email or password. Please check your credentials.";
+      } else if (error.message.includes("Email not confirmed")) {
+        errorMessage = "Please verify your email address before signing in.";
+      }
+
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleMagicLinkLogin(e) {
+  async function handlePasswordReset(e) {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://dingy.app";
+      const siteUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+      const redirectTo = `${siteUrl}/reset-password`;
 
-      const redirectTo = `${siteUrl}/auth/callback`;
-
-      console.log("✨ Sending magic link redirectTo:", redirectTo);
-
-      const { error } = await supabase.auth.signInWithOtp({
-        email: formData.email,
-        options: {
-          emailRedirectTo: redirectTo,
-        },
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo,
       });
 
       if (error) throw error;
 
-      setMagicLinkSent(true);
+      setResetEmailSent(true);
+      toast.success("Password reset email sent!");
     } catch (error) {
-      console.error("Magic link error:", error);
-      toast.error(`❌ Failed to send magic link: ${error.message}`);
+      console.error("Password reset error:", error);
+      toast.error(`Failed to send reset email: ${error.message}`);
     } finally {
       setLoading(false);
     }
   }
 
-  if (magicLinkSent) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        {/* Background accents */}
-        <div className="pointer-events-none fixed inset-0 -z-10">
-          <div className="absolute left-[-120px] top-[-120px] h-[320px] w-[320px] rounded-full bg-green-500/10 blur-3xl" />
-          <div className="absolute right-[-140px] bottom-[-160px] h-[360px] w-[360px] rounded-full bg-blue-500/10 blur-3xl" />
-        </div>
-
-        <Card className="w-full max-w-md shadow-sm">
-          <CardHeader className="text-center">
-            <div className="grid h-16 w-16 place-items-center rounded-xl bg-green-500/10 mx-auto mb-4">
-              <Mail className="h-8 w-8 text-green-600" />
-            </div>
-            <CardTitle className="text-2xl">Check Your Email!</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-muted-foreground">We've sent a magic link to:</p>
-            <Badge variant="secondary" className="text-base px-4 py-2">
-              {formData.email}
-            </Badge>
-            <div className="p-4 rounded-lg border bg-blue-500/5 border-blue-500/20 text-left space-y-2">
-              <p className="text-sm font-medium flex items-start gap-2">
-                <CheckCircle2 className="h-4 w-4 mt-0.5 text-blue-600" />
-                Click the link in your email to sign in
-              </p>
-              <p className="text-xs text-muted-foreground pl-6">
-                The link will expire in 1 hour. Check your spam folder if you
-                don't see it.
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setMagicLinkSent(false);
-                setUseMagicLink(false);
-              }}
-              className="w-full"
-            >
-              Back to Login
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  function closeForgotPasswordModal() {
+    setShowForgotPassword(false);
+    setResetEmailSent(false);
+    setResetEmail("");
   }
 
   return (
     <main>
       <Navbar />
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4 py-20">
         {/* Background accents */}
         <div className="pointer-events-none fixed inset-0 -z-10">
           <div className="absolute left-[-120px] top-[-120px] h-[320px] w-[320px] rounded-full bg-blue-500/10 blur-3xl" />
           <div className="absolute right-[-140px] top-[180px] h-[360px] w-[360px] rounded-full bg-indigo-500/10 blur-3xl" />
         </div>
 
-        <Card className="w-full max-w-md shadow-sm">
-          <CardHeader className="text-center">
+        <Card className="w-full max-w-md shadow-sm border-border/50">
+          <CardHeader className="text-center space-y-3">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 justify-center mb-6"
+              className="inline-flex items-center gap-2 justify-center mb-2 hover:opacity-80 transition-opacity"
             >
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-foreground text-background font-bold">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-foreground text-background font-bold text-lg">
                 d
               </div>
               <div className="leading-tight text-left">
-                <div className="font-semibold">dingy.app</div>
+                <div className="font-semibold text-lg">dingy.app</div>
                 <div className="text-xs text-muted-foreground">
                   Maintenance Requests
                 </div>
               </div>
             </Link>
             <CardTitle className="text-3xl tracking-tight">Sign In</CardTitle>
-            <p className="text-muted-foreground mt-2">
-              Welcome back! Sign in to your account
+            <p className="text-muted-foreground">
+              Welcome back! Please enter your credentials
             </p>
           </CardHeader>
 
           <CardContent>
-            {/* Toggle Between Password and Magic Link */}
-            <div className="flex gap-2 mb-6">
-              <Button
-                type="button"
-                variant={!useMagicLink ? "default" : "outline"}
-                onClick={() => setUseMagicLink(false)}
-                className="flex-1"
-                size="sm"
-              >
-                <Lock className="h-4 w-4 mr-2" />
-                Password
-              </Button>
-              <Button
-                type="button"
-                variant={useMagicLink ? "default" : "outline"}
-                onClick={() => setUseMagicLink(true)}
-                className="flex-1"
-                size="sm"
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                Magic Link
-              </Button>
-            </div>
-
-            {/* Password Login Form */}
-            {!useMagicLink && (
-              <form onSubmit={handlePasswordLogin} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Email
-                  </label>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="email" className="block text-sm font-medium">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
+                    id="email"
                     type="email"
                     name="email"
                     placeholder="you@example.com"
                     value={formData.email}
                     onChange={handleChange}
+                    className="pl-10"
                     required
+                    autoComplete="email"
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium"
+                  >
                     Password
                   </label>
-                  <Input
-                    type="password"
-                    name="password"
-                    placeholder="••••••••"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  size="lg"
-                  disabled={loading}
-                >
-                  {loading ? "Signing in..." : "Sign In"}
-                  {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
-                </Button>
-
-                <div className="text-center text-sm">
-                  <Link
-                    href="/forgot-password"
-                    className="text-blue-600 hover:underline"
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium"
                   >
                     Forgot password?
-                  </Link>
+                  </button>
                 </div>
-              </form>
-            )}
-
-            {/* Magic Link Form */}
-            {useMagicLink && (
-              <form onSubmit={handleMagicLinkLogin} className="space-y-4">
-                <div className="p-3 rounded-lg border bg-blue-500/5 border-blue-500/20 mb-4">
-                  <p className="text-sm flex items-start gap-2">
-                    <Sparkles className="h-4 w-4 mt-0.5 text-blue-600" />
-                    <span>
-                      Enter your email and we'll send you a magic link to sign
-                      in - no password needed!
-                    </span>
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Email
-                  </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    type="email"
-                    name="email"
-                    placeholder="you@example.com"
-                    value={formData.email}
+                    id="password"
+                    type="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    value={formData.password}
                     onChange={handleChange}
+                    className="pl-10"
                     required
+                    autoComplete="current-password"
                   />
                 </div>
+              </div>
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  size="lg"
-                  disabled={loading}
-                >
-                  {loading ? "Sending..." : "Send Magic Link"}
-                  {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
-                </Button>
-              </form>
-            )}
-
-            <div className="text-center text-sm text-muted-foreground mt-6">
-              Don't have an account?{" "}
-              <Link
-                href="/signup"
-                className="text-blue-600 hover:underline font-semibold"
+              <Button
+                type="submit"
+                className="w-full mt-6"
+                size="lg"
+                disabled={loading}
               >
-                Sign up
-              </Link>
+                {loading ? (
+                  <>
+                    <span className="mr-2">Signing in...</span>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                  </>
+                ) : (
+                  <>
+                    Sign In
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </form>
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  New to dingy.app?
+                </span>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">
+                Don't have an account?{" "}
+                <Link
+                  href="/signup"
+                  className="text-blue-600 hover:text-blue-700 hover:underline font-semibold"
+                >
+                  Create an account
+                </Link>
+              </p>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Forgot Password Modal */}
+      <Dialog open={showForgotPassword} onOpenChange={closeForgotPasswordModal}>
+        <DialogContent className="sm:max-w-md">
+          {!resetEmailSent ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-2xl">Reset Password</DialogTitle>
+                <DialogDescription>
+                  Enter your email address and we'll send you a link to reset
+                  your password.
+                </DialogDescription>
+              </DialogHeader>
+
+              <form onSubmit={handlePasswordReset} className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="reset-email"
+                    className="block text-sm font-medium"
+                  >
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      className="pl-10"
+                      required
+                      autoComplete="email"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={closeForgotPasswordModal}
+                    className="flex-1"
+                    disabled={loading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={loading}>
+                    {loading ? "Sending..." : "Send Reset Link"}
+                  </Button>
+                </div>
+              </form>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-green-500/10">
+                  <CheckCircle2 className="h-8 w-8 text-green-600" />
+                </div>
+                <DialogTitle className="text-2xl text-center">
+                  Check Your Email
+                </DialogTitle>
+                <DialogDescription className="text-center">
+                  We've sent a password reset link to:
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 mt-4">
+                <Badge
+                  variant="secondary"
+                  className="text-base px-4 py-2 w-full justify-center"
+                >
+                  {resetEmail}
+                </Badge>
+
+                <div className="p-4 rounded-lg border bg-blue-500/5 border-blue-500/20 space-y-2">
+                  <p className="text-sm font-medium flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                    <span>
+                      Click the link in your email to create a new password
+                    </span>
+                  </p>
+                  <p className="text-xs text-muted-foreground pl-6">
+                    The link will expire in 1 hour. Check your spam folder if
+                    you don't see it.
+                  </p>
+                </div>
+
+                <Button
+                  onClick={closeForgotPasswordModal}
+                  className="w-full"
+                  variant="outline"
+                >
+                  Back to Login
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Footer />
     </main>
   );

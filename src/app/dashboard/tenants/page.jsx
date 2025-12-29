@@ -114,36 +114,35 @@ export default function TenantsPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="flex justify-center items-center min-h-[60vh]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading tenants...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground text-sm">Loading tenants...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 pb-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Tenants</h2>
-          <p className="text-muted-foreground mt-1">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            Tenants
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             {tenants.length} total {tenants.length === 1 ? "tenant" : "tenants"}
           </p>
         </div>
 
-        <div className="flex gap-2">
-          {/* <Link href="/dashboard/tenants/new">
-            <Button variant="outline" className="gap-2">
-              <Plus className="h-5 w-5" />
-              Add Tenant
-            </Button>
-          </Link> */}
-          <Button onClick={() => setShowInviteModal(true)} className="gap-2">
-            <Mail className="h-5 w-5" />
-            Invite Tenant
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button
+            onClick={() => setShowInviteModal(true)}
+            className="gap-2 w-full sm:w-auto"
+          >
+            <Mail className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="text-sm sm:text-base">Invite Tenant</span>
           </Button>
         </div>
       </div>
@@ -151,18 +150,20 @@ export default function TenantsPage() {
       {/* Error Message */}
       {error && (
         <Card className="shadow-sm border-red-500/20 bg-red-500/5">
-          <CardContent className="py-4 text-red-700">{error}</CardContent>
+          <CardContent className="py-3 sm:py-4 text-red-700 text-sm">
+            {error}
+          </CardContent>
         </Card>
       )}
 
       {/* Search */}
       <Card className="shadow-sm">
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 sm:pt-6 pb-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
             <Input
-              placeholder="Search tenants by name or email..."
-              className="pl-10"
+              placeholder="Search tenants..."
+              className="pl-9 sm:pl-10 text-sm sm:text-base h-10 sm:h-11"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -173,37 +174,33 @@ export default function TenantsPage() {
       {/* Grid */}
       {filteredTenants.length === 0 ? (
         <Card className="shadow-sm">
-          <CardContent className="py-12 text-center">
-            <div className="grid h-16 w-16 place-items-center rounded-xl bg-muted mx-auto mb-4">
-              <User className="h-8 w-8 text-muted-foreground" />
+          <CardContent className="py-8 sm:py-12 text-center">
+            <div className="grid h-12 w-12 sm:h-16 sm:w-16 place-items-center rounded-xl bg-muted mx-auto mb-3 sm:mb-4">
+              <User className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">No tenants found</h3>
-            <p className="text-muted-foreground mb-4">
+            <h3 className="text-base sm:text-lg font-semibold mb-2">
+              No tenants found
+            </h3>
+            <p className="text-muted-foreground mb-4 text-sm sm:text-base px-4">
               {searchQuery
                 ? "Try a different search term"
                 : "Invite your first tenant to get started"}
             </p>
             {!searchQuery && (
-              <div className="flex gap-2 justify-center">
-                {/* <Link href="/dashboard/tenants/new">
-                  <Button variant="outline" className="gap-2">
-                    <Plus className="h-5 w-5" />
-                    Add Tenant
-                  </Button>
-                </Link> */}
+              <div className="flex gap-2 justify-center px-4">
                 <Button
                   onClick={() => setShowInviteModal(true)}
-                  className="gap-2"
+                  className="gap-2 w-full sm:w-auto"
                 >
-                  <Mail className="h-5 w-5" />
-                  Invite Tenant
+                  <Mail className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="text-sm sm:text-base">Invite Tenant</span>
                 </Button>
               </div>
             )}
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           {filteredTenants.map((tenant) => {
             const unit = Array.isArray(tenant.unit)
               ? tenant.unit[0]
@@ -211,45 +208,45 @@ export default function TenantsPage() {
             return (
               <Link key={tenant.id} href={`/dashboard/tenants/${tenant.id}`}>
                 <Card className="shadow-sm hover:shadow-md transition-all cursor-pointer h-full border border-transparent hover:border-border">
-                  <CardContent className="pt-6">
-                    <div className="flex items-start gap-3 mb-4">
-                      <div className="grid h-12 w-12 place-items-center rounded-full bg-foreground text-background font-semibold text-lg">
+                  <CardContent className="pt-4 sm:pt-6 pb-4">
+                    <div className="flex items-start gap-3 mb-3 sm:mb-4">
+                      <div className="grid h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 place-items-center rounded-full bg-foreground text-background font-semibold text-base sm:text-lg">
                         {tenant.full_name?.[0]?.toUpperCase() || "T"}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold truncate">
+                        <h3 className="font-semibold truncate text-sm sm:text-base">
                           {tenant.full_name}
                         </h3>
                         {unit?.unit_number ? (
-                          <Badge variant="secondary" className="mt-1">
+                          <Badge variant="secondary" className="mt-1 text-xs">
                             Unit {unit.unit_number}
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="mt-1">
+                          <Badge variant="outline" className="mt-1 text-xs">
                             No Unit
                           </Badge>
                         )}
                       </div>
                     </div>
 
-                    <div className="space-y-2 mb-4">
+                    <div className="space-y-2 mb-3 sm:mb-4">
                       {tenant.email && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Mail className="h-4 w-4 flex-shrink-0" />
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                          <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                           <span className="truncate">{tenant.email}</span>
                         </div>
                       )}
 
                       {tenant.phone && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Phone className="h-4 w-4 flex-shrink-0" />
-                          <span>{tenant.phone}</span>
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                          <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                          <span className="truncate">{tenant.phone}</span>
                         </div>
                       )}
 
                       {unit?.property?.name && (
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <div className="flex items-start gap-2 text-xs sm:text-sm text-muted-foreground">
+                          <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 mt-0.5 flex-shrink-0" />
                           <span className="line-clamp-2">
                             {unit.property.name}
                           </span>
@@ -257,14 +254,14 @@ export default function TenantsPage() {
                       )}
                     </div>
 
-                    <div className="flex items-center justify-between pt-4 border-t">
-                      <p className="text-xs text-muted-foreground">
+                    <div className="flex items-center justify-between pt-3 sm:pt-4 border-t">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">
                         Joined{" "}
                         {tenant.created_at
                           ? new Date(tenant.created_at).toLocaleDateString()
                           : "—"}
                       </p>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
                     </div>
                   </CardContent>
                 </Card>

@@ -150,7 +150,7 @@ export default function PropertyDetailPage() {
   // Loading
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh] mt-16 lg:mt-0">
+      <div className="flex justify-center items-center min-h-[60vh]">
         <div className="text-center px-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto mb-4" />
           <p className="text-muted-foreground text-sm">Loading property...</p>
@@ -162,15 +162,15 @@ export default function PropertyDetailPage() {
   // Error
   if (error) {
     return (
-      <div className="space-y-6 mt-16 lg:mt-0">
+      <div className="space-y-4 sm:space-y-6 pb-6">
         <button
           onClick={() => router.back()}
-          className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
+          className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
         </button>
         <Card className="shadow-sm border-red-500/20 bg-red-500/5">
-          <CardContent className="py-4 text-red-700 text-sm">
+          <CardContent className="py-3 sm:py-4 text-red-700 text-sm">
             Error: {error}
           </CardContent>
         </Card>
@@ -181,15 +181,17 @@ export default function PropertyDetailPage() {
   // Not found
   if (!property) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh] mt-16 lg:mt-0">
+      <div className="flex justify-center items-center min-h-[60vh]">
         <div className="text-center px-4">
-          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Property Not Found</h2>
-          <p className="text-muted-foreground mb-4 text-sm">
+          <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-lg sm:text-xl font-semibold mb-2">
+            Property Not Found
+          </h2>
+          <p className="text-muted-foreground mb-4 text-sm sm:text-base">
             This property may have been deleted.
           </p>
           <Link href="/dashboard/properties">
-            <Button>Back to Properties</Button>
+            <Button className="text-sm sm:text-base">Back to Properties</Button>
           </Link>
         </div>
       </div>
@@ -229,23 +231,23 @@ export default function PropertyDetailPage() {
   const paginatedUnits = filteredUnits.slice(startIndex, endIndex);
 
   return (
-    <div className="space-y-6 mt-16 lg:mt-0">
+    <div className="space-y-4 sm:space-y-6 pb-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:gap-4">
         <div className="flex items-start gap-3">
           <button
             onClick={() => router.back()}
-            className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border mt-1 md:mt-0"
+            className="grid h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border mt-0.5 sm:mt-0"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
-          <div className="min-w-0">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight truncate">
               {property.name}
             </h2>
-            <p className="text-muted-foreground mt-1 flex items-start sm:items-center gap-1.5 text-sm flex-wrap">
-              <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-              <span className="leading-snug">
+            <p className="text-muted-foreground mt-0.5 sm:mt-1 flex items-start gap-1.5 text-xs sm:text-sm">
+              <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 mt-0.5 flex-shrink-0" />
+              <span className="leading-snug line-clamp-2">
                 {property.address}, {property.city}, {property.state}{" "}
                 {property.zip_code || property.zip}
               </span>
@@ -253,47 +255,29 @@ export default function PropertyDetailPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 md:justify-end">
-          <Link href={`/dashboard/properties/${params.id}/edit`}>
-            <Button variant="outline" className="gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/dashboard/properties/${params.id}/edit`}
+            className="flex-1 sm:flex-none"
+          >
+            <Button variant="outline" className="gap-2 w-full text-sm">
               <Edit className="h-4 w-4" />
-              <span>Edit</span>
+              <span className="hidden xs:inline">Edit</span>
             </Button>
           </Link>
-          {/* <Button
+          <Button
             variant="outline"
-            className="gap-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200 dark:border-red-900 w-full sm:w-auto"
+            className="gap-2 flex-1 sm:flex-none text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
             onClick={() => setShowDeletePropertyModal(true)}
           >
             <Trash2 className="h-4 w-4" />
-            <span>Delete</span>
-          </Button> */}
+            <span className="hidden xs:inline">Delete</span>
+          </Button>
         </div>
       </div>
 
-      {/* Warning for occupied units */}
-      {occupiedUnits > 0 && (
-        <Card className="shadow-sm border-orange-500/20 bg-orange-500/5">
-          <CardContent className="py-4 flex items-start gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-lg bg-orange-500/10 flex-shrink-0">
-              <User className="h-5 w-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="font-semibold text-orange-900 text-sm">
-                {occupiedUnits} Occupied Unit
-                {occupiedUnits > 1 ? "s" : ""}
-              </p>
-              <p className="text-sm text-orange-700 mt-1">
-                This property has active tenants. Make sure to notify them
-                before making changes.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
         <StatCard
           title="Total Units"
           value={units.length}
@@ -313,56 +297,60 @@ export default function PropertyDetailPage() {
           color="orange"
         />
         <StatCard
-          title="Occupancy Rate"
+          title="Occupancy"
           value={`${occupancyRate}%`}
           icon={Calendar}
           color="purple"
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Units */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           <Card className="shadow-sm">
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <CardTitle className="text-base sm:text-lg">
-                  Units ({filteredUnits.length}
-                  {filteredUnits.length !== units.length &&
-                    ` of ${units.length}`}
-                  )
-                </CardTitle>
-                <Button
-                  size="sm"
-                  className="gap-2 w-full sm:w-auto"
-                  onClick={() => setShowAddUnitModal(true)}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Unit
-                </Button>
+            <CardHeader className="pb-3 sm:pb-4">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base sm:text-lg">
+                    Units ({filteredUnits.length}
+                    {filteredUnits.length !== units.length &&
+                      ` of ${units.length}`}
+                    )
+                  </CardTitle>
+                  <Button
+                    size="sm"
+                    className="gap-1 sm:gap-2 h-8 sm:h-9 text-xs sm:text-sm"
+                    onClick={() => setShowAddUnitModal(true)}
+                  >
+                    <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden xs:inline">Add Unit</span>
+                    <span className="xs:hidden">Add</span>
+                  </Button>
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+
+            <CardContent className="space-y-3 sm:space-y-4">
               {/* Search & Filter */}
               {units.length > 5 && (
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <div className="flex flex-col gap-2 sm:gap-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search by unit #, tenant, or floor..."
-                      className="pl-9"
+                      placeholder="Search units..."
+                      className="pl-9 sm:pl-10 text-sm h-9 sm:h-10"
                       value={unitSearch}
                       onChange={(e) => setUnitSearch(e.target.value)}
                     />
                   </div>
-                  <div className="flex gap-2 overflow-x-auto sm:overflow-visible">
+                  <div className="flex gap-2 overflow-x-auto pb-1">
                     <Button
                       variant={unitFilter === "all" ? "default" : "outline"}
                       size="sm"
                       onClick={() => setUnitFilter("all")}
-                      className="gap-1 whitespace-nowrap"
+                      className="gap-1 whitespace-nowrap h-8 text-xs sm:text-sm"
                     >
-                      <Filter className="h-4 w-4" />
+                      <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       All
                     </Button>
                     <Button
@@ -371,7 +359,7 @@ export default function PropertyDetailPage() {
                       }
                       size="sm"
                       onClick={() => setUnitFilter("occupied")}
-                      className="whitespace-nowrap"
+                      className="whitespace-nowrap h-8 text-xs sm:text-sm"
                     >
                       Occupied
                     </Button>
@@ -379,7 +367,7 @@ export default function PropertyDetailPage() {
                       variant={unitFilter === "vacant" ? "default" : "outline"}
                       size="sm"
                       onClick={() => setUnitFilter("vacant")}
-                      className="whitespace-nowrap"
+                      className="whitespace-nowrap h-8 text-xs sm:text-sm"
                     >
                       Vacant
                     </Button>
@@ -389,14 +377,14 @@ export default function PropertyDetailPage() {
 
               {/* Units List */}
               {filteredUnits.length === 0 ? (
-                <div className="text-center py-10 sm:py-12 px-4">
-                  <div className="grid h-16 w-16 place-items-center rounded-xl bg-muted mx-auto mb-4">
-                    <Home className="h-8 w-8 text-muted-foreground" />
+                <div className="text-center py-8 sm:py-10 lg:py-12 px-4">
+                  <div className="grid h-12 w-12 sm:h-16 sm:w-16 place-items-center rounded-xl bg-muted mx-auto mb-3 sm:mb-4">
+                    <Home className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
                   </div>
-                  <h3 className="font-semibold mb-2 text-base sm:text-lg">
+                  <h3 className="font-semibold mb-2 text-sm sm:text-base lg:text-lg">
                     {units.length === 0 ? "No Units Yet" : "No Units Found"}
                   </h3>
-                  <p className="text-muted-foreground text-sm mb-4">
+                  <p className="text-muted-foreground text-xs sm:text-sm mb-4">
                     {units.length === 0
                       ? "Add units to this property to start managing tenants."
                       : "Try adjusting your search or filter."}
@@ -404,7 +392,7 @@ export default function PropertyDetailPage() {
                   {units.length === 0 && (
                     <Button
                       size="sm"
-                      className="gap-2"
+                      className="gap-2 text-xs sm:text-sm"
                       onClick={() => setShowAddUnitModal(true)}
                     >
                       <Plus className="h-4 w-4" />
@@ -415,8 +403,8 @@ export default function PropertyDetailPage() {
               ) : (
                 <>
                   <div className="space-y-2">
-                    {/* Desktop header */}
-                    <div className="hidden md:grid md:grid-cols-12 gap-4 px-4 py-2 text-xs font-medium text-muted-foreground border-b">
+                    {/* Desktop header - hidden on mobile */}
+                    <div className="hidden lg:grid lg:grid-cols-12 gap-4 px-4 py-2 text-xs font-medium text-muted-foreground border-b">
                       <div className="col-span-2">Unit #</div>
                       <div className="col-span-1">Floor</div>
                       <div className="col-span-2">Beds/Baths</div>
@@ -432,8 +420,8 @@ export default function PropertyDetailPage() {
                         key={unit.id}
                         className="border rounded-lg hover:bg-muted/30 transition-colors"
                       >
-                        {/* Desktop row */}
-                        <div className="hidden md:grid md:grid-cols-12 gap-4 items-center p-4">
+                        {/* Desktop row - hidden on tablet and mobile */}
+                        <div className="hidden lg:grid lg:grid-cols-12 gap-4 items-center p-4">
                           <div className="col-span-2 font-semibold text-sm">
                             Unit {unit.unit_number}
                           </div>
@@ -468,8 +456,8 @@ export default function PropertyDetailPage() {
                             <Badge
                               className={
                                 unit.tenant
-                                  ? "bg-green-500/15 text-green-700 hover:bg-green-500/15"
-                                  : "bg-orange-500/15 text-orange-700 hover:bg-orange-500/15"
+                                  ? "bg-green-500/15 text-green-700 hover:bg-green-500/15 text-xs"
+                                  : "bg-orange-500/15 text-orange-700 hover:bg-orange-500/15 text-xs"
                               }
                             >
                               {unit.tenant ? "Occupied" : "Vacant"}
@@ -482,7 +470,7 @@ export default function PropertyDetailPage() {
                                 size="sm"
                                 onClick={() => openDeleteUnitModal(unit)}
                                 disabled={deletingUnitId === unit.id}
-                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -490,12 +478,12 @@ export default function PropertyDetailPage() {
                           </div>
                         </div>
 
-                        {/* Mobile card */}
-                        <div className="md:hidden p-4 space-y-3">
+                        {/* Mobile/Tablet card */}
+                        <div className="lg:hidden p-3 sm:p-4 space-y-3">
                           <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                              <div className="grid h-10 w-10 place-items-center rounded-lg bg-blue-500/10 flex-shrink-0">
-                                <Home className="h-5 w-5 text-blue-600" />
+                            <div className="flex items-center gap-2 sm:gap-3">
+                              <div className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-lg bg-blue-500/10 flex-shrink-0">
+                                <Home className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                               </div>
                               <div>
                                 <p className="font-semibold text-sm">
@@ -512,8 +500,8 @@ export default function PropertyDetailPage() {
                               <Badge
                                 className={
                                   unit.tenant
-                                    ? "bg-green-500/15 text-green-700 hover:bg-green-500/15"
-                                    : "bg-orange-500/15 text-orange-700 hover:bg-orange-500/15"
+                                    ? "bg-green-500/15 text-green-700 hover:bg-green-500/15 text-[10px] sm:text-xs"
+                                    : "bg-orange-500/15 text-orange-700 hover:bg-orange-500/15 text-[10px] sm:text-xs"
                                 }
                               >
                                 {unit.tenant ? "Occupied" : "Vacant"}
@@ -524,9 +512,9 @@ export default function PropertyDetailPage() {
                                   size="sm"
                                   onClick={() => openDeleteUnitModal(unit)}
                                   disabled={deletingUnitId === unit.id}
-                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                 </Button>
                               )}
                             </div>
@@ -535,7 +523,7 @@ export default function PropertyDetailPage() {
                           {(unit.bedrooms ||
                             unit.bathrooms ||
                             unit.square_feet) && (
-                            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                            <div className="flex flex-wrap gap-2 sm:gap-3 text-xs text-muted-foreground">
                               {unit.bedrooms && (
                                 <span>{unit.bedrooms} bed</span>
                               )}
@@ -552,7 +540,7 @@ export default function PropertyDetailPage() {
 
                           {unit.tenant && (
                             <div>
-                              <p className="text-xs text-muted-foreground mb-1">
+                              <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">
                                 Tenant
                               </p>
                               <Link
@@ -570,7 +558,7 @@ export default function PropertyDetailPage() {
 
                   {/* Pagination */}
                   {totalPages > 1 && (
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t text-sm">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t text-xs sm:text-sm">
                       <p className="text-muted-foreground">
                         Showing {startIndex + 1}-
                         {Math.min(endIndex, filteredUnits.length)} of{" "}
@@ -584,12 +572,12 @@ export default function PropertyDetailPage() {
                             setCurrentPage((p) => Math.max(1, p - 1))
                           }
                           disabled={currentPage === 1}
-                          className="gap-1"
+                          className="gap-1 h-8 text-xs sm:text-sm"
                         >
-                          <ChevronLeft className="h-4 w-4" />
-                          <span className="hidden sm:inline">Prev</span>
+                          <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <span className="hidden xs:inline">Prev</span>
                         </Button>
-                        <span className="text-muted-foreground">
+                        <span className="text-muted-foreground whitespace-nowrap">
                           Page {currentPage} of {totalPages}
                         </span>
                         <Button
@@ -599,10 +587,10 @@ export default function PropertyDetailPage() {
                             setCurrentPage((p) => Math.min(totalPages, p + 1))
                           }
                           disabled={currentPage === totalPages}
-                          className="gap-1"
+                          className="gap-1 h-8 text-xs sm:text-sm"
                         >
-                          <span className="hidden sm:inline">Next</span>
-                          <ChevronRight className="h-4 w-4" />
+                          <span className="hidden xs:inline">Next</span>
+                          <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                       </div>
                     </div>
@@ -614,16 +602,18 @@ export default function PropertyDetailPage() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Property Info */}
           <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Property Details</CardTitle>
+            <CardHeader className="pb-3 sm:pb-4">
+              <CardTitle className="text-base sm:text-lg">
+                Property Details
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm">
+            <CardContent className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Type</span>
-                <Badge variant="secondary" className="capitalize">
+                <Badge variant="secondary" className="capitalize text-xs">
                   {property.property_type || "Property"}
                 </Badge>
               </div>
@@ -642,12 +632,12 @@ export default function PropertyDetailPage() {
 
               {property.description && (
                 <>
-                  <Separator className="my-3" />
+                  <Separator className="my-2 sm:my-3" />
                   <div>
-                    <p className="text-muted-foreground mb-2 text-sm">
+                    <p className="text-muted-foreground mb-2 text-xs sm:text-sm">
                       Description
                     </p>
-                    <p className="text-sm">{property.description}</p>
+                    <p className="text-xs sm:text-sm">{property.description}</p>
                   </div>
                 </>
               )}
@@ -657,21 +647,21 @@ export default function PropertyDetailPage() {
           {/* Manager */}
           {property.manager && (
             <Card className="shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <User className="h-5 w-5" />
+              <CardHeader className="pb-3 sm:pb-4">
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <User className="h-4 w-4 sm:h-5 sm:w-5" />
                   Property Manager
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm">
+              <CardContent className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
                 <p className="font-semibold">{property.manager.full_name}</p>
 
                 {property.manager.email && (
                   <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
                     <a
                       href={`mailto:${property.manager.email}`}
-                      className="text-blue-600 hover:underline"
+                      className="text-blue-600 hover:underline truncate"
                     >
                       {property.manager.email}
                     </a>
@@ -680,7 +670,7 @@ export default function PropertyDetailPage() {
 
                 {property.manager.phone && (
                   <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
                     <a
                       href={`tel:${property.manager.phone}`}
                       className="text-blue-600 hover:underline"
@@ -695,16 +685,16 @@ export default function PropertyDetailPage() {
 
           {/* Danger Zone */}
           <Card className="shadow-sm border-red-500/20">
-            <CardHeader>
-              <CardTitle className="text-lg text-red-600">
+            <CardHeader className="pb-3 sm:pb-4">
+              <CardTitle className="text-base sm:text-lg text-red-600">
                 Danger Zone
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground mb-3">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-3">
                 Deleting this property will permanently remove:
               </p>
-              <ul className="text-sm text-muted-foreground mb-4 space-y-1">
+              <ul className="text-xs sm:text-sm text-muted-foreground mb-4 space-y-1">
                 <li>
                   • All {units.length} unit{units.length !== 1 ? "s" : ""}
                 </li>
@@ -719,10 +709,10 @@ export default function PropertyDetailPage() {
               </ul>
               <Button
                 variant="outline"
-                className="w-full gap-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-700 border-red-200 dark:border-red-900"
+                className="w-full gap-2 text-xs sm:text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-700  "
                 onClick={() => setShowDeletePropertyModal(true)}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 Delete Property
               </Button>
             </CardContent>
@@ -759,7 +749,7 @@ export default function PropertyDetailPage() {
             </span>
             .
           </p>
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="p-3 bg-red-50 border  rounded-lg">
             <p className="font-medium text-red-900 mb-2">
               This will permanently remove:
             </p>
@@ -820,18 +810,20 @@ function StatCard({ title, value, icon: Icon, color }) {
 
   return (
     <Card className="shadow-sm">
-      <CardContent className="pt-5 pb-5 sm:pt-6">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs sm:text-sm text-muted-foreground">{title}</p>
-            <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">
+      <CardContent className="pt-4 sm:pt-5 lg:pt-6 pb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground truncate">
+              {title}
+            </p>
+            <p className="text-xl sm:text-2xl lg:text-3xl font-bold mt-0.5 sm:mt-1 lg:mt-2">
               {value}
             </p>
           </div>
           <div
-            className={`grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-xl ${colors[color]}`}
+            className={`grid h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 flex-shrink-0 place-items-center rounded-xl ${colors[color]}`}
           >
-            <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
           </div>
         </div>
       </CardContent>

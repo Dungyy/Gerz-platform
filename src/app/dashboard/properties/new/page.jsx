@@ -245,7 +245,7 @@ export default function NewPropertyPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 mt-16 lg:mt-0 px-2 sm:px-0">
+    <div className="max-w-4xl mx-auto space-y-6  px-2 sm:px-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <button

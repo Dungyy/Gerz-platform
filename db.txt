@@ -645,179 +645,70 @@ CHECK (role IN ('tenant', 'worker', 'manager'));
 
 -----
 
-## 📁 COMPLETE PROJECT STRUCTURE
-```
-gerz/
-├── app/
-│   ├── (auth)/
-│   │   ├── login/
-│   │   │   └── page.jsx
-│   │   ├── signup/
-│   │   │   └── page.jsx
-│   │   └── layout.jsx
-│   │
-│   ├── (dashboard)/
-│   │   ├── layout.jsx              # Main dashboard layout with sidebar
-│   │   ├── page.jsx                # Dashboard home
-│   │   │
-│   │   ├── requests/
-│   │   │   ├── page.jsx            # All requests list
-│   │   │   ├── new/
-│   │   │   │   └── page.jsx        # New request form
-│   │   │   └── [id]/
-│   │   │       └── page.jsx        # Request detail
-│   │   │
-│   │   ├── properties/
-│   │   │   ├── page.jsx            # All properties
-│   │   │   ├── new/
-│   │   │   │   └── page.jsx        # Add property
-│   │   │   └── [id]/
-│   │   │       ├── page.jsx        # Property detail
-│   │   │       └── units/
-│   │   │           ├── page.jsx    # Units list
-│   │   │           └── new/
-│   │   │               └── page.jsx # Add unit
-│   │   │
-│   │   ├── tenants/
-│   │   │   ├── page.jsx            # All tenants
-│   │   │   └── new/
-│   │   │       └── page.jsx        # Add tenant
-│   │   │
-│   │   ├── staff/
-│   │   │   ├── page.jsx            # Maintenance staff
-│   │   │   └── new/
-│   │   │       └── page.jsx        # Add staff
-│   │   │
-│   │   ├── settings/
-│   │   │   ├── page.jsx            # Organization settings
-│   │   │   ├── profile/
-│   │   │   │   └── page.jsx        # User profile
-│   │   │   └── billing/
-│   │   │       └── page.jsx        # Billing & subscription
-│   │   │
-│   │   └── reports/
-│   │       └── page.jsx            # Analytics & reports
-│   │
-│   ├── api/
-│   │   ├── auth/
-│   │   │   ├── signup/
-│   │   │   │   └── route.js
-│   │   │   └── session/
-│   │   │       └── route.js
-│   │   │
-│   │   ├── organizations/
-│   │   │   ├── route.js            # GET, POST
-│   │   │   └── [id]/
-│   │   │       └── route.js        # GET, PUT, DELETE
-│   │   │
-│   │   ├── properties/
-│   │   │   ├── route.js
-│   │   │   └── [id]/
-│   │   │       └── route.js
-│   │   │
-│   │   ├── units/
-│   │   │   ├── route.js
-│   │   │   └── [id]/
-│   │   │       └── route.js
-│   │   │
-│   │   ├── requests/
-│   │   │   ├── route.js
-│   │   │   └── [id]/
-│   │   │       ├── route.js
-│   │   │       ├── assign/
-│   │   │       │   └── route.js
-│   │   │       ├── status/
-│   │   │       │   └── route.js
-│   │   │       └── comments/
-│   │   │           └── route.js
-│   │   │
-│   │   ├── tenants/
-│   │   │   ├── route.js
-│   │   │   └── [id]/
-│   │   │       └── route.js
-│   │   │
-│   │   ├── staff/
-│   │   │   ├── route.js
-│   │   │   └── [id]/
-│   │   │       └── route.js
-│   │   │
-│   │   ├── upload/
-│   │   │   └── route.js            # File upload
-│   │   │
-│   │   ├── notifications/
-│   │   │   ├── new-request/
-│   │   │   │   └── route.js
-│   │   │   ├── status-update/
-│   │   │   │   └── route.js
-│   │   │   └── assignment/
-│   │   │       └── route.js
-│   │   │
-│   │   └── webhooks/
-│   │       └── stripe/
-│   │           └── route.js        # Stripe webhooks
-│   │
-│   ├── layout.jsx                  # Root layout
-│   └── page.jsx                    # Landing page
-│
-├── components/
-│   ├── ui/                         # shadcn components
-│   │   ├── button.jsx
-│   │   ├── card.jsx
-│   │   ├── input.jsx
-│   │   ├── select.jsx
-│   │   ├── textarea.jsx
-│   │   ├── dialog.jsx
-│   │   ├── table.jsx
-│   │   ├── badge.jsx
-│   │   └── avatar.jsx
-│   │
-│   ├── layout/
-│   │   ├── sidebar.jsx
-│   │   ├── header.jsx
-│   │   └── navbar.jsx
-│   │
-│   ├── requests/
-│   │   ├── request-form.jsx
-│   │   ├── request-card.jsx
-│   │   ├── request-list.jsx
-│   │   ├── request-detail.jsx
-│   │   ├── status-badge.jsx
-│   │   ├── priority-badge.jsx
-│   │   └── assign-modal.jsx
-│   │
-│   ├── properties/
-│   │   ├── property-form.jsx
-│   │   ├── property-card.jsx
-│   │   └── property-selector.jsx
-│   │
-│   ├── units/
-│   │   ├── unit-form.jsx
-│   │   └── unit-card.jsx
-│   │
-│   ├── comments/
-│   │   ├── comment-list.jsx
-│   │   └── comment-form.jsx
-│   │
-│   └── shared/
-│       ├── loading.jsx
-│       ├── error.jsx
-│       └── empty-state.jsx
-│
-├── lib/
-│   ├── supabase.js                 # Supabase client
-│   ├── supabase-server.js          # Server-side Supabase
-│   ├── auth.js                     # Auth helpers
-│   ├── email.js                    # Email templates
-│   ├── validations.js              # Zod schemas
-│   └── utils.js                    # Utility functions
-│
-├── hooks/
-│   ├── use-user.js
-│   ├── use-organization.js
-│   └── use-requests.js
-│
-├── .env.local
-├── jsconfig.json
-├── next.config.js
-├── package.json
-└── tailwind.config.js
+
+
+-- Add usage tracking table
+CREATE TABLE IF NOT EXISTS organization_usage (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  month DATE NOT NULL,
+  requests_created INTEGER DEFAULT 0,
+  sms_sent INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(organization_id, month)
+);
+
+CREATE INDEX idx_org_usage_org_month ON organization_usage(organization_id, month DESC);
+
+ALTER TABLE organization_usage ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their org usage"
+  ON organization_usage FOR SELECT
+  USING (
+    organization_id IN (
+      SELECT organization_id FROM profiles WHERE id = auth.uid()
+    )
+  );
+
+-- Auto-increment function
+CREATE OR REPLACE FUNCTION increment_usage(
+  org_id UUID,
+  usage_type TEXT,
+  amount INTEGER DEFAULT 1
+)
+RETURNS VOID AS $$
+DECLARE
+  current_month DATE := date_trunc('month', NOW())::DATE;
+BEGIN
+  INSERT INTO organization_usage (organization_id, month, requests_created, sms_sent)
+  VALUES (
+    org_id, 
+    current_month,
+    CASE WHEN usage_type = 'requests' THEN amount ELSE 0 END,
+    CASE WHEN usage_type = 'sms' THEN amount ELSE 0 END
+  )
+  ON CONFLICT (organization_id, month)
+  DO UPDATE SET
+    requests_created = organization_usage.requests_created + 
+      CASE WHEN usage_type = 'requests' THEN amount ELSE 0 END,
+    sms_sent = organization_usage.sms_sent + 
+      CASE WHEN usage_type = 'sms' THEN amount ELSE 0 END,
+    updated_at = NOW();
+END;
+$$ LANGUAGE plpgsql;
+
+-- Auto-increment when request is created
+CREATE OR REPLACE FUNCTION auto_increment_requests()
+RETURNS TRIGGER AS $$
+BEGIN
+  PERFORM increment_usage(NEW.organization_id, 'requests', 1);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER auto_count_requests
+  AFTER INSERT ON maintenance_requests
+  FOR EACH ROW
+  EXECUTE FUNCTION auto_increment_requests();
+

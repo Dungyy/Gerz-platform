@@ -93,6 +93,157 @@ export async function GET(request, context) {
   }
 }
 
+export async function PUT(request, context) {
+  try {
+    const { id } = await context.params;
+
+    console.log("📝 Attempting to update manager:", id);
+
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.replace("Bearer ", "");
+
+    if (!token) {
+      console.error("❌ No auth token");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      console.error("❌ Auth error:", authError);
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    console.log("✅ Authenticated user:", user.email);
+
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("role, organization_id")
+      .eq("id", user.id)
+      .single();
+
+    // Only owners can edit managers
+    if (profile?.role !== "owner") {
+      console.error("❌ Insufficient permissions:", profile?.role);
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    console.log("✅ User is owner");
+
+    // Check if manager exists & same org
+    const { data: manager, error: managerError } = await supabaseAdmin
+      .from("profiles")
+      .select("id, organization_id, full_name, role, email")
+      .eq("id", id)
+      .eq("role", "manager")
+      .single();
+
+    if (managerError || !manager) {
+      console.error("❌ Manager lookup error:", managerError);
+      return NextResponse.json({ error: "Manager not found" }, { status: 404 });
+    }
+
+    if (manager.organization_id !== profile.organization_id) {
+      console.error("❌ Organization mismatch");
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    console.log(
+      "✅ Found manager:",
+      manager.full_name,
+      "- Org:",
+      manager.organization_id
+    );
+
+    // Parse request body
+    const body = await request.json();
+    const { full_name, email, phone } = body;
+
+    // Validate required fields
+    if (!full_name || !email) {
+      return NextResponse.json(
+        { error: "Full name and email are required" },
+        { status: 400 }
+      );
+    }
+
+    // Check if email is being changed and if it's already in use
+    if (email !== manager.email) {
+      const { data: existingUser } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .eq("email", email)
+        .neq("id", id)
+        .single();
+
+      if (existingUser) {
+        return NextResponse.json(
+          { error: "Email address is already in use" },
+          { status: 400 }
+        );
+      }
+
+      // Update auth user email
+      try {
+        const { error: authUpdateError } =
+          await supabaseAdmin.auth.admin.updateUserById(id, {
+            email: email,
+          });
+
+        if (authUpdateError) {
+          console.error("❌ Error updating auth email:", authUpdateError);
+          throw authUpdateError;
+        }
+        console.log("✅ Auth email updated");
+      } catch (authUpdateError) {
+        console.error("❌ Error updating auth user email:", authUpdateError);
+        return NextResponse.json(
+          { error: "Failed to update email address" },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Update profile
+    const updateData = {
+      full_name,
+      email,
+      phone: phone || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: updatedManager, error: updateError } = await supabaseAdmin
+      .from("profiles")
+      .update(updateData)
+      .eq("id", id)
+      .eq("role", "manager")
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error("❌ Profile update error:", updateError);
+      throw updateError;
+    }
+
+    console.log("✅ Manager profile updated:", updatedManager.full_name);
+
+    return NextResponse.json({
+      success: true,
+      message: "Manager updated successfully",
+      manager: updatedManager,
+    });
+  } catch (error) {
+    console.error("❌ Error updating manager:", error);
+    return NextResponse.json(
+      { error: error.message || "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(request, context) {
   try {
     const { id } = await context.params;
