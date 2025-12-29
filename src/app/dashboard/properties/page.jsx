@@ -5,14 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { fetchWithAuth } from "@/lib/api-helper";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Building2,
   MapPin,
-  Users,
   Plus,
   Search,
   ArrowRight,
@@ -41,7 +40,6 @@ export default function PropertiesPage() {
         return;
       }
 
-      // Check if user is manager/owner
       const { data: profileData } = await supabase
         .from("profiles")
         .select("role")
@@ -92,50 +90,56 @@ export default function PropertiesPage() {
     }
   }
 
-  const filteredProperties = properties.filter(
-    (property) =>
-      property.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      property.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      property.city?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProperties = properties.filter((property) => {
+    const q = searchQuery.toLowerCase();
+    return (
+      property.name?.toLowerCase().includes(q) ||
+      property.address?.toLowerCase().includes(q) ||
+      property.city?.toLowerCase().includes(q)
+    );
+  });
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading properties...</p>
+      <div className="flex justify-center items-center min-h-[60vh] mt-16 lg:mt-0">
+        <div className="text-center px-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground text-sm">Loading properties...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mt-16 lg:mt-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Properties</h2>
-          <p className="text-muted-foreground mt-1">
+        <div className="w-full sm:w-auto">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            Properties
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm">
             {properties.length}{" "}
             {properties.length === 1 ? "property" : "properties"}
           </p>
         </div>
 
         {canCreate && (
-          <Link href="/dashboard/properties/new">
-            <Button className="gap-2">
-              <Plus className="h-5 w-5" />
-              Add Property
-            </Button>
-          </Link>
+          <div className="w-full sm:w-auto flex sm:justify-end">
+            <Link href="/dashboard/properties/new" className="w-full sm:w-auto">
+              <Button className="gap-2 w-full sm:w-auto">
+                <Plus className="h-5 w-5" />
+                <span className="truncate">Add Property</span>
+              </Button>
+            </Link>
+          </div>
         )}
       </div>
 
       {/* Error Message */}
       {error && (
         <Card className="shadow-sm border-red-500/20 bg-red-500/5">
-          <CardContent className="py-4 text-red-700">
+          <CardContent className="py-4 text-red-700 text-sm">
             Error: {error}
           </CardContent>
         </Card>
@@ -159,15 +163,15 @@ export default function PropertiesPage() {
       {/* Properties Grid */}
       {filteredProperties.length === 0 ? (
         <Card className="shadow-sm">
-          <CardContent className="py-12 text-center">
+          <CardContent className="py-10 sm:py-12 text-center px-4">
             <div className="grid h-16 w-16 place-items-center rounded-xl bg-muted mx-auto mb-4">
               <Building2 className="h-8 w-8 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-semibold mb-2">No properties found</h3>
-            <p className="text-muted-foreground mb-4">
+            <p className="text-muted-foreground mb-4 text-sm">
               {searchQuery
-                ? "Try a different search term"
-                : "Add your first property to get started"}
+                ? "Try a different search term."
+                : "Add your first property to get started."}
             </p>
             {!searchQuery && canCreate && (
               <Link href="/dashboard/properties/new">
@@ -180,7 +184,7 @@ export default function PropertiesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           {filteredProperties.map((property) => {
             const unitCount =
               property.units_count ??
@@ -192,27 +196,31 @@ export default function PropertiesPage() {
               <Link
                 key={property.id}
                 href={`/dashboard/properties/${property.id}`}
+                className="block h-full"
               >
                 <Card className="shadow-sm hover:shadow-md transition-all cursor-pointer h-full border border-transparent hover:border-border">
-                  <CardContent className="pt-6">
+                  <CardContent className="pt-6 pb-4 flex flex-col h-full">
                     {/* Header */}
                     <div className="flex items-start gap-3 mb-4">
-                      <div className="grid h-12 w-12 place-items-center rounded-lg bg-blue-500/10">
-                        <Building2 className="h-6 w-6 text-blue-600" />
+                      <div className="grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-lg bg-blue-500/10 flex-shrink-0">
+                        <Building2 className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-lg truncate">
+                        <h3 className="font-semibold text-base sm:text-lg truncate">
                           {property.name}
                         </h3>
-                        <Badge variant="secondary" className="mt-1 capitalize">
+                        <Badge
+                          variant="secondary"
+                          className="mt-1 capitalize text-[11px] sm:text-xs"
+                        >
                           {property.property_type || "Property"}
                         </Badge>
                       </div>
                     </div>
 
                     {/* Address */}
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <div className="space-y-2 mb-4 text-sm">
+                      <div className="flex items-start gap-2 text-muted-foreground">
                         <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
                         <span className="line-clamp-2">
                           {property.address}
@@ -221,31 +229,31 @@ export default function PropertiesPage() {
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2 text-muted-foreground">
                         <Home className="h-4 w-4 flex-shrink-0" />
                         <span>
                           {unitCount} {unitCount === 1 ? "unit" : "units"}
                         </span>
                       </div>
                     </div>
-                    {console.log(property)}
+
                     {/* Footer */}
-                    <div className="flex items-center justify-between pt-4 border-t">
+                    <div className="flex items-center justify-between pt-3 mt-auto border-t">
                       {property.manager?.full_name ? (
-                        <div>
-                          <p className="text-xs text-muted-foreground">
+                        <div className="min-w-0">
+                          <p className="text-[11px] text-muted-foreground">
                             Manager
                           </p>
-                          <p className="text-sm font-medium truncate">
+                          <p className="text-xs sm:text-sm font-medium truncate">
                             {property.manager.full_name}
                           </p>
                         </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-[11px] text-muted-foreground">
                           No manager assigned
                         </span>
                       )}
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     </div>
                   </CardContent>
                 </Card>

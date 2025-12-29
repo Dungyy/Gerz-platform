@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
-
 export default function EditPropertyPage() {
   const params = useParams();
   const router = useRouter();
@@ -29,6 +28,7 @@ export default function EditPropertyPage() {
   });
 
   useEffect(() => {
+    if (!params?.id) return;
     loadProperty();
   }, [params.id]);
 
@@ -52,7 +52,6 @@ export default function EditPropertyPage() {
         throw new Error(data?.error || "Failed to load property");
       }
 
-      // Populate form with existing data
       setFormData({
         name: data.name || "",
         address: data.address || "",
@@ -84,7 +83,7 @@ export default function EditPropertyPage() {
         method: "PUT",
         body: JSON.stringify({
           ...formData,
-          zip_code: formData.zip, // Map zip to zip_code for DB
+          zip_code: formData.zip,
         }),
       });
 
@@ -106,10 +105,10 @@ export default function EditPropertyPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading property...</p>
+      <div className="flex justify-center items-center min-h-[60vh] mt-16 lg:mt-0">
+        <div className="text-center px-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground text-sm">Loading property...</p>
         </div>
       </div>
     );
@@ -117,7 +116,7 @@ export default function EditPropertyPage() {
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6 mt-16 lg:mt-0 px-2 sm:px-0">
         <button
           onClick={() => router.back()}
           className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
@@ -125,7 +124,7 @@ export default function EditPropertyPage() {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <Card className="shadow-sm border-red-500/20 bg-red-500/5">
-          <CardContent className="py-4 text-red-700">
+          <CardContent className="py-4 text-red-700 text-sm">
             Error: {error}
           </CardContent>
         </Card>
@@ -134,9 +133,9 @@ export default function EditPropertyPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 mt-16 lg:mt-0 px-2 sm:px-0">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <button
           onClick={() => router.back()}
           className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
@@ -144,8 +143,10 @@ export default function EditPropertyPage() {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Edit Property</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            Edit Property
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
             Update property information
           </p>
         </div>
@@ -175,8 +176,8 @@ export default function EditPropertyPage() {
             <CardTitle className="text-lg">Property Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-2">
                   Property Name <span className="text-red-500">*</span>
                 </label>
@@ -189,7 +190,7 @@ export default function EditPropertyPage() {
                 />
               </div>
 
-              <div className="col-span-2">
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-2">
                   Street Address <span className="text-red-500">*</span>
                 </label>
@@ -274,7 +275,7 @@ export default function EditPropertyPage() {
                 />
               </div>
 
-              <div className="col-span-2">
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-2">
                   Description
                 </label>
@@ -290,8 +291,12 @@ export default function EditPropertyPage() {
           </CardContent>
         </Card>
 
-        <div className="flex gap-4">
-          <Button type="submit" disabled={saving} className="gap-2">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <Button
+            type="submit"
+            disabled={saving}
+            className="gap-2 w-full sm:w-auto"
+          >
             {saving ? "Saving Changes..." : "Save Changes"}
           </Button>
           <Button
@@ -299,6 +304,7 @@ export default function EditPropertyPage() {
             variant="outline"
             onClick={() => router.back()}
             disabled={saving}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>

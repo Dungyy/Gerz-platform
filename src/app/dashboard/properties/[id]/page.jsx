@@ -35,7 +35,6 @@ export default function PropertyDetailPage() {
   const params = useParams();
   const router = useRouter();
 
-  // ✅ ALL STATE HOOKS FIRST (SAME ORDER EVERY RENDER)
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -46,15 +45,14 @@ export default function PropertyDetailPage() {
   const [showAddUnitModal, setShowAddUnitModal] = useState(false);
   const [deletingUnitId, setDeletingUnitId] = useState(null);
 
-  // ✅ CONFIRMATION MODALS STATE
   const [showDeletePropertyModal, setShowDeletePropertyModal] = useState(false);
   const [showDeleteUnitModal, setShowDeleteUnitModal] = useState(false);
   const [unitToDelete, setUnitToDelete] = useState(null);
 
   const unitsPerPage = 20;
 
-  // ✅ ALL EFFECTS TOGETHER (AFTER STATE HOOKS)
   useEffect(() => {
+    if (!params?.id) return;
     loadProperty();
   }, [params.id]);
 
@@ -149,22 +147,22 @@ export default function PropertyDetailPage() {
     setShowDeleteUnitModal(true);
   }
 
-  // ✅ LOADING STATE
+  // Loading
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading property...</p>
+      <div className="flex justify-center items-center min-h-[60vh] mt-16 lg:mt-0">
+        <div className="text-center px-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground text-sm">Loading property...</p>
         </div>
       </div>
     );
   }
 
-  // ✅ ERROR STATE
+  // Error
   if (error) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 mt-16 lg:mt-0">
         <button
           onClick={() => router.back()}
           className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
@@ -172,7 +170,7 @@ export default function PropertyDetailPage() {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <Card className="shadow-sm border-red-500/20 bg-red-500/5">
-          <CardContent className="py-4 text-red-700">
+          <CardContent className="py-4 text-red-700 text-sm">
             Error: {error}
           </CardContent>
         </Card>
@@ -180,14 +178,14 @@ export default function PropertyDetailPage() {
     );
   }
 
-  // ✅ NOT FOUND STATE
+  // Not found
   if (!property) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
+      <div className="flex justify-center items-center min-h-[60vh] mt-16 lg:mt-0">
+        <div className="text-center px-4">
           <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Property Not Found</h2>
-          <p className="text-muted-foreground mb-4">
+          <p className="text-muted-foreground mb-4 text-sm">
             This property may have been deleted.
           </p>
           <Link href="/dashboard/properties">
@@ -198,14 +196,12 @@ export default function PropertyDetailPage() {
     );
   }
 
-  // ✅ CALCULATE STATS (AFTER EARLY RETURNS)
   const units = property.units || [];
   const occupiedUnits = units.filter((u) => u.tenant_id).length;
   const vacantUnits = units.length - occupiedUnits;
   const occupancyRate =
     units.length > 0 ? Math.round((occupiedUnits / units.length) * 100) : 0;
 
-  // ✅ FILTER UNITS
   const filteredUnits = units
     .filter((unit) => {
       const searchLower = unitSearch.toLowerCase();
@@ -227,50 +223,51 @@ export default function PropertyDetailPage() {
       return (a.unit_number || "").localeCompare(b.unit_number || "");
     });
 
-  // ✅ PAGINATION
   const totalPages = Math.ceil(filteredUnits.length / unitsPerPage);
   const startIndex = (currentPage - 1) * unitsPerPage;
   const endIndex = startIndex + unitsPerPage;
   const paginatedUnits = filteredUnits.slice(startIndex, endIndex);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mt-16 lg:mt-0">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex items-start gap-3">
           <button
             onClick={() => router.back()}
-            className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
+            className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border mt-1 md:mt-0"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">
+          <div className="min-w-0">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
               {property.name}
             </h2>
-            <p className="text-muted-foreground mt-1 flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              {property.address}, {property.city}, {property.state}{" "}
-              {property.zip_code || property.zip}
+            <p className="text-muted-foreground mt-1 flex items-start sm:items-center gap-1.5 text-sm flex-wrap">
+              <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <span className="leading-snug">
+                {property.address}, {property.city}, {property.state}{" "}
+                {property.zip_code || property.zip}
+              </span>
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap gap-2 md:justify-end">
           <Link href={`/dashboard/properties/${params.id}/edit`}>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2 w-full sm:w-auto">
               <Edit className="h-4 w-4" />
-              Edit
+              <span>Edit</span>
             </Button>
           </Link>
-          <Button
+          {/* <Button
             variant="outline"
-            className="gap-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200 dark:border-red-900"
+            className="gap-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200 dark:border-red-900 w-full sm:w-auto"
             onClick={() => setShowDeletePropertyModal(true)}
           >
             <Trash2 className="h-4 w-4" />
-            Delete
-          </Button>
+            <span>Delete</span>
+          </Button> */}
         </div>
       </div>
 
@@ -278,12 +275,13 @@ export default function PropertyDetailPage() {
       {occupiedUnits > 0 && (
         <Card className="shadow-sm border-orange-500/20 bg-orange-500/5">
           <CardContent className="py-4 flex items-start gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-lg bg-orange-500/10">
+            <div className="grid h-10 w-10 place-items-center rounded-lg bg-orange-500/10 flex-shrink-0">
               <User className="h-5 w-5 text-orange-600" />
             </div>
             <div>
-              <p className="font-semibold text-orange-900">
-                {occupiedUnits} Occupied Unit{occupiedUnits > 1 ? "s" : ""}
+              <p className="font-semibold text-orange-900 text-sm">
+                {occupiedUnits} Occupied Unit
+                {occupiedUnits > 1 ? "s" : ""}
               </p>
               <p className="text-sm text-orange-700 mt-1">
                 This property has active tenants. Make sure to notify them
@@ -295,7 +293,7 @@ export default function PropertyDetailPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           title="Total Units"
           value={units.length}
@@ -327,8 +325,8 @@ export default function PropertyDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           <Card className="shadow-sm">
             <CardHeader>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <CardTitle className="text-lg">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <CardTitle className="text-base sm:text-lg">
                   Units ({filteredUnits.length}
                   {filteredUnits.length !== units.length &&
                     ` of ${units.length}`}
@@ -336,7 +334,7 @@ export default function PropertyDetailPage() {
                 </CardTitle>
                 <Button
                   size="sm"
-                  className="gap-2"
+                  className="gap-2 w-full sm:w-auto"
                   onClick={() => setShowAddUnitModal(true)}
                 >
                   <Plus className="h-4 w-4" />
@@ -357,12 +355,12 @@ export default function PropertyDetailPage() {
                       onChange={(e) => setUnitSearch(e.target.value)}
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 overflow-x-auto sm:overflow-visible">
                     <Button
                       variant={unitFilter === "all" ? "default" : "outline"}
                       size="sm"
                       onClick={() => setUnitFilter("all")}
-                      className="gap-1"
+                      className="gap-1 whitespace-nowrap"
                     >
                       <Filter className="h-4 w-4" />
                       All
@@ -373,6 +371,7 @@ export default function PropertyDetailPage() {
                       }
                       size="sm"
                       onClick={() => setUnitFilter("occupied")}
+                      className="whitespace-nowrap"
                     >
                       Occupied
                     </Button>
@@ -380,6 +379,7 @@ export default function PropertyDetailPage() {
                       variant={unitFilter === "vacant" ? "default" : "outline"}
                       size="sm"
                       onClick={() => setUnitFilter("vacant")}
+                      className="whitespace-nowrap"
                     >
                       Vacant
                     </Button>
@@ -389,11 +389,11 @@ export default function PropertyDetailPage() {
 
               {/* Units List */}
               {filteredUnits.length === 0 ? (
-                <div className="text-center py-12">
+                <div className="text-center py-10 sm:py-12 px-4">
                   <div className="grid h-16 w-16 place-items-center rounded-xl bg-muted mx-auto mb-4">
                     <Home className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <h3 className="font-semibold mb-2">
+                  <h3 className="font-semibold mb-2 text-base sm:text-lg">
                     {units.length === 0 ? "No Units Yet" : "No Units Found"}
                   </h3>
                   <p className="text-muted-foreground text-sm mb-4">
@@ -414,17 +414,16 @@ export default function PropertyDetailPage() {
                 </div>
               ) : (
                 <>
-                  {/* Responsive Table/Cards */}
                   <div className="space-y-2">
-                    {/* Desktop Table Header */}
-                    <div className="hidden md:grid md:grid-cols-12 gap-4 px-4 py-2 text-sm font-medium text-muted-foreground border-b">
+                    {/* Desktop header */}
+                    <div className="hidden md:grid md:grid-cols-12 gap-4 px-4 py-2 text-xs font-medium text-muted-foreground border-b">
                       <div className="col-span-2">Unit #</div>
                       <div className="col-span-1">Floor</div>
                       <div className="col-span-2">Beds/Baths</div>
                       <div className="col-span-2">Sq Ft</div>
                       <div className="col-span-2">Tenant</div>
                       <div className="col-span-2">Status</div>
-                      <div className="col-span-1">Actions</div>
+                      <div className="col-span-1 text-right">Actions</div>
                     </div>
 
                     {/* Units */}
@@ -433,34 +432,34 @@ export default function PropertyDetailPage() {
                         key={unit.id}
                         className="border rounded-lg hover:bg-muted/30 transition-colors"
                       >
-                        {/* Desktop View - Table Row */}
+                        {/* Desktop row */}
                         <div className="hidden md:grid md:grid-cols-12 gap-4 items-center p-4">
-                          <div className="col-span-2 font-semibold">
+                          <div className="col-span-2 font-semibold text-sm">
                             Unit {unit.unit_number}
                           </div>
-                          <div className="col-span-1 text-sm text-muted-foreground">
+                          <div className="col-span-1 text-xs text-muted-foreground">
                             {unit.floor ? `Floor ${unit.floor}` : "—"}
                           </div>
-                          <div className="col-span-2 text-sm text-muted-foreground">
+                          <div className="col-span-2 text-xs text-muted-foreground">
                             {unit.bedrooms && unit.bathrooms
                               ? `${unit.bedrooms}/${unit.bathrooms}`
                               : "—"}
                           </div>
-                          <div className="col-span-2 text-sm text-muted-foreground">
+                          <div className="col-span-2 text-xs text-muted-foreground">
                             {unit.square_feet
                               ? `${unit.square_feet.toLocaleString()} sq ft`
                               : "—"}
                           </div>
-                          <div className="col-span-2">
+                          <div className="col-span-2 text-sm">
                             {unit.tenant ? (
                               <Link
                                 href={`/dashboard/tenants/${unit.tenant_id}`}
-                                className="text-sm text-blue-600 hover:underline"
+                                className="text-blue-600 hover:underline"
                               >
                                 {unit.tenant.full_name}
                               </Link>
                             ) : (
-                              <span className="text-sm text-muted-foreground">
+                              <span className="text-muted-foreground text-xs">
                                 —
                               </span>
                             )}
@@ -476,7 +475,7 @@ export default function PropertyDetailPage() {
                               {unit.tenant ? "Occupied" : "Vacant"}
                             </Badge>
                           </div>
-                          <div className="col-span-1">
+                          <div className="col-span-1 flex justify-end">
                             {!unit.tenant && (
                               <Button
                                 variant="ghost"
@@ -491,15 +490,15 @@ export default function PropertyDetailPage() {
                           </div>
                         </div>
 
-                        {/* Mobile View - Card */}
+                        {/* Mobile card */}
                         <div className="md:hidden p-4 space-y-3">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-start justify-between gap-3">
                             <div className="flex items-center gap-3">
-                              <div className="grid h-10 w-10 place-items-center rounded-lg bg-blue-500/10">
+                              <div className="grid h-10 w-10 place-items-center rounded-lg bg-blue-500/10 flex-shrink-0">
                                 <Home className="h-5 w-5 text-blue-600" />
                               </div>
                               <div>
-                                <p className="font-semibold">
+                                <p className="font-semibold text-sm">
                                   Unit {unit.unit_number}
                                 </p>
                                 {unit.floor && (
@@ -536,7 +535,7 @@ export default function PropertyDetailPage() {
                           {(unit.bedrooms ||
                             unit.bathrooms ||
                             unit.square_feet) && (
-                            <div className="flex gap-4 text-sm text-muted-foreground">
+                            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                               {unit.bedrooms && (
                                 <span>{unit.bedrooms} bed</span>
                               )}
@@ -571,8 +570,8 @@ export default function PropertyDetailPage() {
 
                   {/* Pagination */}
                   {totalPages > 1 && (
-                    <div className="flex items-center justify-between pt-4 border-t">
-                      <p className="text-sm text-muted-foreground">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t text-sm">
+                      <p className="text-muted-foreground">
                         Showing {startIndex + 1}-
                         {Math.min(endIndex, filteredUnits.length)} of{" "}
                         {filteredUnits.length}
@@ -590,7 +589,7 @@ export default function PropertyDetailPage() {
                           <ChevronLeft className="h-4 w-4" />
                           <span className="hidden sm:inline">Prev</span>
                         </Button>
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-muted-foreground">
                           Page {currentPage} of {totalPages}
                         </span>
                         <Button
@@ -645,7 +644,9 @@ export default function PropertyDetailPage() {
                 <>
                   <Separator className="my-3" />
                   <div>
-                    <p className="text-muted-foreground mb-2">Description</p>
+                    <p className="text-muted-foreground mb-2 text-sm">
+                      Description
+                    </p>
                     <p className="text-sm">{property.description}</p>
                   </div>
                 </>
@@ -662,13 +663,11 @@ export default function PropertyDetailPage() {
                   Property Manager
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <p className="font-semibold">{property.manager.full_name}</p>
-                </div>
+              <CardContent className="space-y-3 text-sm">
+                <p className="font-semibold">{property.manager.full_name}</p>
 
                 {property.manager.email && (
-                  <div className="flex items-center gap-2 text-sm">
+                  <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <a
                       href={`mailto:${property.manager.email}`}
@@ -680,7 +679,7 @@ export default function PropertyDetailPage() {
                 )}
 
                 {property.manager.phone && (
-                  <div className="flex items-center gap-2 text-sm">
+                  <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-muted-foreground" />
                     <a
                       href={`tel:${property.manager.phone}`}
@@ -731,7 +730,7 @@ export default function PropertyDetailPage() {
         </div>
       </div>
 
-      {/* ✅ ADD UNIT MODAL */}
+      {/* Add Unit Modal */}
       <AddUnitModal
         isOpen={showAddUnitModal}
         onClose={() => setShowAddUnitModal(false)}
@@ -742,7 +741,7 @@ export default function PropertyDetailPage() {
         }}
       />
 
-      {/* ✅ DELETE PROPERTY CONFIRMATION */}
+      {/* Delete Property Confirmation */}
       <ConfirmationModal
         isOpen={showDeletePropertyModal}
         onClose={() => setShowDeletePropertyModal(false)}
@@ -752,8 +751,8 @@ export default function PropertyDetailPage() {
         confirmText="Delete Property"
         loading={deleting}
       >
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
+        <div className="space-y-3 text-sm">
+          <p className="text-muted-foreground">
             You are about to permanently delete{" "}
             <span className="font-semibold text-foreground">
               {property.name}
@@ -761,10 +760,10 @@ export default function PropertyDetailPage() {
             .
           </p>
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm font-medium text-red-900 mb-2">
+            <p className="font-medium text-red-900 mb-2">
               This will permanently remove:
             </p>
-            <ul className="text-sm text-red-700 space-y-1">
+            <ul className="text-red-700 space-y-1">
               <li>
                 • All {units.length} unit{units.length !== 1 ? "s" : ""}
               </li>
@@ -778,13 +777,13 @@ export default function PropertyDetailPage() {
               <li>• All property history</li>
             </ul>
           </div>
-          <p className="text-sm font-semibold text-red-600">
+          <p className="font-semibold text-red-600">
             This action cannot be undone!
           </p>
         </div>
       </ConfirmationModal>
 
-      {/* ✅ DELETE UNIT CONFIRMATION */}
+      {/* Delete Unit Confirmation */}
       <ConfirmationModal
         isOpen={showDeleteUnitModal}
         onClose={() => {
@@ -821,16 +820,18 @@ function StatCard({ title, value, icon: Icon, color }) {
 
   return (
     <Card className="shadow-sm">
-      <CardContent className="pt-6">
-        <div className="flex items-center justify-between">
+      <CardContent className="pt-5 pb-5 sm:pt-6">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold mt-2">{value}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">{title}</p>
+            <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">
+              {value}
+            </p>
           </div>
           <div
-            className={`grid h-12 w-12 place-items-center rounded-xl ${colors[color]}`}
+            className={`grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-xl ${colors[color]}`}
           >
-            <Icon className="h-6 w-6" />
+            <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
         </div>
       </CardContent>

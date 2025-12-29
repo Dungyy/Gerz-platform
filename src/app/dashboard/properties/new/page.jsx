@@ -245,9 +245,9 @@ export default function NewPropertyPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 mt-16 lg:mt-0 px-2 sm:px-0">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <button
           onClick={() => router.back()}
           className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
@@ -255,8 +255,10 @@ export default function NewPropertyPage() {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Add Property</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            Add Property
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
             Create a new property with units
           </p>
         </div>
@@ -287,14 +289,14 @@ export default function NewPropertyPage() {
             <CardTitle className="text-lg">Property Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 name="name"
                 placeholder="Property Name *"
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="col-span-2"
+                className="md:col-span-2"
               />
 
               <Input
@@ -303,7 +305,7 @@ export default function NewPropertyPage() {
                 value={formData.address}
                 onChange={handleChange}
                 required
-                className="col-span-2"
+                className="md:col-span-2"
               />
 
               <Input
@@ -354,7 +356,7 @@ export default function NewPropertyPage() {
                 placeholder="Description (optional)"
                 value={formData.description}
                 onChange={handleChange}
-                className="col-span-2"
+                className="md:col-span-2"
                 rows={3}
               />
             </div>
@@ -364,9 +366,9 @@ export default function NewPropertyPage() {
         {/* Units */}
         <Card className="shadow-sm">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
               <CardTitle className="text-lg">Units ({units.length})</CardTitle>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -376,6 +378,7 @@ export default function NewPropertyPage() {
                 >
                   <Upload className="h-4 w-4" />
                   <span className="hidden sm:inline">Bulk Import</span>
+                  <span className="sm:hidden">Bulk</span>
                 </Button>
                 <Button
                   type="button"
@@ -414,7 +417,7 @@ export default function NewPropertyPage() {
                       className="hidden"
                     />
                     <Button type="button" variant="outline" size="sm" asChild>
-                      <span className="gap-1">
+                      <span className="inline-flex items-center gap-1">
                         <Upload className="h-4 w-4" />
                         Import CSV
                       </span>
@@ -440,13 +443,13 @@ export default function NewPropertyPage() {
               </div>
             )}
 
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="space-y-3 max-h-[26rem] overflow-y-auto">
               {units.map((unit, index) => (
                 <div
                   key={index}
-                  className="flex gap-3 items-start p-3 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  className="flex flex-col sm:flex-row gap-3 items-start p-3 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
                 >
-                  <div className="grid grid-cols-5 gap-2 flex-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 flex-1 w-full">
                     <Input
                       placeholder="Unit #"
                       value={unit.unit_number}
@@ -454,7 +457,7 @@ export default function NewPropertyPage() {
                         updateUnit(index, "unit_number", e.target.value)
                       }
                       required
-                      className="text-sm"
+                      className="text-sm col-span-2 sm:col-span-1"
                     />
                     <Input
                       placeholder="Floor"
@@ -515,8 +518,12 @@ export default function NewPropertyPage() {
         </Card>
 
         {/* Actions */}
-        <div className="flex gap-4">
-          <Button type="submit" disabled={loading || !orgId} className="gap-2">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <Button
+            type="submit"
+            disabled={loading || !orgId}
+            className="gap-2 w-full sm:w-auto"
+          >
             {loading
               ? "Creating..."
               : `Create Property with ${units.length} ${
@@ -528,6 +535,7 @@ export default function NewPropertyPage() {
             variant="outline"
             onClick={() => router.back()}
             disabled={loading}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
