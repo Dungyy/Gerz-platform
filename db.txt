@@ -712,3 +712,48 @@ CREATE TRIGGER auto_count_requests
   FOR EACH ROW
   EXECUTE FUNCTION auto_increment_requests();
 
+
+-- RESET PASSWORDS ---
+
+-- Create password_resets table (similar pattern to invitations)
+CREATE TABLE IF NOT EXISTS public.password_resets (
+  id UUID NOT NULL DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT password_resets_pkey PRIMARY KEY (id)
+);
+
+-- Create indexes for faster lookups
+CREATE INDEX IF NOT EXISTS idx_password_resets_token ON public.password_resets USING btree (token);
+CREATE INDEX IF NOT EXISTS idx_password_resets_email ON public.password_resets USING btree (email);
+CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON public.password_resets USING btree (user_id);
+
+-- Enable RLS
+ALTER TABLE password_resets ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Anyone can read valid reset tokens (for validation)
+CREATE POLICY "Anyone can read valid reset tokens"
+  ON password_resets FOR SELECT
+  USING (
+    used_at IS NULL 
+    AND expires_at > NOW()
+  );
+
+-- Policy: System can insert reset tokens
+CREATE POLICY "System can insert reset tokens"
+  ON password_resets FOR INSERT
+  WITH CHECK (true);
+
+-- Policy: System can update reset tokens
+CREATE POLICY "System can update reset tokens"
+  ON password_resets FOR UPDATE
+  USING (true);
+
+-- Comments
+COMMENT ON TABLE password_resets IS 'Stores password reset tokens with expiration';
+COMMENT ON COLUMN password_resets.token IS 'Unique token sent in password reset email';
+COMMENT ON COLUMN password_resets.used_at IS 'Timestamp when token was used (prevents reuse)';

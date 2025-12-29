@@ -133,7 +133,7 @@ export async function POST(request) {
     // Send invitation email
     const inviteUrl = `${
       process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-    }/join?token=${inviteToken}`;
+    }/signup?token=${inviteToken}`;
 
     if (process.env.RESEND_API_KEY) {
       try {

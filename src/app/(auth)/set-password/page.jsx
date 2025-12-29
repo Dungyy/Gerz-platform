@@ -131,11 +131,13 @@ function SetPasswordContent() {
   // Loading state - checking session
   if (checking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <Card className="w-full max-w-md">
-          <CardContent className="py-12 text-center">
-            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-gray-600">Verifying your invitation...</p>
+          <CardContent className="py-8 sm:py-12 text-center">
+            <Loader2 className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-blue-600 mx-auto mb-3 sm:mb-4" />
+            <p className="text-gray-600 text-sm sm:text-base">
+              Verifying your invitation...
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -147,14 +149,16 @@ function SetPasswordContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <Card className="w-full max-w-md">
-          <CardContent className="pt-6 text-center">
-            <div className="flex justify-center mb-4">
-              <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="h-10 w-10 text-green-600" />
+          <CardContent className="pt-5 sm:pt-6 pb-5 text-center">
+            <div className="flex justify-center mb-3 sm:mb-4">
+              <div className="h-14 w-14 sm:h-16 sm:w-16 bg-green-100 rounded-full flex items-center justify-center">
+                <CheckCircle className="h-8 w-8 sm:h-10 sm:w-10 text-green-600" />
               </div>
             </div>
-            <h2 className="text-2xl font-bold mb-2">Welcome Aboard! 🎉</h2>
-            <p className="text-gray-600 mb-4">
+            <h2 className="text-xl sm:text-2xl font-bold mb-2">
+              Welcome Aboard! 🎉
+            </h2>
+            <p className="text-gray-600 mb-4 text-sm sm:text-base px-2">
               Your password has been set successfully.
               <br />
               Redirecting to your dashboard...
@@ -176,16 +180,16 @@ function SetPasswordContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <Card className="w-full max-w-md border-red-200">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-6 w-6 text-red-600 flex-shrink-0 mt-1" />
-              <div>
-                <h3 className="font-semibold text-red-900 mb-2">
+          <CardContent className="pt-5 sm:pt-6 pb-5">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 flex-shrink-0 mt-0.5 sm:mt-1" />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-red-900 mb-2 text-sm sm:text-base">
                   Invalid or Expired Link
                 </h3>
-                <p className="text-sm text-red-700 mb-3">{error}</p>
+                <p className="text-xs sm:text-sm text-red-700 mb-3">{error}</p>
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-600">
+                  <p className="text-xs sm:text-sm text-gray-600">
                     If you need a new invitation, please contact your property
                     manager.
                   </p>
@@ -193,7 +197,7 @@ function SetPasswordContent() {
                     variant="outline"
                     size="sm"
                     onClick={() => router.push("/login")}
-                    className="mt-3"
+                    className="mt-3 w-full sm:w-auto text-sm h-9 sm:h-10"
                   >
                     Go to Login
                   </Button>
@@ -208,17 +212,19 @@ function SetPasswordContent() {
 
   // Form state - password setup
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-10 w-10 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Wrench className="h-6 w-6 text-white" />
+        <CardHeader className="pb-4 sm:pb-6">
+          <div className="flex items-center gap-2 mb-3 sm:mb-4">
+            <div className="h-9 w-9 sm:h-10 sm:w-10 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Wrench className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
-            <span className="text-2xl font-bold">Dingy.app</span>
+            <span className="text-xl sm:text-2xl font-bold">Dingy.app</span>
           </div>
-          <CardTitle>Set Your Password</CardTitle>
-          <p className="text-sm text-gray-600 mt-2">
+          <CardTitle className="text-xl sm:text-2xl">
+            Set Your Password
+          </CardTitle>
+          <p className="text-xs sm:text-sm text-gray-600 mt-2">
             Welcome! Create a secure password to access your account.
           </p>
         </CardHeader>
@@ -227,19 +233,21 @@ function SetPasswordContent() {
             {/* Email Display */}
             {email && (
               <div>
-                <label className="block text-sm font-medium mb-1">Email</label>
+                <label className="block text-xs sm:text-sm font-medium mb-2">
+                  Email
+                </label>
                 <Input
                   type="email"
                   value={email}
                   disabled
-                  className="bg-gray-50"
+                  className="bg-gray-50 text-sm sm:text-base h-10 sm:h-11"
                 />
               </div>
             )}
 
             {/* New Password */}
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-xs sm:text-sm font-medium mb-2">
                 New Password <span className="text-red-500">*</span>
               </label>
               <Input
@@ -253,15 +261,16 @@ function SetPasswordContent() {
                 minLength={6}
                 disabled={!sessionActive}
                 autoFocus
+                className="text-sm sm:text-base h-10 sm:h-11"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
                 Must be at least 6 characters
               </p>
             </div>
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-xs sm:text-sm font-medium mb-2">
                 Confirm Password <span className="text-red-500">*</span>
               </label>
               <Input
@@ -274,27 +283,28 @@ function SetPasswordContent() {
                 required
                 minLength={6}
                 disabled={!sessionActive}
+                className="text-sm sm:text-base h-10 sm:h-11"
               />
             </div>
 
             {/* Error Message */}
             {error && sessionActive && (
-              <div className="flex items-start gap-2 text-red-700 text-sm bg-red-50 p-3 rounded border border-red-200">
-                <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                <span>{error}</span>
+              <div className="flex items-start gap-2 text-red-700 text-xs sm:text-sm bg-red-50 p-3 rounded border border-red-200">
+                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0 mt-0.5" />
+                <span className="flex-1 min-w-0">{error}</span>
               </div>
             )}
 
             {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full"
+              className="w-full text-sm sm:text-base h-10 sm:h-11"
               disabled={loading || !sessionActive}
             >
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Setting Password...
+                  <span>Setting Password...</span>
                 </>
               ) : (
                 "Set Password & Continue"
@@ -303,8 +313,8 @@ function SetPasswordContent() {
           </form>
 
           {/* Help Text */}
-          <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-xs text-blue-900">
+          <div className="mt-5 sm:mt-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-[10px] sm:text-xs text-blue-900">
               💡 <strong>Tip:</strong> After setting your password, you can
               login anytime at <span className="font-mono">/login</span> to
               submit maintenance requests.
@@ -312,8 +322,8 @@ function SetPasswordContent() {
           </div>
 
           {/* Security Note */}
-          <div className="mt-4 text-center">
-            <p className="text-xs text-gray-500">
+          <div className="mt-3 sm:mt-4 text-center">
+            <p className="text-[10px] sm:text-xs text-gray-500">
               🔒 Your password is encrypted and secure
             </p>
           </div>
@@ -328,11 +338,11 @@ export default function SetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
           <Card className="w-full max-w-md">
-            <CardContent className="py-12 text-center">
-              <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-              <p className="text-gray-600">Loading...</p>
+            <CardContent className="py-8 sm:py-12 text-center">
+              <Loader2 className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-blue-600 mx-auto mb-3 sm:mb-4" />
+              <p className="text-gray-600 text-sm sm:text-base">Loading...</p>
             </CardContent>
           </Card>
         </div>

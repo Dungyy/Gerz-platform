@@ -80,21 +80,23 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const siteUrl =
-        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-      const redirectTo = `${siteUrl}/reset-password`;
-
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo,
+      const response = await fetch("/api/reset-password/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: resetEmail }),
       });
 
-      if (error) throw error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send reset email");
+      }
 
       setResetEmailSent(true);
       toast.success("Password reset email sent!");
     } catch (error) {
       console.error("Password reset error:", error);
-      toast.error(`Failed to send reset email: ${error.message}`);
+      toast.error(error.message || "Failed to send reset email");
     } finally {
       setLoading(false);
     }
