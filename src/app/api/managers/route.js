@@ -125,7 +125,7 @@ export async function POST(request) {
     // Send SMS if requested
     if (phone && send_sms) {
       try {
-        const smsMessage = `Welcome to ${ownerProfile.organization.name} management team! You've been added as a manager. Check your email (${email}) to set your password and access the system. - Gerz`;
+        const smsMessage = `Welcome to ${ownerProfile.organization.name} management team! You've been added as a manager. Check your email (${email}) to set your password and access the system. - Dingy.app`;
 
         await sendSMS({
           to: formatPhoneNumber(phone),

@@ -1,124 +1,130 @@
-'use client'
+"use client";
 
-import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Wrench, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Wrench, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 
 function SetPasswordContent() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  
-  const [loading, setLoading] = useState(false)
-  const [checking, setChecking] = useState(true)
-  const [success, setSuccess] = useState(false)
-  const [error, setError] = useState(null)
-  const [email, setEmail] = useState('')
-  const [sessionActive, setSessionActive] = useState(false)
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState(null);
+  const [email, setEmail] = useState("");
+  const [sessionActive, setSessionActive] = useState(false);
   const [formData, setFormData] = useState({
-    password: '',
-    confirmPassword: '',
-  })
+    password: "",
+    confirmPassword: "",
+  });
 
   useEffect(() => {
-    checkSessionAndEmail()
-  }, [])
+    checkSessionAndEmail();
+  }, []);
 
   async function checkSessionAndEmail() {
     try {
-      console.log('🔍 Checking for active session...')
-      
+      console.log("🔍 Checking for active session...");
+
       // Check for email in URL params first
-      const emailParam = searchParams.get('email')
+      const emailParam = searchParams.get("email");
       if (emailParam) {
-        setEmail(emailParam)
+        setEmail(emailParam);
       }
 
       // Check for active session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
       if (sessionError) {
-        console.error('❌ Session error:', sessionError)
-        setError('Invalid or expired link. Please contact your property manager for a new invitation.')
-        setChecking(false)
-        return
+        console.error("❌ Session error:", sessionError);
+        setError(
+          "Invalid or expired link. Please contact your property manager for a new invitation."
+        );
+        setChecking(false);
+        return;
       }
 
       if (session) {
-        console.log('✅ Active session found for:', session.user.email)
-        setEmail(session.user.email)
-        setSessionActive(true)
+        console.log("✅ Active session found for:", session.user.email);
+        setEmail(session.user.email);
+        setSessionActive(true);
       } else {
-        console.log('⚠️ No active session')
-        
+        console.log("⚠️ No active session");
+
         // Check URL hash for auth token
-        const hash = window.location.hash
+        const hash = window.location.hash;
         if (hash) {
-          console.log('🔗 Hash detected, Supabase will handle authentication')
+          console.log("🔗 Hash detected, Supabase will handle authentication");
           // Give Supabase a moment to process the hash
-          setTimeout(() => checkSessionAndEmail(), 1000)
-          return
+          setTimeout(() => checkSessionAndEmail(), 1000);
+          return;
         }
-        
-        setError('Please use the link from your invitation email to access this page.')
+
+        setError(
+          "Please use the link from your invitation email to access this page."
+        );
       }
     } catch (err) {
-      console.error('❌ Error checking session:', err)
-      setError('An error occurred. Please try again.')
+      console.error("❌ Error checking session:", err);
+      setError("An error occurred. Please try again.");
     } finally {
-      setChecking(false)
+      setChecking(false);
     }
   }
 
   async function handleSubmit(e) {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     if (!sessionActive) {
-      setError('No active session. Please use the link from your email.')
-      return
+      setError("No active session. Please use the link from your email.");
+      return;
     }
 
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     // Validation
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match')
-      setLoading(false)
-      return
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
     }
 
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters')
-      setLoading(false)
-      return
+      setError("Password must be at least 6 characters");
+      setLoading(false);
+      return;
     }
 
     try {
-      console.log('🔐 Setting password...')
+      console.log("🔐 Setting password...");
 
       const { error: updateError } = await supabase.auth.updateUser({
-        password: formData.password
-      })
+        password: formData.password,
+      });
 
-      if (updateError) throw updateError
+      if (updateError) throw updateError;
 
-      console.log('✅ Password set successfully!')
-      setSuccess(true)
+      console.log("✅ Password set successfully!");
+      setSuccess(true);
 
       // Redirect to dashboard after 2 seconds
       setTimeout(() => {
-        router.push('/dashboard')
-      }, 2000)
-
+        router.push("/dashboard");
+      }, 2000);
     } catch (err) {
-      console.error('❌ Password setup error:', err)
-      setError(err.message || 'Failed to set password. Please try again.')
+      console.error("❌ Password setup error:", err);
+      setError(err.message || "Failed to set password. Please try again.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
@@ -133,7 +139,7 @@ function SetPasswordContent() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   // Success state - password set
@@ -154,12 +160,15 @@ function SetPasswordContent() {
               Redirecting to your dashboard...
             </p>
             <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-              <div className="h-full bg-blue-600 rounded-full animate-pulse" style={{ width: '75%' }}></div>
+              <div
+                className="h-full bg-blue-600 rounded-full animate-pulse"
+                style={{ width: "75%" }}
+              ></div>
             </div>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   // Error state - expired/invalid link
@@ -171,16 +180,19 @@ function SetPasswordContent() {
             <div className="flex items-start gap-3">
               <AlertCircle className="h-6 w-6 text-red-600 flex-shrink-0 mt-1" />
               <div>
-                <h3 className="font-semibold text-red-900 mb-2">Invalid or Expired Link</h3>
+                <h3 className="font-semibold text-red-900 mb-2">
+                  Invalid or Expired Link
+                </h3>
                 <p className="text-sm text-red-700 mb-3">{error}</p>
                 <div className="space-y-2">
                   <p className="text-sm text-gray-600">
-                    If you need a new invitation, please contact your property manager.
+                    If you need a new invitation, please contact your property
+                    manager.
                   </p>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
-                    onClick={() => router.push('/login')}
+                    onClick={() => router.push("/login")}
                     className="mt-3"
                   >
                     Go to Login
@@ -191,7 +203,7 @@ function SetPasswordContent() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   // Form state - password setup
@@ -203,7 +215,7 @@ function SetPasswordContent() {
             <div className="h-10 w-10 bg-blue-600 rounded-lg flex items-center justify-center">
               <Wrench className="h-6 w-6 text-white" />
             </div>
-            <span className="text-2xl font-bold">Gerz</span>
+            <span className="text-2xl font-bold">Dingy.app</span>
           </div>
           <CardTitle>Set Your Password</CardTitle>
           <p className="text-sm text-gray-600 mt-2">
@@ -234,7 +246,9 @@ function SetPasswordContent() {
                 type="password"
                 placeholder="Enter your password"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
                 required
                 minLength={6}
                 disabled={!sessionActive}
@@ -254,7 +268,9 @@ function SetPasswordContent() {
                 type="password"
                 placeholder="Confirm your password"
                 value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, confirmPassword: e.target.value })
+                }
                 required
                 minLength={6}
                 disabled={!sessionActive}
@@ -270,9 +286,9 @@ function SetPasswordContent() {
             )}
 
             {/* Submit Button */}
-            <Button 
-              type="submit" 
-              className="w-full" 
+            <Button
+              type="submit"
+              className="w-full"
               disabled={loading || !sessionActive}
             >
               {loading ? (
@@ -281,7 +297,7 @@ function SetPasswordContent() {
                   Setting Password...
                 </>
               ) : (
-                'Set Password & Continue'
+                "Set Password & Continue"
               )}
             </Button>
           </form>
@@ -289,8 +305,9 @@ function SetPasswordContent() {
           {/* Help Text */}
           <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-xs text-blue-900">
-              💡 <strong>Tip:</strong> After setting your password, you can login anytime at{' '}
-              <span className="font-mono">/login</span> to submit maintenance requests.
+              💡 <strong>Tip:</strong> After setting your password, you can
+              login anytime at <span className="font-mono">/login</span> to
+              submit maintenance requests.
             </p>
           </div>
 
@@ -303,23 +320,25 @@ function SetPasswordContent() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 // Main component with Suspense wrapper
 export default function SetPasswordPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md">
-          <CardContent className="py-12 text-center">
-            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-gray-600">Loading...</p>
-          </CardContent>
-        </Card>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <Card className="w-full max-w-md">
+            <CardContent className="py-12 text-center">
+              <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+              <p className="text-gray-600">Loading...</p>
+            </CardContent>
+          </Card>
+        </div>
+      }
+    >
       <SetPasswordContent />
     </Suspense>
-  )
+  );
 }

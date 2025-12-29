@@ -147,7 +147,9 @@ function JoinPageContent() {
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="text-center mb-4">
-              <h2 className="text-2xl font-bold mb-2">Join Gerz Platform</h2>
+              <h2 className="text-2xl font-bold mb-2">
+                Join Dingy.app Platform
+              </h2>
               <p className="text-gray-600">Set your account details to join.</p>
             </div>
             <div>

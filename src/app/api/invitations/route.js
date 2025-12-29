@@ -158,7 +158,7 @@ export async function POST(request) {
               email,
               role,
               inviteUrl,
-              orgData?.name || "Gerz Maintenance"
+              orgData?.name || "Dingy.app Maintenance"
             ),
           }),
         });
