@@ -9,10 +9,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ImageLightbox } from '@/components/modals/image-lightbox'
-import { 
-  ArrowLeft, 
-  User, 
-  Home, 
+import {
+  ArrowLeft,
+  User,
+  Home,
   MessageSquare,
   Clock,
   Send,
@@ -35,7 +35,7 @@ import { toast } from "sonner";
 export default function RequestDetailPage() {
   const params = useParams()
   const router = useRouter()
-  
+
   const [request, setRequest] = useState(null)
   const [comments, setComments] = useState([])
   const [workers, setWorkers] = useState([])
@@ -44,7 +44,7 @@ export default function RequestDetailPage() {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [commenting, setCommenting] = useState(false)
-  
+
   const [newComment, setNewComment] = useState('')
   const [isInternal, setIsInternal] = useState(false)
   const [statusUpdate, setStatusUpdate] = useState('')
@@ -70,7 +70,7 @@ export default function RequestDetailPage() {
         .select('*')
         .eq('id', user.id)
         .single()
-      
+
       setProfile(profileData)
 
       await loadRequest()
@@ -155,6 +155,15 @@ export default function RequestDetailPage() {
         }),
       })
 
+      await logActivity({
+        action: "Added comment",
+        details: {
+          comment_type: isInternal ? "internal_note" : "public_comment",
+          comment_preview: newComment.substring(0, 50)
+        },
+        request_id: params.id,
+      });
+
       const data = await response.json()
       if (!response.ok) throw new Error(data?.error || 'Failed to add comment')
 
@@ -195,6 +204,12 @@ export default function RequestDetailPage() {
         body: JSON.stringify(updates),
       })
 
+      await logActivity({
+        action: "Updated request",
+        details: updates,
+        request_id: params.id,
+      });
+
       const data = await response.json()
       if (!response.ok) throw new Error(data?.error || 'Failed to update')
 
@@ -213,7 +228,7 @@ export default function RequestDetailPage() {
     setUpdating(true)
     try {
       let updates = {}
-      
+
       if (action === 'assign-me') {
         updates = { assigned_to: currentUser.id, status: 'assigned' }
       } else if (action === 'start') {
@@ -230,6 +245,12 @@ export default function RequestDetailPage() {
         method: 'PUT',
         body: JSON.stringify(updates),
       })
+
+      await logActivity({
+        action: "Updated request",
+        details: updates,
+        request_id: params.id,
+      });
 
       const data = await response.json()
       if (!response.ok) throw new Error(data?.error || 'Failed to update')
@@ -303,7 +324,7 @@ export default function RequestDetailPage() {
           </h1>
           <StatusBadge status={request.status} />
         </div>
-        
+
         <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
           <span>Unit {request.unit?.unit_number}</span>
           <span>•</span>
@@ -537,11 +558,10 @@ export default function RequestDetailPage() {
               comments.map((comment) => (
                 <div
                   key={comment.id}
-                  className={`p-3 rounded-lg border ${
-                    comment.is_internal
+                  className={`p-3 rounded-lg border ${comment.is_internal
                       ? 'bg-yellow-50 border-yellow-200'
                       : 'bg-gray-50'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-start justify-between mb-1">
                     <div className="flex items-center gap-2">
@@ -603,8 +623,8 @@ export default function RequestDetailPage() {
               </div>
             )}
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={commenting || !newComment.trim()}
               size="sm"
             >
@@ -718,17 +738,17 @@ function StatusBadge({ status }) {
 
 function formatTimestamp(dateString) {
   if (!dateString) return "N/A"
-  
+
   const date = new Date(dateString)
   const now = new Date()
   const diffInMinutes = Math.floor((now - date) / (1000 * 60))
 
   if (diffInMinutes < 1) return "Just now"
   if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`
-  
+
   const diffInHours = Math.floor(diffInMinutes / 60)
   if (diffInHours < 24) return `${diffInHours} hours ago`
-  
+
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",

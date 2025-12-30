@@ -23,13 +23,15 @@ import {
   Settings,
   Heart,
   UserCog,
+  Activity,
+  BarChart3,
 } from "lucide-react";
 
 export default function Footer() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [profile, setProfile] = useState(null);
 
-    async function checkAuth() {
+  async function checkAuth() {
     try {
       const {
         data: { user },
@@ -54,8 +56,8 @@ export default function Footer() {
     } catch (error) {
       console.error("Footer auth check:", error);
     }
-    }
-  
+  }
+
   useEffect(() => {
     const run = async () => {
       await checkAuth();
@@ -93,7 +95,9 @@ export default function Footer() {
         { href: "/dashboard/properties", label: "Properties", icon: Building2 },
         { href: "/dashboard/tenants", label: "Tenants", icon: Users },
         { href: "/dashboard/workers", label: "Workers", icon: Users },
-        { href: "/dashboard/managers", label: "Managers", icon: UserCog }
+        { href: "/dashboard/managers", label: "Managers", icon: UserCog },
+        { href: "/dashboard/activity", label: "Activity Logs", icon: Activity },
+        { href: "/dashboard/reports", label: "Reports", icon: BarChart3 }
       );
     }
 

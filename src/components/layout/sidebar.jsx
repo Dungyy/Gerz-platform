@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   BarChart3,
+  Activity,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -54,6 +55,7 @@ export default function Sidebar({ profile, currentPath }) {
       { name: "Tenants", href: "/dashboard/tenants", icon: Users },
       { name: "Workers", href: "/dashboard/workers", icon: Users },
       { name: "Managers", href: "/dashboard/managers", icon: UserCog },
+      { name: "Activity Logs", href: "/dashboard/activity", icon: Activity },
       { name: "Reports", href: "/dashboard/reports", icon: BarChart3 },
       { name: "Settings", href: "/dashboard/settings", icon: Settings },
     ];

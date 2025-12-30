@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { fetchWithAuth } from "@/lib/api-helper";
 import { toast } from "sonner";
+import { logActivity } from "@/lib/activity-logger";
 
 export default function NewPropertyPage() {
   const router = useRouter();
@@ -230,9 +231,17 @@ export default function NewPropertyPage() {
         throw new Error(data.error || "Failed to create property");
       }
 
+      await logActivity({
+        action: "Created property",
+        details: {
+          property_name: formData.name,
+          address: formData.address,
+          units_count: units.length
+        },
+      });
+
       toast.success(
-        `✅ Property created with ${
-          data.units_created ?? payload.units.length
+        `✅ Property created with ${data.units_created ?? payload.units.length
         } units!`
       );
       router.push("/dashboard/properties");
@@ -526,9 +535,8 @@ export default function NewPropertyPage() {
           >
             {loading
               ? "Creating..."
-              : `Create Property with ${units.length} ${
-                  units.length === 1 ? "Unit" : "Units"
-                }`}
+              : `Create Property with ${units.length} ${units.length === 1 ? "Unit" : "Units"
+              }`}
           </Button>
           <Button
             type="button"

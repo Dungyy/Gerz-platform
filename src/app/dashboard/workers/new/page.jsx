@@ -16,6 +16,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { logActivity } from "@/lib/activity-logger";
 
 export default function InviteWorkerPage() {
   const router = useRouter();
@@ -84,6 +85,15 @@ export default function InviteWorkerPage() {
       if (!response.ok) {
         throw new Error(data?.error || "Failed to create worker");
       }
+
+      await logActivity({
+        action: "Assigned worker to request",
+        details: {
+          worker_name: formData.full_name,
+          worker_email: formData.email
+        },
+        request_id: data.id,
+      });
 
       toast.success(
         `✅ Worker account created for ${formData.full_name}!\n\nThey can now log in with:\nEmail: ${formData.email}\nPassword: (the one you set)`

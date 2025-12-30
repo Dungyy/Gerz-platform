@@ -778,3 +778,70 @@ CREATE POLICY "Users can delete their own images"
 ON storage.objects FOR DELETE
 TO authenticated
 USING (bucket_id = 'maintenance-images' AND auth.uid() = owner);
+
+
+
+-- ============================================
+-- Activity Logs RLS Policies
+-- (Table already exists, just need policies)
+-- ============================================
+
+-- Enable RLS on activity_logs table
+ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if any (safe to run)
+DROP POLICY IF EXISTS "Managers can view activity logs" ON activity_logs;
+DROP POLICY IF EXISTS "Users can insert activity logs" ON activity_logs;
+
+-- Policy 1: Managers and owners can view all logs in their organization
+CREATE POLICY "Managers can view activity logs"
+  ON activity_logs
+  FOR SELECT
+  USING (
+    organization_id IN (
+      SELECT organization_id 
+      FROM profiles 
+      WHERE id = auth.uid() 
+      AND role IN ('manager', 'owner')
+    )
+  );
+
+-- Policy 2: All authenticated users can insert their own activity logs
+CREATE POLICY "Users can insert activity logs"
+  ON activity_logs
+  FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+-- Grant permissions to authenticated users
+GRANT SELECT, INSERT ON activity_logs TO authenticated;
+
+-- ============================================
+-- Verification Query (Optional)
+-- ============================================
+
+-- Run this to verify your policies are active:
+-- SELECT * FROM pg_policies WHERE tablename = 'activity_logs';
+
+-- ============================================
+-- Test Query (Optional - Run as manager/owner)
+-- ============================================
+
+-- This should return your organization's activity logs:
+-- SELECT * FROM activity_logs ORDER BY created_at DESC LIMIT 10;
+
+-- ============================================
+-- Notes
+-- ============================================
+
+-- Your existing table structure:
+-- ✅ id (uuid, primary key)
+-- ✅ organization_id (uuid, references organizations)
+-- ✅ request_id (uuid, references maintenance_requests)
+-- ✅ user_id (uuid, references profiles)
+-- ✅ action (text, required)
+-- ✅ details (jsonb, optional - stores any additional data)
+-- ✅ created_at (timestamp with time zone)
+
+-- Indexes already present:
+-- ✅ idx_activity_org on organization_id
+-- ✅ idx_activity_request on request_id

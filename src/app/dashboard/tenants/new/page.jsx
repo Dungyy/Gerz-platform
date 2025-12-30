@@ -18,6 +18,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
+import { logActivity } from "@/lib/activity-logger";
 
 export default function InviteTenantPage() {
   const router = useRouter();
@@ -117,6 +118,16 @@ export default function InviteTenantPage() {
       if (!response.ok) {
         throw new Error(data?.error || "Failed to invite tenant");
       }
+
+      await logActivity({
+        action: 'Invited new tenant',
+        details: {
+          tenant_name: formData.full_name,
+          tenant_email: formData.email,
+          unit_number: formData.unit_id
+        },
+        request_id: data.id,
+      });
 
       toast.success(
         `✅ Invitation sent to ${formData.full_name}!\n\nThey will receive ${

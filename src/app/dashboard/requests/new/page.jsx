@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Upload, X, AlertCircle, Home } from 'lucide-react'
 import { toast } from "sonner";
+import { logActivity } from "@/lib/activity-logger";
 
 export default function NewRequestPage() {
   const router = useRouter()
@@ -19,7 +20,7 @@ export default function NewRequestPage() {
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [images, setImages] = useState([])
-  
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -35,7 +36,7 @@ export default function NewRequestPage() {
   async function loadUserProfile() {
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser()
-      
+
       if (!currentUser) {
         router.push('/login')
         return
@@ -150,8 +151,15 @@ export default function NewRequestPage() {
         throw new Error(data?.error || 'Failed to submit request')
       }
 
-      console.log('✅ Request submitted:', data)
-
+      await logActivity({
+        action: 'Created maintenance request',
+        details: {
+          title: formData.title,
+          priority: formData.priority,
+          property_name: property.name
+        },
+        request_id: data.id,
+      });
       toast.success('✅ Maintenance request submitted successfully!')
       router.push('/dashboard/requests')
     } catch (error) {
