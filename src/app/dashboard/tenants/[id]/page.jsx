@@ -18,9 +18,11 @@ import {
   Wrench,
   Edit,
   Trash2,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
+import { fetchWithAuth } from "@/lib/api-helper";
 
 export default function TenantDetailPage() {
   const params = useParams();
@@ -28,6 +30,10 @@ export default function TenantDetailPage() {
   const [tenant, setTenant] = useState(null);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [units, setUnits] = useState([]);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedUnit, setSelectedUnit] = useState("");
+  const [assigning, setAssigning] = useState(false);
 
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [removeLoading, setRemoveLoading] = useState(false);
@@ -35,6 +41,7 @@ export default function TenantDetailPage() {
   useEffect(() => {
     if (!params?.id) return;
     loadTenant();
+    loadUnits();
   }, [params.id]);
 
   async function loadTenant() {
@@ -95,6 +102,56 @@ export default function TenantDetailPage() {
       setRequests(requestsData || []);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadUnits() {
+    try {
+      const response = await fetchWithAuth("/api/units", { method: "GET" });
+      if (response.ok) {
+        const data = await response.json();
+        // Show all vacant units
+        const allUnits = Array.isArray(data) ? data : [];
+        setUnits(allUnits.filter((u) => !u.tenant_id));
+      }
+    } catch (error) {
+      console.error("Error loading units:", error);
+    }
+  }
+
+  async function handleAssignUnit() {
+    if (!selectedUnit) {
+      toast.error("Please select a unit");
+      return;
+    }
+
+    setAssigning(true);
+    try {
+      const response = await fetchWithAuth(`/api/tenants/${params.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          full_name: tenant.full_name,
+          email: tenant.email,
+          phone: tenant.phone,
+          unit_id: selectedUnit,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to assign unit");
+      }
+
+      toast.success("✅ Unit assigned successfully!");
+      setShowAssignModal(false);
+      await loadTenant();
+      await loadUnits();
+    } catch (error) {
+      console.error("Error assigning unit:", error);
+      toast.error(`❌ ${error.message}`);
+    } finally {
+      setAssigning(false);
     }
   }
 
@@ -166,6 +223,14 @@ export default function TenantDetailPage() {
   const unit = tenant.unit && tenant.unit.length > 0 ? tenant.unit[0] : null;
   const property = unit?.property;
 
+  // Group units by property
+  const unitsByProperty = units.reduce((acc, u) => {
+    const propertyName = u.property?.name || "Unknown Property";
+    if (!acc[propertyName]) acc[propertyName] = [];
+    acc[propertyName].push(u);
+    return acc;
+  }, {});
+
   return (
     <>
       <div className="space-y-4 sm:space-y-6 pb-6">
@@ -179,7 +244,7 @@ export default function TenantDetailPage() {
               <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold truncate">
                 {tenant.full_name}
               </h2>
               <p className="text-muted-foreground mt-0.5 sm:mt-1 text-xs sm:text-sm">
@@ -188,23 +253,23 @@ export default function TenantDetailPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Link
               href={`/dashboard/tenants/${tenant.id}/edit`}
               className="flex-1 sm:flex-none"
             >
-              <Button variant="outline" className="gap-2 w-full text-sm">
+              <Button variant="outline" className="gap-2 w-full text-sm h-9">
                 <Edit className="h-4 w-4" />
-                <span className="hidden xs:inline">Edit</span>
+                <span>Edit</span>
               </Button>
             </Link>
             <Button
               variant="outline"
-              className="gap-2 flex-1 sm:flex-none text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20  "
+              className="gap-2 flex-1 sm:flex-none text-sm h-9 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
               onClick={() => setShowRemoveModal(true)}
             >
               <Trash2 className="h-4 w-4" />
-              <span className="hidden xs:inline">Remove</span>
+              <span>Remove</span>
             </Button>
           </div>
         </div>
@@ -285,7 +350,7 @@ export default function TenantDetailPage() {
                     <p className="text-xs sm:text-sm text-muted-foreground">
                       Role
                     </p>
-                    <Badge className="capitalize text-xs">{tenant.role}</Badge>
+                    <Badge className="capitalize text-xs mt-1">{tenant.role}</Badge>
                   </div>
                 </div>
               </CardContent>
@@ -442,7 +507,7 @@ export default function TenantDetailPage() {
               </Card>
             ) : (
               <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-900">
-                <CardContent className="pt-4 sm:pt-6">
+                <CardContent className="pt-4 sm:pt-6 pb-4">
                   <div className="text-center">
                     <Home className="h-10 w-10 sm:h-12 sm:w-12 text-orange-400 mx-auto mb-2 sm:mb-3" />
                     <h3 className="font-semibold text-orange-900 dark:text-orange-200 mb-2 text-sm sm:text-base">
@@ -454,7 +519,8 @@ export default function TenantDetailPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-xs sm:text-sm"
+                      onClick={() => setShowAssignModal(true)}
+                      className="text-xs sm:text-sm w-full"
                     >
                       Assign Unit
                     </Button>
@@ -515,6 +581,58 @@ export default function TenantDetailPage() {
         variant="warning"
         loading={removeLoading}
       />
+
+      {/* Assign Unit Modal */}
+      <ConfirmationModal
+        isOpen={showAssignModal}
+        onClose={() => {
+          if (!assigning) {
+            setShowAssignModal(false);
+            setSelectedUnit("");
+          }
+        }}
+        onConfirm={handleAssignUnit}
+        title={`Assign Unit to ${tenant.full_name}`}
+        confirmText="Assign Unit"
+        cancelText="Cancel"
+        variant="default"
+        loading={assigning}
+        description={
+          <div className="space-y-3 text-left">
+            <p className="text-sm text-muted-foreground">
+              Select a unit to assign to this tenant:
+            </p>
+            
+            {units.length === 0 ? (
+              <div className="p-4 border-2 border-dashed rounded-lg text-center">
+                <Home className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  No available units found
+                </p>
+              </div>
+            ) : (
+              <select
+                value={selectedUnit}
+                onChange={(e) => setSelectedUnit(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg bg-background text-sm"
+                disabled={assigning}
+              >
+                <option value="">— Select a unit —</option>
+                {Object.entries(unitsByProperty).map(([propertyName, propertyUnits]) => (
+                  <optgroup key={propertyName} label={propertyName}>
+                    {propertyUnits.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        Unit {u.unit_number}
+                        {u.bedrooms ? ` • ${u.bedrooms} bed, ${u.bathrooms} bath` : ""}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            )}
+          </div>
+        }
+      />
     </>
   );
 }
@@ -537,7 +655,7 @@ function StatusBadge({ status }) {
     <Badge
       className={`${
         variants[status] || variants.submitted
-      } text-[10px] sm:text-xs whitespace-nowrap`}
+      } text-[10px] sm:text-xs whitespace-nowrap border-0`}
     >
       {status.replace("_", " ")}
     </Badge>

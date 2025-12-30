@@ -36,7 +36,6 @@ export async function GET(request, context) {
     const { profile, error } = await getAuthedProfile(request)
     if (error) return error
 
-    // ✅ AWAIT PARAMS FOR NEXT.JS 15+
     const { id: tenantId } = await context.params
     
     if (!tenantId) {
@@ -107,7 +106,6 @@ export async function DELETE(request, context) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // ✅ AWAIT PARAMS FOR NEXT.JS 15+
     const { id: tenantId } = await context.params
     
     if (!tenantId) {
@@ -167,7 +165,6 @@ export async function PUT(request, context) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // ✅ AWAIT PARAMS FOR NEXT.JS 15+
     const { id: tenantId } = await context.params
     
     if (!tenantId) {
@@ -175,19 +172,94 @@ export async function PUT(request, context) {
     }
 
     const body = await request.json()
-    const { full_name, email, phone } = body
+    const { full_name, email, phone, unit_id } = body
 
-    console.log('✏️ Updating tenant:', tenantId)
+    console.log('✏️ Updating tenant:', tenantId, 'with unit:', unit_id)
 
-    const { error: uErr } = await supabaseAdmin
+    // Verify tenant exists and belongs to this org
+    const { data: tenant, error: tErr } = await supabaseAdmin
+      .from('profiles')
+      .select('id, organization_id')
+      .eq('id', tenantId)
+      .eq('role', 'tenant')
+      .single()
+
+    if (tErr || !tenant) {
+      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
+    }
+
+    if (tenant.organization_id !== profile.organization_id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    // Update tenant profile
+    const { error: profileErr } = await supabaseAdmin
       .from('profiles')
       .update({ full_name, email, phone })
       .eq('id', tenantId)
-      .eq('role', 'tenant')
 
-    if (uErr) {
-      console.error('❌ Tenant update error:', uErr)
-      return NextResponse.json({ error: 'Failed to update tenant' }, { status: 500 })
+    if (profileErr) {
+      console.error('❌ Profile update error:', profileErr)
+      return NextResponse.json({ error: 'Failed to update tenant profile' }, { status: 500 })
+    }
+
+    // Handle unit assignment changes
+    if (unit_id !== undefined) {
+      // First, unassign tenant from their current unit (if any)
+      const { error: unassignErr } = await supabaseAdmin
+        .from('units')
+        .update({ tenant_id: null })
+        .eq('tenant_id', tenantId)
+
+      if (unassignErr) {
+        console.error('❌ Unit unassignment error:', unassignErr)
+      }
+
+      // If a new unit is selected, assign it
+      if (unit_id) {
+        // Verify the unit exists and belongs to this org
+        const { data: unit, error: unitErr } = await supabaseAdmin
+          .from('units')
+          .select('id, property:properties(organization_id)')
+          .eq('id', unit_id)
+          .single()
+
+        if (unitErr || !unit) {
+          return NextResponse.json({ error: 'Unit not found' }, { status: 404 })
+        }
+
+        if (unit.property.organization_id !== profile.organization_id) {
+          return NextResponse.json({ error: 'Unit does not belong to your organization' }, { status: 403 })
+        }
+
+        // Check if unit is already occupied
+        const { data: occupiedUnit } = await supabaseAdmin
+          .from('units')
+          .select('tenant_id')
+          .eq('id', unit_id)
+          .single()
+
+        if (occupiedUnit?.tenant_id && occupiedUnit.tenant_id !== tenantId) {
+          return NextResponse.json({ 
+            error: 'Unit is already occupied by another tenant' 
+          }, { status: 400 })
+        }
+
+        // Assign tenant to new unit
+        const { error: assignErr } = await supabaseAdmin
+          .from('units')
+          .update({ tenant_id: tenantId })
+          .eq('id', unit_id)
+
+        if (assignErr) {
+          console.error('❌ Unit assignment error:', assignErr)
+          return NextResponse.json({ error: 'Failed to assign unit' }, { status: 500 })
+        }
+
+        console.log('✅ Tenant assigned to unit:', unit_id)
+      } else {
+        console.log('✅ Tenant unassigned from all units')
+      }
     }
 
     console.log('✅ Tenant updated:', tenantId)

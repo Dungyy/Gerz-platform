@@ -256,7 +256,7 @@ function RequestCard({ request, isTenant, currentUserId }) {
 
   return (
     <Link href={`/dashboard/requests/${request.id}`}>
-      <Card className="hover:shadow-md transition-all border hover:border-gray-300">
+      <Card className="hover:shadow-lg transition-all border-2 hover:border-gray-400 bg-white">
         <CardContent className="p-4 sm:p-5">
           {/* Header */}
           <div className="flex items-start justify-between gap-3 mb-3">
@@ -297,7 +297,7 @@ function RequestCard({ request, isTenant, currentUserId }) {
                 {requestImages.slice(0, 3).map((url, index) => (
                   <div
                     key={index}
-                    className="relative w-16 h-16 rounded-lg overflow-hidden border flex-shrink-0"
+                    className="relative w-16 h-16 rounded-lg overflow-hidden border-2 border-gray-200 flex-shrink-0 hover:border-gray-400 transition-colors"
                   >
                     <img
                       src={url}
@@ -307,7 +307,7 @@ function RequestCard({ request, isTenant, currentUserId }) {
                   </div>
                 ))}
                 {requestImages.length > 3 && (
-                  <div className="w-16 h-16 rounded-lg border bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-600 flex-shrink-0">
+                  <div className="w-16 h-16 rounded-lg border-2 border-gray-300 bg-gray-50 flex items-center justify-center text-xs font-semibold text-gray-700 flex-shrink-0">
                     +{requestImages.length - 3}
                   </div>
                 )}
@@ -329,7 +329,7 @@ function RequestCard({ request, isTenant, currentUserId }) {
 
           {/* Info Grid */}
           <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="bg-gray-50 rounded-lg p-2.5 border">
+            <div className="bg-gray-50 rounded-lg p-2.5 border-2 border-gray-200">
               <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-1">
                 <Wrench className="h-3.5 w-3.5" />
                 <span className="font-medium">Assigned</span>
@@ -343,7 +343,7 @@ function RequestCard({ request, isTenant, currentUserId }) {
               </p>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-2.5 border">
+            <div className="bg-gray-50 rounded-lg p-2.5 border-2 border-gray-200">
               <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-1">
                 <AlertCircle className="h-3.5 w-3.5" />
                 <span className="font-medium">Priority</span>
@@ -353,7 +353,7 @@ function RequestCard({ request, isTenant, currentUserId }) {
               </p>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-2.5 border">
+            <div className="bg-gray-50 rounded-lg p-2.5 border-2 border-gray-200">
               <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-1">
                 <Clock className="h-3.5 w-3.5" />
                 <span className="font-medium">Status</span>
@@ -365,8 +365,8 @@ function RequestCard({ request, isTenant, currentUserId }) {
           </div>
 
           {/* Timeline */}
-          <div className="bg-gray-50 rounded-lg p-3 border">
-            <p className="text-xs font-medium text-gray-700 mb-2">Timeline</p>
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 border-2 border-gray-200">
+            <p className="text-xs font-semibold text-gray-700 mb-2">Timeline</p>
             <div className="space-y-1.5">
               <TimelineItem
                 label="Submitted"
@@ -395,7 +395,7 @@ function RequestCard({ request, isTenant, currentUserId }) {
 
           {/* Latest Message */}
           {request.latest_comment && (
-            <div className="mt-3 pt-3 border-t">
+            <div className="mt-3 pt-3 border-t-2 border-gray-200">
               <div className="flex items-start gap-2">
                 <MessageSquare className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -412,7 +412,7 @@ function RequestCard({ request, isTenant, currentUserId }) {
 
           {/* Tenant Info (for staff) */}
           {!isTenant && request.tenant && (
-            <div className="mt-3 pt-3 border-t">
+            <div className="mt-3 pt-3 border-t-2 border-gray-200">
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-gray-400" />
                 <div>

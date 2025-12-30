@@ -325,8 +325,11 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-16">
-        <span className="text-muted-foreground">Loading settings...</span>
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <div className="text-center px-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-sm">Loading settings...</p>
+        </div>
       </div>
     );
   }

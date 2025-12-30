@@ -7,20 +7,22 @@ import Footer from "@/components/layout/footer";
 
 export default function SignupPage() {
   return (
-    <div>
+    <div className="flex min-h-screen flex-col bg-background">
       <Navbar />
-      <Suspense
-        fallback={
-          <div className="min-h-screen bg-background flex items-center justify-center p-4">
-            <div className="text-center">
+
+      <main className="flex-1 flex items-center justify-center px-4 py-10">
+        <Suspense
+          fallback={
+            <div className="w-full max-w-md flex flex-col items-center justify-center">
               <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading...</p>
+              <p className="text-muted-foreground text-center">Loading...</p>
             </div>
-          </div>
-        }
-      >
-        <SignupForm />
-      </Suspense>
+          }
+        >
+          <SignupForm />
+        </Suspense>
+      </main>
+
       <Footer />
     </div>
   );
