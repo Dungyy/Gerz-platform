@@ -60,7 +60,7 @@ export async function POST(request) {
 
     // Generate reset URL (matches invitation pattern)
     const resetUrl = `${
-      process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+      process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
     }/reset-password?token=${resetToken}`;
 
     console.log("📧 Sending password reset email to:", email);
@@ -76,7 +76,7 @@ export async function POST(request) {
             Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
           },
           body: JSON.stringify({
-            from: process.env.DEFAULT_FROM_EMAIL || "noreply@dingy.app",
+            from: process.env.DEFAULT_FROM_EMAIL,
             to: email,
             subject: "Reset Your Password - dingy.app",
             html: generatePasswordResetEmail(email, resetUrl),
