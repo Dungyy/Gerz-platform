@@ -2,39 +2,60 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Wrench, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Lock, ArrowRight, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 
 function SetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
   const [loading, setLoading] = useState(false);
-  const [checking, setChecking] = useState(true);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState(null);
-  const [email, setEmail] = useState("");
-  const [sessionActive, setSessionActive] = useState(false);
+  const [verifying, setVerifying] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isValidSession, setIsValidSession] = useState(false);
+  const [passwordSet, setPasswordSet] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
+
   const [formData, setFormData] = useState({
     password: "",
     confirmPassword: "",
   });
 
+  const [passwordStrength, setPasswordStrength] = useState({
+    hasLength: false,
+    hasUpper: false,
+    hasLower: false,
+    hasNumber: false,
+  });
+
   useEffect(() => {
-    checkSessionAndEmail();
+    checkSession();
   }, []);
 
-  async function checkSessionAndEmail() {
+  useEffect(() => {
+    const password = formData.password;
+    setPasswordStrength({
+      hasLength: password.length >= 8,
+      hasUpper: /[A-Z]/.test(password),
+      hasLower: /[a-z]/.test(password),
+      hasNumber: /[0-9]/.test(password),
+    });
+  }, [formData.password]);
+
+  async function checkSession() {
+    setVerifying(true);
     try {
       console.log("🔍 Checking for active session...");
 
-      // Check for email in URL params first
+      // Check for email in URL params
       const emailParam = searchParams.get("email");
       if (emailParam) {
-        setEmail(emailParam);
+        setUserEmail(emailParam);
       }
 
       // Check for active session
@@ -45,17 +66,15 @@ function SetPasswordContent() {
 
       if (sessionError) {
         console.error("❌ Session error:", sessionError);
-        setError(
-          "Invalid or expired link. Please contact your property manager for a new invitation."
-        );
-        setChecking(false);
+        setIsValidSession(false);
+        toast.error("Error verifying invitation link");
         return;
       }
 
       if (session) {
         console.log("✅ Active session found for:", session.user.email);
-        setEmail(session.user.email);
-        setSessionActive(true);
+        setUserEmail(session.user.email);
+        setIsValidSession(true);
       } else {
         console.log("⚠️ No active session");
 
@@ -64,45 +83,42 @@ function SetPasswordContent() {
         if (hash) {
           console.log("🔗 Hash detected, Supabase will handle authentication");
           // Give Supabase a moment to process the hash
-          setTimeout(() => checkSessionAndEmail(), 1000);
+          setTimeout(() => checkSession(), 1000);
           return;
         }
 
-        setError(
-          "Please use the link from your invitation email to access this page."
-        );
+        console.error("❌ No session found");
+        setIsValidSession(false);
+        toast.error("Invalid or expired invitation link");
       }
-    } catch (err) {
-      console.error("❌ Error checking session:", err);
-      setError("An error occurred. Please try again.");
+    } catch (error) {
+      console.error("Session verification error:", error);
+      setIsValidSession(false);
+      toast.error("Failed to verify invitation link");
     } finally {
-      setChecking(false);
+      setVerifying(false);
     }
   }
 
-  async function handleSubmit(e) {
+  function handleChange(e) {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  }
+
+  async function handleSetPassword(e) {
     e.preventDefault();
 
-    if (!sessionActive) {
-      setError("No active session. Please use the link from your email.");
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    const allRequirementsMet = Object.values(passwordStrength).every(Boolean);
+    if (!allRequirementsMet) {
+      toast.error("Please meet all password requirements");
       return;
     }
 
     setLoading(true);
-    setError(null);
-
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
-      setLoading(false);
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
-      setLoading(false);
-      return;
-    }
 
     try {
       console.log("🔐 Setting password...");
@@ -114,216 +130,193 @@ function SetPasswordContent() {
       if (updateError) throw updateError;
 
       console.log("✅ Password set successfully!");
-      setSuccess(true);
+      setPasswordSet(true);
+      toast.success("Password set successfully!");
 
-      // Redirect to dashboard after 2 seconds
       setTimeout(() => {
         router.push("/dashboard");
-      }, 2000);
-    } catch (err) {
-      console.error("❌ Password setup error:", err);
-      setError(err.message || "Failed to set password. Please try again.");
+      }, 3000);
+    } catch (error) {
+      console.error("❌ Password setup error:", error);
+      toast.error(error.message || "Failed to set password");
     } finally {
       setLoading(false);
     }
   }
 
-  // Loading state - checking session
-  if (checking) {
+  if (verifying) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="py-8 sm:py-12 text-center">
-            <Loader2 className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-blue-600 mx-auto mb-3 sm:mb-4" />
-            <p className="text-gray-600 text-sm sm:text-base">
-              Verifying your invitation...
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-sm">
+          <CardContent className="text-center py-12">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
+            <p className="text-muted-foreground">Verifying invitation...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!isValidSession) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-sm">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Invalid or Expired Link</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-muted-foreground">
+              This invitation link is invalid or has expired. Please contact your property manager for a new invitation.
             </p>
+            <Button onClick={() => router.push("/login")} className="w-full">
+              Back to Login
+            </Button>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // Success state - password set
-  if (success) {
+  if (passwordSet) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-5 sm:pt-6 pb-5 text-center">
-            <div className="flex justify-center mb-3 sm:mb-4">
-              <div className="h-14 w-14 sm:h-16 sm:w-16 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="h-8 w-8 sm:h-10 sm:w-10 text-green-600" />
-              </div>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-sm">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-green-500/10">
+              <CheckCircle2 className="h-8 w-8 text-green-600" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold mb-2">
-              Welcome Aboard! 🎉
-            </h2>
-            <p className="text-gray-600 mb-4 text-sm sm:text-base px-2">
-              Your password has been set successfully.
-              <br />
-              Redirecting to your dashboard...
+            <CardTitle className="text-2xl">Welcome Aboard! 🎉</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-muted-foreground">
+              Your password has been set successfully. Redirecting to your dashboard...
             </p>
-            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-              <div
-                className="h-full bg-blue-600 rounded-full animate-pulse"
-                style={{ width: "75%" }}
-              ></div>
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Redirecting in 3 seconds...
+            </p>
+            <Button onClick={() => router.push("/dashboard")} className="w-full">
+              Go to Dashboard
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // Error state - expired/invalid link
-  if (error && !sessionActive) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <Card className="w-full max-w-md border-red-200">
-          <CardContent className="pt-5 sm:pt-6 pb-5">
-            <div className="flex items-start gap-2 sm:gap-3">
-              <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 flex-shrink-0 mt-0.5 sm:mt-1" />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-red-900 mb-2 text-sm sm:text-base">
-                  Invalid or Expired Link
-                </h3>
-                <p className="text-xs sm:text-sm text-red-700 mb-3">{error}</p>
-                <div className="space-y-2">
-                  <p className="text-xs sm:text-sm text-gray-600">
-                    If you need a new invitation, please contact your property
-                    manager.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => router.push("/login")}
-                    className="mt-3 w-full sm:w-auto text-sm h-9 sm:h-10"
-                  >
-                    Go to Login
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Form state - password setup
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="pb-4 sm:pb-6">
-          <div className="flex items-center gap-2 mb-3 sm:mb-4">
-            <div className="h-9 w-9 sm:h-10 sm:w-10 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Wrench className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 py-20">
+      {/* Background accents */}
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute left-[-120px] top-[-120px] h-[320px] w-[320px] rounded-full bg-purple-500/10 blur-3xl" />
+        <div className="absolute right-[-140px] top-[180px] h-[360px] w-[360px] rounded-full bg-blue-500/10 blur-3xl" />
+      </div>
+
+      <Card className="w-full max-w-md shadow-sm border-border/50">
+        <CardHeader className="text-center space-y-3">
+          <Link href="/" className="inline-flex items-center gap-2 justify-center mb-2 hover:opacity-80 transition-opacity">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-foreground text-background font-bold text-lg">
+              d
             </div>
-            <span className="text-xl sm:text-2xl font-bold">Dingy.app</span>
-          </div>
-          <CardTitle className="text-xl sm:text-2xl">
-            Set Your Password
-          </CardTitle>
-          <p className="text-xs sm:text-sm text-gray-600 mt-2">
-            Welcome! Create a secure password to access your account.
+            <div className="leading-tight text-left">
+              <div className="font-semibold text-lg">dingy.app</div>
+              <div className="text-xs text-muted-foreground">Maintenance Requests</div>
+            </div>
+          </Link>
+          <CardTitle className="text-3xl tracking-tight">Set Your Password</CardTitle>
+          <p className="text-muted-foreground">
+            {userEmail && (
+              <>
+                Welcome! Create a password for <strong>{userEmail}</strong>
+              </>
+            )}
           </p>
         </CardHeader>
+
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email Display */}
-            {email && (
-              <div>
-                <label className="block text-xs sm:text-sm font-medium mb-2">
-                  Email
-                </label>
+          <form onSubmit={handleSetPassword} className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="password" className="block text-sm font-medium">
+                New Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  type="email"
-                  value={email}
-                  disabled
-                  className="bg-gray-50 text-sm sm:text-base h-10 sm:h-11"
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="Enter your password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="pl-10 pr-10"
+                  required
+                  autoComplete="new-password"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-            )}
-
-            {/* New Password */}
-            <div>
-              <label className="block text-xs sm:text-sm font-medium mb-2">
-                New Password <span className="text-red-500">*</span>
-              </label>
-              <Input
-                type="password"
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
-                required
-                minLength={6}
-                disabled={!sessionActive}
-                autoFocus
-                className="text-sm sm:text-base h-10 sm:h-11"
-              />
-              <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
-                Must be at least 6 characters
-              </p>
             </div>
 
-            {/* Confirm Password */}
-            <div>
-              <label className="block text-xs sm:text-sm font-medium mb-2">
-                Confirm Password <span className="text-red-500">*</span>
+            <div className="space-y-2">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium">
+                Confirm Password
               </label>
-              <Input
-                type="password"
-                placeholder="Confirm your password"
-                value={formData.confirmPassword}
-                onChange={(e) =>
-                  setFormData({ ...formData, confirmPassword: e.target.value })
-                }
-                required
-                minLength={6}
-                disabled={!sessionActive}
-                className="text-sm sm:text-base h-10 sm:h-11"
-              />
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  placeholder="Confirm your password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="pl-10 pr-10"
+                  required
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
-            {/* Error Message */}
-            {error && sessionActive && (
-              <div className="flex items-start gap-2 text-red-700 text-xs sm:text-sm bg-red-50 p-3 rounded border border-red-200">
-                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0 mt-0.5" />
-                <span className="flex-1 min-w-0">{error}</span>
+            {/* Password Requirements */}
+            <div className="p-4 rounded-lg border bg-muted/50 space-y-2">
+              <p className="text-sm font-medium mb-2">Password Requirements:</p>
+              <div className="space-y-1.5">
+                <PasswordRequirement met={passwordStrength.hasLength} text="At least 8 characters" />
+                <PasswordRequirement met={passwordStrength.hasUpper} text="One uppercase letter" />
+                <PasswordRequirement met={passwordStrength.hasLower} text="One lowercase letter" />
+                <PasswordRequirement met={passwordStrength.hasNumber} text="One number" />
               </div>
-            )}
+            </div>
 
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full text-sm sm:text-base h-10 sm:h-11"
-              disabled={loading || !sessionActive}
-            >
+            <Button type="submit" className="w-full mt-6" size="lg" disabled={loading}>
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  <span>Setting Password...</span>
+                  <span className="mr-2">Setting Password...</span>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
                 </>
               ) : (
-                "Set Password & Continue"
+                <>
+                  Set Password & Continue
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </>
               )}
             </Button>
           </form>
 
-          {/* Help Text */}
-          <div className="mt-5 sm:mt-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-[10px] sm:text-xs text-blue-900">
-              💡 <strong>Tip:</strong> After setting your password, you can
-              login anytime at <span className="font-mono">/login</span> to
-              submit maintenance requests.
-            </p>
-          </div>
-
-          {/* Security Note */}
-          <div className="mt-3 sm:mt-4 text-center">
-            <p className="text-[10px] sm:text-xs text-gray-500">
+          <div className="text-center mt-6">
+            <p className="text-xs text-muted-foreground">
               🔒 Your password is encrypted and secure
             </p>
           </div>
@@ -333,16 +326,26 @@ function SetPasswordContent() {
   );
 }
 
-// Main component with Suspense wrapper
+function PasswordRequirement({ met, text }) {
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      <div className={`h-4 w-4 rounded-full flex items-center justify-center ${met ? "bg-green-500/20" : "bg-muted"}`}>
+        {met && <CheckCircle2 className="h-3 w-3 text-green-600" />}
+      </div>
+      <span className={met ? "text-foreground" : "text-muted-foreground"}>{text}</span>
+    </div>
+  );
+}
+
 export default function SetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-          <Card className="w-full max-w-md">
-            <CardContent className="py-8 sm:py-12 text-center">
-              <Loader2 className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-blue-600 mx-auto mb-3 sm:mb-4" />
-              <p className="text-gray-600 text-sm sm:text-base">Loading...</p>
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <Card className="w-full max-w-md shadow-sm">
+            <CardContent className="text-center py-12">
+              <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
+              <p className="text-muted-foreground">Loading...</p>
             </CardContent>
           </Card>
         </div>

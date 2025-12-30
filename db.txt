@@ -757,3 +757,24 @@ CREATE POLICY "System can update reset tokens"
 COMMENT ON TABLE password_resets IS 'Stores password reset tokens with expiration';
 COMMENT ON COLUMN password_resets.token IS 'Unique token sent in password reset email';
 COMMENT ON COLUMN password_resets.used_at IS 'Timestamp when token was used (prevents reuse)';
+
+--- photos ---
+
+
+-- Allow authenticated users to upload images
+CREATE POLICY "Authenticated users can upload images"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'maintenance-images');
+
+-- Allow everyone to view images (since bucket is public)
+CREATE POLICY "Public can view images"
+ON storage.objects FOR SELECT
+TO public
+USING (bucket_id = 'maintenance-images');
+
+-- Allow users to delete their own uploaded images
+CREATE POLICY "Users can delete their own images"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (bucket_id = 'maintenance-images' AND auth.uid() = owner);

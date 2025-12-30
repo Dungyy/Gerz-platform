@@ -9,7 +9,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Wrench, Search, Plus, User, Clock } from "lucide-react";
+import { 
+  Wrench, 
+  Search, 
+  Plus, 
+  User, 
+  Clock,
+  Filter,
+  CheckCircle2,
+  AlertCircle,
+  Building,
+  Home,
+  Calendar,
+  MessageSquare,
+  Image as ImageIcon,
+  ChevronRight,
+  Zap,
+  RefreshCw,
+  SlidersHorizontal
+} from "lucide-react";
 import { toast } from "sonner";
 
 export default function RequestsPage() {
@@ -18,9 +36,11 @@ export default function RequestsPage() {
   const [profile, setProfile] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterPriority, setFilterPriority] = useState("all");
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -28,10 +48,7 @@ export default function RequestsPage() {
 
   async function loadData() {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push("/login");
         return;
@@ -46,7 +63,6 @@ export default function RequestsPage() {
         .single();
 
       setProfile(profileData);
-
       await loadRequests();
     } catch (error) {
       console.error("Error loading data:", error);
@@ -70,55 +86,26 @@ export default function RequestsPage() {
     }
   }
 
-  async function handleQuickAssign(requestId) {
-    try {
-      const response = await fetchWithAuth(`/api/requests/${requestId}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          assigned_to: currentUser.id,
-          status: "assigned",
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.error || "Failed to assign");
-      }
-
-      toast.success("✅ Request assigned to you!");
-      await loadRequests();
-    } catch (error) {
-      console.error("Error assigning:", error);
-      toast.error(`❌ Error: ${error.message}`);
-    }
+  async function handleRefresh() {
+    setRefreshing(true);
+    await loadRequests();
+    setTimeout(() => setRefreshing(false), 500);
+    toast.success("Refreshed!");
   }
 
   const filteredRequests = requests.filter((request) => {
     const matchesSearch =
       request.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       request.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.tenant?.full_name
-        ?.toLowerCase()
-        .includes(searchQuery.toLowerCase());
+      request.tenant?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesStatus =
-      filterStatus === "all" || request.status === filterStatus;
-    const matchesPriority =
-      filterPriority === "all" || request.priority === filterPriority;
+    const matchesStatus = filterStatus === "all" || request.status === filterStatus;
+    const matchesPriority = filterPriority === "all" || request.priority === filterPriority;
 
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  const unassignedRequests = filteredRequests.filter((r) => !r.assigned_to);
-  const myRequests = filteredRequests.filter(
-    (r) => r.assigned_to === currentUser?.id
-  );
-
-  const isStaff =
-    profile?.role === "manager" ||
-    profile?.role === "owner" ||
-    profile?.role === "worker";
+  const isStaff = ["manager", "owner", "worker"].includes(profile?.role);
   const isTenant = profile?.role === "tenant";
 
   if (loading) {
@@ -133,291 +120,382 @@ export default function RequestsPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-6">
+    <div className="space-y-4 sm:space-y-6 pb-6 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold">
-            Maintenance Requests
-          </h2>
-          <p className="text-gray-600 mt-1 text-sm sm:text-base">
-            {filteredRequests.length} total requests
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+            Requests
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">
+            {filteredRequests.length} request{filteredRequests.length !== 1 ? 's' : ''}
           </p>
         </div>
-
-        {isTenant && (
-          <Link href="/dashboard/requests/new" className="w-full sm:w-auto">
-            <Button className="w-full sm:w-auto text-sm sm:text-base h-10 sm:h-11">
-              <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-              New Request
-            </Button>
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="h-9"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          </Button>
+          {isTenant && (
+            <Link href="/dashboard/requests/new">
+              <Button className="h-9 text-sm">
+                <Plus className="h-4 w-4 mr-1.5" />
+                New
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
-      {/* Quick Stats for Staff */}
-      {isStaff && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          <Card className="border-orange-200 bg-orange-50">
-            <CardContent className="pt-4 sm:pt-6 pb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm text-orange-700 font-medium">
-                    Unassigned
-                  </p>
-                  <p className="text-2xl sm:text-3xl font-bold text-orange-900 mt-1">
-                    {unassignedRequests.length}
-                  </p>
-                </div>
-                <Wrench className="h-7 w-7 sm:h-8 sm:w-8 text-orange-600" />
-              </div>
-            </CardContent>
-          </Card>
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search requests..."
+            className="pl-9 h-9 text-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowFilters(!showFilters)}
+          className={`h-9 ${showFilters ? 'bg-gray-100' : ''}`}
+        >
+          <SlidersHorizontal className="h-4 w-4 mr-1.5" />
+          Filters
+        </Button>
+      </div>
 
-          <Card className="border-blue-200 bg-blue-50">
-            <CardContent className="pt-4 sm:pt-6 pb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm text-blue-700 font-medium">
-                    Assigned to Me
-                  </p>
-                  <p className="text-2xl sm:text-3xl font-bold text-blue-900 mt-1">
-                    {myRequests.length}
-                  </p>
-                </div>
-                <User className="h-7 w-7 sm:h-8 sm:w-8 text-blue-600" />
-              </div>
-            </CardContent>
-          </Card>
+      {/* Filter Options */}
+      {showFilters && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-gray-50 rounded-lg border">
+          <div>
+            <label className="block text-xs font-medium mb-1.5">Status</label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="w-full px-3 py-1.5 border rounded-md text-sm h-9"
+            >
+              <option value="all">All Statuses</option>
+              <option value="submitted">Submitted</option>
+              <option value="assigned">Assigned</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
 
-          <Card className="border-green-200 bg-green-50">
-            <CardContent className="pt-4 sm:pt-6 pb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm text-green-700 font-medium">
-                    Total Requests
-                  </p>
-                  <p className="text-2xl sm:text-3xl font-bold text-green-900 mt-1">
-                    {filteredRequests.length}
-                  </p>
-                </div>
-                <Clock className="h-7 w-7 sm:h-8 sm:w-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
+          <div>
+            <label className="block text-xs font-medium mb-1.5">Priority</label>
+            <select
+              value={filterPriority}
+              onChange={(e) => setFilterPriority(e.target.value)}
+              className="w-full px-3 py-1.5 border rounded-md text-sm h-9"
+            >
+              <option value="all">All Priorities</option>
+              <option value="emergency">Emergency</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
         </div>
       )}
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-4 sm:pt-6 pb-4">
-          <div className="flex flex-col gap-3 sm:gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
-              <Input
-                placeholder="Search requests..."
-                className="pl-9 sm:pl-10 text-sm sm:text-base h-10 sm:h-11"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 border rounded-lg text-sm sm:text-base h-10 sm:h-11 col-span-2 sm:col-span-1"
-              >
-                <option value="all">All Statuses</option>
-                <option value="submitted">Submitted</option>
-                <option value="assigned">Assigned</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-
-              <select
-                value={filterPriority}
-                onChange={(e) => setFilterPriority(e.target.value)}
-                className="px-3 py-2 border rounded-lg text-sm sm:text-base h-10 sm:h-11 col-span-2 sm:col-span-1"
-              >
-                <option value="all">All Priorities</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="emergency">Emergency</option>
-              </select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Unassigned Requests Section (Staff Only) */}
-      {isStaff && unassignedRequests.length > 0 && (
-        <Card className="border-orange-200">
-          <CardContent className="pt-4 sm:pt-6 pb-4">
-            <h3 className="font-semibold text-base sm:text-lg mb-3 sm:mb-4 text-orange-900">
-              🔔 Unassigned Requests ({unassignedRequests.length})
-            </h3>
-            <div className="space-y-2 sm:space-y-3">
-              {unassignedRequests.slice(0, 5).map((request) => (
-                <div
-                  key={request.id}
-                  className="p-3 sm:p-4 bg-orange-50 border border-orange-200 rounded-lg"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/dashboard/requests/${request.id}`}>
-                        <h4 className="font-semibold hover:text-blue-600 text-sm sm:text-base truncate">
-                          {request.title}
-                        </h4>
-                      </Link>
-                      <p className="text-xs sm:text-sm text-gray-600 mt-1 truncate">
-                        {request.property?.name} - Unit{" "}
-                        {request.unit?.unit_number}
-                      </p>
-                      <p className="text-xs sm:text-sm text-gray-500 truncate">
-                        {request.tenant?.full_name} •{" "}
-                        {formatDate(request.created_at)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 sm:ml-4">
-                      <PriorityBadge priority={request.priority} />
-                      <Button
-                        size="sm"
-                        onClick={() => handleQuickAssign(request.id)}
-                        className="bg-green-600 hover:bg-green-700 text-xs sm:text-sm h-8 sm:h-9 px-3 sm:px-4"
-                      >
-                        🙋 Take It
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* All Requests */}
-      <Card>
-        <CardContent className="pt-4 sm:pt-6 pb-4">
-          <div className="space-y-2 sm:space-y-3">
-            {filteredRequests.length === 0 ? (
-              <div className="text-center py-8 sm:py-12 px-4">
-                <Wrench className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
-                <h3 className="text-base sm:text-lg font-semibold mb-2">
-                  No requests found
-                </h3>
-                <p className="text-gray-600 text-sm sm:text-base">
-                  {searchQuery
-                    ? "Try a different search"
-                    : "No maintenance requests yet"}
-                </p>
-              </div>
-            ) : (
-              filteredRequests.map((request) => (
-                <Link
-                  key={request.id}
-                  href={`/dashboard/requests/${request.id}`}
-                  className="block p-3 sm:p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h4 className="font-semibold text-sm sm:text-base truncate flex-1 min-w-0">
-                          {request.title}
-                        </h4>
-                        {request.assigned_to === currentUser?.id && (
-                          <Badge className="bg-blue-100 text-blue-700 text-[10px] sm:text-xs whitespace-nowrap">
-                            Assigned to you
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs sm:text-sm text-gray-600 truncate">
-                        {request.property?.name} - Unit{" "}
-                        {request.unit?.unit_number}
-                      </p>
-                      {!isTenant && (
-                        <p className="text-xs sm:text-sm text-gray-500 mt-1 truncate">
-                          {request.tenant?.full_name} •{" "}
-                          {formatDate(request.created_at)}
-                        </p>
-                      )}
-                      {request.assigned_to_user &&
-                        request.assigned_to !== currentUser?.id && (
-                          <p className="text-xs sm:text-sm text-gray-500 mt-1 truncate">
-                            Assigned to: {request.assigned_to_user.full_name}
-                          </p>
-                        )}
-                    </div>
-                    <div className="flex gap-2 sm:ml-4 flex-shrink-0">
-                      <PriorityBadge priority={request.priority} />
-                      <StatusBadge status={request.status} />
-                    </div>
-                  </div>
-                </Link>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Requests List */}
+      <div className="space-y-3">
+        {filteredRequests.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Wrench className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-sm text-gray-600">No requests found</p>
+            </CardContent>
+          </Card>
+        ) : (
+          filteredRequests.map((request) => (
+            <RequestCard
+              key={request.id}
+              request={request}
+              isTenant={isTenant}
+              currentUserId={currentUser?.id}
+            />
+          ))
+        )}
+      </div>
     </div>
   );
 }
 
-function PriorityBadge({ priority }) {
-  const variants = {
-    low: "bg-gray-100 text-gray-700",
-    medium: "bg-blue-100 text-blue-700",
-    high: "bg-orange-100 text-orange-700",
-    emergency: "bg-red-100 text-red-700",
-  };
+function RequestCard({ request, isTenant, currentUserId }) {
+  // Helper function to parse images (same as detail page)
+  function getImagesArray(images) {
+    if (!images) return [];
+    if (Array.isArray(images)) return images;
+    if (typeof images === 'string') {
+      try {
+        const parsed = JSON.parse(images);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        console.error('Failed to parse images:', e);
+        return [];
+      }
+    }
+    return [];
+  }
+
+  const requestImages = getImagesArray(request.images);
+  const hasPhotos = requestImages.length > 0;
+  const commentCount = 0; // Would come from API
 
   return (
-    <Badge
-      className={`${
-        variants[priority] || "bg-gray-100 text-gray-700"
-      } text-[10px] sm:text-xs`}
-    >
-      {priority}
-    </Badge>
+    <Link href={`/dashboard/requests/${request.id}`}>
+      <Card className="hover:shadow-md transition-all border hover:border-gray-300">
+        <CardContent className="p-4 sm:p-5">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <h3 className="font-semibold text-base">
+                  {request.title}
+                </h3>
+                <StatusBadge status={request.status} />
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-600 flex-wrap">
+                <span className="flex items-center gap-1">
+                  {request.unit?.unit_number && `Unit ${request.unit.unit_number}`}
+                </span>
+                {request.category && (
+                  <>
+                    <span>•</span>
+                    <span className="capitalize">{request.category}</span>
+                  </>
+                )}
+                {hasPhotos && (
+                  <>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <ImageIcon className="h-3 w-3" />
+                      {requestImages.length} photo{requestImages.length !== 1 ? 's' : ''}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Photo Preview Thumbnails */}
+          {hasPhotos && (
+            <div className="mb-3">
+              <div className="flex gap-2 overflow-x-auto">
+                {requestImages.slice(0, 3).map((url, index) => (
+                  <div
+                    key={index}
+                    className="relative w-16 h-16 rounded-lg overflow-hidden border flex-shrink-0"
+                  >
+                    <img
+                      src={url}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+                {requestImages.length > 3 && (
+                  <div className="w-16 h-16 rounded-lg border bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-600 flex-shrink-0">
+                    +{requestImages.length - 3}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Description */}
+          <div className="mb-4">
+            <p className="text-sm text-gray-900 mb-1 line-clamp-2">
+              {request.description}
+            </p>
+            {request.location_details && (
+              <p className="text-xs text-gray-600">
+                📍 {request.location_details}
+              </p>
+            )}
+          </div>
+
+          {/* Info Grid */}
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="bg-gray-50 rounded-lg p-2.5 border">
+              <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-1">
+                <Wrench className="h-3.5 w-3.5" />
+                <span className="font-medium">Assigned</span>
+              </div>
+              <p className="text-sm font-medium truncate">
+                {request.assigned_to_user ? (
+                  request.assigned_to === currentUserId ? 'You' : request.assigned_to_user.full_name
+                ) : (
+                  <span className="text-gray-500">Unassigned</span>
+                )}
+              </p>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-2.5 border">
+              <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-1">
+                <AlertCircle className="h-3.5 w-3.5" />
+                <span className="font-medium">Priority</span>
+              </div>
+              <p className="text-sm font-medium capitalize">
+                {request.priority}
+              </p>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-2.5 border">
+              <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-1">
+                <Clock className="h-3.5 w-3.5" />
+                <span className="font-medium">Status</span>
+              </div>
+              <p className="text-sm font-medium">
+                {request.status === 'completed' ? 'Done' : formatETA(request.created_at)}
+              </p>
+            </div>
+          </div>
+
+          {/* Timeline */}
+          <div className="bg-gray-50 rounded-lg p-3 border">
+            <p className="text-xs font-medium text-gray-700 mb-2">Timeline</p>
+            <div className="space-y-1.5">
+              <TimelineItem
+                label="Submitted"
+                value={formatTimestamp(request.created_at)}
+              />
+              {request.status !== 'submitted' && (
+                <TimelineItem
+                  label="Assigned"
+                  value={formatTimestamp(request.updated_at)}
+                />
+              )}
+              {request.status === 'in_progress' && (
+                <TimelineItem
+                  label="In progress"
+                  value="Now"
+                />
+              )}
+              {request.status === 'completed' && (
+                <TimelineItem
+                  label="Completed"
+                  value={formatTimestamp(request.completed_at)}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Latest Message */}
+          {request.latest_comment && (
+            <div className="mt-3 pt-3 border-t">
+              <div className="flex items-start gap-2">
+                <MessageSquare className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-700 mb-0.5">
+                    Latest message
+                  </p>
+                  <p className="text-sm text-gray-600 line-clamp-1">
+                    {request.latest_comment}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tenant Info (for staff) */}
+          {!isTenant && request.tenant && (
+            <div className="mt-3 pt-3 border-t">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-gray-400" />
+                <div>
+                  <p className="text-xs text-gray-600">Tenant</p>
+                  <p className="text-sm font-medium">{request.tenant.full_name}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+function TimelineItem({ label, value }) {
+  return (
+    <div className="flex items-center justify-between text-xs">
+      <span className="text-gray-700">{label}</span>
+      <span className="text-gray-600">{value}</span>
+    </div>
   );
 }
 
 function StatusBadge({ status }) {
   const variants = {
-    submitted: "bg-yellow-100 text-yellow-700",
+    submitted: "bg-amber-100 text-amber-700",
     assigned: "bg-blue-100 text-blue-700",
     in_progress: "bg-purple-100 text-purple-700",
     completed: "bg-green-100 text-green-700",
     cancelled: "bg-gray-100 text-gray-700",
   };
 
+  const labels = {
+    submitted: "Open",
+    assigned: "Assigned",
+    in_progress: "In Progress",
+    completed: "Done",
+    cancelled: "Cancelled",
+  };
+
   return (
-    <Badge
-      className={`${
-        variants[status] || "bg-gray-100 text-gray-700"
-      } text-[10px] sm:text-xs`}
-    >
-      {status?.replace("_", " ")}
+    <Badge className={`${variants[status] || variants.submitted} text-xs font-medium px-2 py-0.5 border-0`}>
+      {labels[status] || status}
     </Badge>
   );
 }
 
-function formatDate(dateString) {
+function formatTimestamp(dateString) {
   if (!dateString) return "N/A";
-
+  
   const date = new Date(dateString);
   const now = new Date();
-  const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+  const diffInMinutes = Math.floor((now - date) / (1000 * 60));
 
-  if (diffInHours < 1) return "Just now";
+  if (diffInMinutes < 1) return "Just now";
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+  
+  const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) return `${diffInHours}h ago`;
-  if (diffInHours < 48) return "Yesterday";
-
+  
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return `${diffInDays}d ago`;
+  
   return date.toLocaleDateString("en-US", {
     month: "short",
-    day: "numeric",
+    day: "numeric"
   });
+}
+
+function formatETA(createdAt) {
+  const created = new Date(createdAt);
+  const eta = new Date(created);
+  eta.setDate(eta.getDate() + 2); // 2 day ETA
+  
+  const now = new Date();
+  if (eta < now) return "Overdue";
+  
+  if (eta.toDateString() === now.toDateString()) return "Today";
+  
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (eta.toDateString() === tomorrow.toDateString()) return "Tomorrow";
+  
+  return eta.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }

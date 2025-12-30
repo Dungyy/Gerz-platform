@@ -12,7 +12,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get("token");
 
-    console.log("🔍 GET /api/auth/reset-password/confirm - Token:", token);
+    console.log("🔍 GET /api/reset-password/confirm - Token:", token);
 
     if (!token) {
       console.log("❌ No token provided");

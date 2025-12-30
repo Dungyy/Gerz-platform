@@ -58,6 +58,7 @@ export default function ResetPasswordForm() {
     try {
       console.log("🔍 Verifying token:", token);
 
+      // Query database directly (same pattern as signup invitation verification)
       const { data: resetToken, error } = await supabase
         .from("password_resets")
         .select("*")
@@ -133,18 +134,13 @@ export default function ResetPasswordForm() {
       });
 
       console.log("Response status:", response.status);
-      console.log(
-        "Response content-type:",
-        response.headers.get("content-type")
-      );
+      console.log("Response content-type:", response.headers.get("content-type"));
 
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         const text = await response.text();
         console.error("❌ Non-JSON response:", text.substring(0, 200));
-        throw new Error(
-          "API route returned invalid response. Check server logs."
-        );
+        throw new Error("API route returned invalid response. Check server logs.");
       }
 
       const data = await response.json();
@@ -191,8 +187,7 @@ export default function ResetPasswordForm() {
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-muted-foreground">
-              This password reset link is invalid or has expired. Please request
-              a new one.
+              This password reset link is invalid or has expired. Please request a new one.
             </p>
             <Button onClick={() => router.push("/login")} className="w-full">
               Back to Login
@@ -215,8 +210,7 @@ export default function ResetPasswordForm() {
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-muted-foreground">
-              Your password has been successfully reset. You can now sign in
-              with your new password.
+              Your password has been successfully reset. You can now sign in with your new password.
             </p>
             <p className="text-sm text-muted-foreground">
               Redirecting you to login in 3 seconds...
@@ -240,23 +234,16 @@ export default function ResetPasswordForm() {
 
       <Card className="w-full max-w-md shadow-sm border-border/50">
         <CardHeader className="text-center space-y-3">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 justify-center mb-2 hover:opacity-80 transition-opacity"
-          >
+          <Link href="/" className="inline-flex items-center gap-2 justify-center mb-2 hover:opacity-80 transition-opacity">
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-foreground text-background font-bold text-lg">
               d
             </div>
             <div className="leading-tight text-left">
               <div className="font-semibold text-lg">dingy.app</div>
-              <div className="text-xs text-muted-foreground">
-                Maintenance Requests
-              </div>
+              <div className="text-xs text-muted-foreground">Maintenance Requests</div>
             </div>
           </Link>
-          <CardTitle className="text-3xl tracking-tight">
-            Create New Password
-          </CardTitle>
+          <CardTitle className="text-3xl tracking-tight">Create New Password</CardTitle>
           <p className="text-muted-foreground">
             {userEmail && (
               <>
@@ -290,20 +277,13 @@ export default function ResetPasswordForm() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label
-                htmlFor="confirmPassword"
-                className="block text-sm font-medium"
-              >
+              <label htmlFor="confirmPassword" className="block text-sm font-medium">
                 Confirm Password
               </label>
               <div className="relative">
@@ -324,11 +304,7 @@ export default function ResetPasswordForm() {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
@@ -336,31 +312,14 @@ export default function ResetPasswordForm() {
             <div className="p-4 rounded-lg border bg-muted/50 space-y-2">
               <p className="text-sm font-medium mb-2">Password Requirements:</p>
               <div className="space-y-1.5">
-                <PasswordRequirement
-                  met={passwordStrength.hasLength}
-                  text="At least 8 characters"
-                />
-                <PasswordRequirement
-                  met={passwordStrength.hasUpper}
-                  text="One uppercase letter"
-                />
-                <PasswordRequirement
-                  met={passwordStrength.hasLower}
-                  text="One lowercase letter"
-                />
-                <PasswordRequirement
-                  met={passwordStrength.hasNumber}
-                  text="One number"
-                />
+                <PasswordRequirement met={passwordStrength.hasLength} text="At least 8 characters" />
+                <PasswordRequirement met={passwordStrength.hasUpper} text="One uppercase letter" />
+                <PasswordRequirement met={passwordStrength.hasLower} text="One lowercase letter" />
+                <PasswordRequirement met={passwordStrength.hasNumber} text="One number" />
               </div>
             </div>
 
-            <Button
-              type="submit"
-              className="w-full mt-6"
-              size="lg"
-              disabled={loading}
-            >
+            <Button type="submit" className="w-full mt-6" size="lg" disabled={loading}>
               {loading ? (
                 <>
                   <span className="mr-2">Resetting Password...</span>
@@ -376,10 +335,7 @@ export default function ResetPasswordForm() {
           </form>
 
           <div className="text-center mt-6">
-            <Link
-              href="/login"
-              className="text-sm text-muted-foreground hover:text-foreground hover:underline"
-            >
+            <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
               Back to Login
             </Link>
           </div>
@@ -392,16 +348,10 @@ export default function ResetPasswordForm() {
 function PasswordRequirement({ met, text }) {
   return (
     <div className="flex items-center gap-2 text-sm">
-      <div
-        className={`h-4 w-4 rounded-full flex items-center justify-center ${
-          met ? "bg-green-500/20" : "bg-muted"
-        }`}
-      >
+      <div className={`h-4 w-4 rounded-full flex items-center justify-center ${met ? "bg-green-500/20" : "bg-muted"}`}>
         {met && <CheckCircle2 className="h-3 w-3 text-green-600" />}
       </div>
-      <span className={met ? "text-foreground" : "text-muted-foreground"}>
-        {text}
-      </span>
+      <span className={met ? "text-foreground" : "text-muted-foreground"}>{text}</span>
     </div>
   );
 }
