@@ -3,6 +3,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { fetchWithAuth } from "@/lib/api-helper";

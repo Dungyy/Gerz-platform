@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { fetchWithAuth } from "@/lib/api-helper";
 import { Card, CardContent } from "@/components/ui/card";
