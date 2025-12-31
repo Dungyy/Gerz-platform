@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { AddUnitModal } from "@/components/modals/add-unit-modal";
+import { EditUnitModal } from "@/components/modals/edit-unit-modal";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import {
   ArrowLeft,
@@ -42,12 +43,17 @@ export default function PropertyDetailPage() {
   const [unitSearch, setUnitSearch] = useState("");
   const [unitFilter, setUnitFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Modals
   const [showAddUnitModal, setShowAddUnitModal] = useState(false);
-  const [deletingUnitId, setDeletingUnitId] = useState(null);
-
+  const [showEditUnitModal, setShowEditUnitModal] = useState(false);
   const [showDeletePropertyModal, setShowDeletePropertyModal] = useState(false);
   const [showDeleteUnitModal, setShowDeleteUnitModal] = useState(false);
+  
+  // Selected items
+  const [unitToEdit, setUnitToEdit] = useState(null);
   const [unitToDelete, setUnitToDelete] = useState(null);
+  const [deletingUnitId, setDeletingUnitId] = useState(null);
 
   const unitsPerPage = 20;
 
@@ -140,6 +146,11 @@ export default function PropertyDetailPage() {
       setShowDeleteUnitModal(false);
       setUnitToDelete(null);
     }
+  }
+
+  function openEditUnitModal(unit) {
+    setUnitToEdit(unit);
+    setShowEditUnitModal(true);
   }
 
   function openDeleteUnitModal(unit) {
@@ -307,7 +318,7 @@ export default function PropertyDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Units */}
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-          <Card className="shadow-sm">
+          <Card className="shadow-sm border-2">
             <CardHeader className="pb-3 sm:pb-4">
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
@@ -404,7 +415,7 @@ export default function PropertyDetailPage() {
                 <>
                   <div className="space-y-2">
                     {/* Desktop header - hidden on mobile */}
-                    <div className="hidden lg:grid lg:grid-cols-12 gap-4 px-4 py-2 text-xs font-medium text-muted-foreground border-b">
+                    <div className="hidden lg:grid lg:grid-cols-12 gap-4 px-4 py-2 text-xs font-medium text-muted-foreground border-b-2">
                       <div className="col-span-2">Unit #</div>
                       <div className="col-span-1">Floor</div>
                       <div className="col-span-2">Beds/Baths</div>
@@ -418,7 +429,7 @@ export default function PropertyDetailPage() {
                     {paginatedUnits.map((unit) => (
                       <div
                         key={unit.id}
-                        className="border rounded-lg hover:bg-muted/30 transition-colors"
+                        className="border-2 rounded-lg hover:bg-muted/30 hover:border-gray-400 transition-all"
                       >
                         {/* Desktop row - hidden on tablet and mobile */}
                         <div className="hidden lg:grid lg:grid-cols-12 gap-4 items-center p-4">
@@ -463,7 +474,15 @@ export default function PropertyDetailPage() {
                               {unit.tenant ? "Occupied" : "Vacant"}
                             </Badge>
                           </div>
-                          <div className="col-span-1 flex justify-end">
+                          <div className="col-span-1 flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditUnitModal(unit)}
+                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
                             {!unit.tenant && (
                               <Button
                                 variant="ghost"
@@ -496,7 +515,7 @@ export default function PropertyDetailPage() {
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
                               <Badge
                                 className={
                                   unit.tenant
@@ -506,6 +525,14 @@ export default function PropertyDetailPage() {
                               >
                                 {unit.tenant ? "Occupied" : "Vacant"}
                               </Badge>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditUnitModal(unit)}
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                              >
+                                <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              </Button>
                               {!unit.tenant && (
                                 <Button
                                   variant="ghost"
@@ -604,7 +631,7 @@ export default function PropertyDetailPage() {
         {/* Sidebar */}
         <div className="space-y-4 sm:space-y-6">
           {/* Property Info */}
-          <Card className="shadow-sm">
+          <Card className="shadow-sm border-2">
             <CardHeader className="pb-3 sm:pb-4">
               <CardTitle className="text-base sm:text-lg">
                 Property Details
@@ -646,7 +673,7 @@ export default function PropertyDetailPage() {
 
           {/* Manager */}
           {property.manager && (
-            <Card className="shadow-sm">
+            <Card className="shadow-sm border-2">
               <CardHeader className="pb-3 sm:pb-4">
                 <CardTitle className="text-base sm:text-lg flex items-center gap-2">
                   <User className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -684,7 +711,7 @@ export default function PropertyDetailPage() {
           )}
 
           {/* Danger Zone */}
-          <Card className="shadow-sm border-red-500/20">
+          <Card className="shadow-sm border-2 border-red-500/20">
             <CardHeader className="pb-3 sm:pb-4">
               <CardTitle className="text-base sm:text-lg text-red-600">
                 Danger Zone
@@ -709,7 +736,7 @@ export default function PropertyDetailPage() {
               </ul>
               <Button
                 variant="outline"
-                className="w-full gap-2 text-xs sm:text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-700  "
+                className="w-full gap-2 text-xs sm:text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-700"
                 onClick={() => setShowDeletePropertyModal(true)}
               >
                 <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -731,6 +758,19 @@ export default function PropertyDetailPage() {
         }}
       />
 
+      {/* Edit Unit Modal */}
+      <EditUnitModal
+        isOpen={showEditUnitModal}
+        onClose={() => {
+          setShowEditUnitModal(false);
+          setUnitToEdit(null);
+        }}
+        unit={unitToEdit}
+        onSuccess={() => {
+          loadProperty();
+        }}
+      />
+
       {/* Delete Property Confirmation */}
       <ConfirmationModal
         isOpen={showDeletePropertyModal}
@@ -749,7 +789,7 @@ export default function PropertyDetailPage() {
             </span>
             .
           </p>
-          <div className="p-3 bg-red-50 border  rounded-lg">
+          <div className="p-3 bg-red-50 border rounded-lg">
             <p className="font-medium text-red-900 mb-2">
               This will permanently remove:
             </p>
@@ -809,7 +849,7 @@ function StatCard({ title, value, icon: Icon, color }) {
   };
 
   return (
-    <Card className="shadow-sm">
+    <Card className="shadow-sm border-2">
       <CardContent className="pt-4 sm:pt-5 lg:pt-6 pb-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-2">
           <div className="flex-1 min-w-0">
