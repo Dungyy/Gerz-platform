@@ -130,7 +130,7 @@ export default function InviteTenantPage() {
       });
 
       toast.success(
-        `✅ Invitation sent to ${formData.full_name}!\n\nThey will receive ${
+        `Invitation sent to ${formData.full_name}!\n\nThey will receive ${
           invitationMethod === "magic_link"
             ? "a magic link"
             : "a password setup link"

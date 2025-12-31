@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 
 export async function GET(request, context) {
   try {
-    // ✅ AWAIT PARAMS FOR NEXT.JS 15+
+    // AWAIT PARAMS FOR NEXT.JS 15+
     const { id } = await context.params;
 
     // Get auth token from header

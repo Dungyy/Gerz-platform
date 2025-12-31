@@ -834,14 +834,14 @@ GRANT SELECT, INSERT ON activity_logs TO authenticated;
 -- ============================================
 
 -- Your existing table structure:
--- ✅ id (uuid, primary key)
--- ✅ organization_id (uuid, references organizations)
--- ✅ request_id (uuid, references maintenance_requests)
--- ✅ user_id (uuid, references profiles)
--- ✅ action (text, required)
--- ✅ details (jsonb, optional - stores any additional data)
--- ✅ created_at (timestamp with time zone)
+-- id (uuid, primary key)
+-- organization_id (uuid, references organizations)
+-- request_id (uuid, references maintenance_requests)
+-- user_id (uuid, references profiles)
+-- action (text, required)
+-- details (jsonb, optional - stores any additional data)
+-- created_at (timestamp with time zone)
 
 -- Indexes already present:
--- ✅ idx_activity_org on organization_id
--- ✅ idx_activity_request on request_id
+-- idx_activity_org on organization_id
+-- idx_activity_request on request_id

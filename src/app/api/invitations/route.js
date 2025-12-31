@@ -163,7 +163,7 @@ export async function POST(request) {
           }),
         });
 
-        console.log("✅ Invitation email sent to:", email);
+        console.log("Invitation email sent to:", email);
       } catch (emailError) {
         console.error("❌ Email send error:", emailError);
         // Don't fail the invitation if email fails

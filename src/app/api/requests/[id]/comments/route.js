@@ -66,7 +66,7 @@ export async function GET(request, context) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    console.log("✅ Found", comments?.length || 0, "comments");
+    console.log("Found", comments?.length || 0, "comments");
 
     return NextResponse.json(comments || []);
   } catch (error) {
@@ -115,7 +115,7 @@ export async function POST(request, context) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    // ✅ VALIDATE organization_id exists
+    // VALIDATE organization_id exists
     if (!profile.organization_id) {
       console.error("❌ User has no organization_id:", user.id);
       return NextResponse.json(
@@ -192,9 +192,9 @@ export async function POST(request, context) {
       );
     }
 
-    console.log("✅ Comment authorization passed");
+    console.log("Comment authorization passed");
 
-    // ✅ CREATE COMMENT WITH VALIDATED DATA
+    // CREATE COMMENT WITH VALIDATED DATA
     console.log("📝 Inserting comment with:", {
       request_id: requestId,
       user_id: user.id,
@@ -232,7 +232,7 @@ export async function POST(request, context) {
       );
     }
 
-    console.log("✅ Comment created:", newComment.id);
+    console.log("Comment created:", newComment.id);
 
     // ... rest of notification code (keep as-is)
     if (!is_internal) {
@@ -264,7 +264,7 @@ export async function POST(request, context) {
             }),
           });
 
-          console.log("✅ Email sent to tenant");
+          console.log("Email sent to tenant");
 
           if (
             maintenanceRequest.tenant.phone &&
@@ -281,7 +281,7 @@ export async function POST(request, context) {
               recipientUserId: maintenanceRequest.tenant_id,
               messageType: "status_update",
             });
-            console.log("✅ SMS sent to tenant");
+            console.log("SMS sent to tenant");
           }
         } catch (err) {
           console.error("❌ Tenant notification error:", err);
@@ -314,7 +314,7 @@ export async function POST(request, context) {
             }),
           });
 
-          console.log("✅ Email sent to worker");
+          console.log("Email sent to worker");
 
           if (
             maintenanceRequest.assigned_worker.phone &&
@@ -329,7 +329,7 @@ export async function POST(request, context) {
               recipientUserId: maintenanceRequest.assigned_to,
               messageType: "status_update",
             });
-            console.log("✅ SMS sent to worker");
+            console.log("SMS sent to worker");
           }
         } catch (err) {
           console.error("❌ Worker notification error:", err);

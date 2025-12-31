@@ -84,7 +84,7 @@ export async function POST(request) {
     }
 
     const userId = authData.user.id;
-    console.log("✅ Manager auth user created:", userId);
+    console.log("Manager auth user created:", userId);
 
     // Create profile
     const { error: profileError } = await supabaseAdmin
@@ -107,7 +107,7 @@ export async function POST(request) {
       );
     }
 
-    console.log("✅ Manager profile created");
+    console.log("Manager profile created");
 
     return NextResponse.json({
       success: true,

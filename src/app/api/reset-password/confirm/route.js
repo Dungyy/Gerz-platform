@@ -46,7 +46,7 @@ export async function GET(request) {
       );
     }
 
-    console.log("✅ Token is valid for:", resetToken.email);
+    console.log("Token is valid for:", resetToken.email);
 
     return NextResponse.json({
       valid: true,
@@ -110,7 +110,7 @@ export async function POST(request) {
       );
     }
 
-    console.log("✅ Token valid for:", resetToken.email);
+    console.log("Token valid for:", resetToken.email);
     console.log("🔄 Updating password...");
 
     // Update user password using Supabase Admin
@@ -127,7 +127,7 @@ export async function POST(request) {
       );
     }
 
-    console.log("✅ Password updated successfully");
+    console.log("Password updated successfully");
     console.log("🔒 Marking token as used...");
 
     // Mark token as used to prevent reuse
@@ -136,7 +136,7 @@ export async function POST(request) {
       .update({ used_at: new Date().toISOString() })
       .eq("id", resetToken.id);
 
-    console.log("✅ Password reset complete for:", resetToken.email);
+    console.log("Password reset complete for:", resetToken.email);
 
     return NextResponse.json({
       success: true,

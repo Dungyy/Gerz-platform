@@ -156,7 +156,7 @@ export default function ManagerDetailPage() {
         throw new Error(data?.error || "Failed to delete manager");
       }
 
-      toast.success("✅ Manager deleted successfully");
+      toast.success("Manager deleted successfully");
       router.push("/dashboard/managers");
     } catch (error) {
       console.error("Error deleting manager:", error);

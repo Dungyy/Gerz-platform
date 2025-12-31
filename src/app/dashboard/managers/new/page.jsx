@@ -83,7 +83,7 @@ export default function InviteManagerPage() {
       }
 
       toast.success(
-        `✅ Manager invite created for ${formData.full_name}!\n\nThey'll receive an email to set their password and finish setup.`
+        `Manager invite created for ${formData.full_name}!\n\nThey'll receive an email to set their password and finish setup.`
       );
       router.push("/dashboard/managers");
     } catch (err) {

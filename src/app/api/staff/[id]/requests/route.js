@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 
 export async function GET(request, context) {
   try {
-    // ✅ Await params in Next.js 15+
+    // Await params in Next.js 15+
     const { id } = await context.params
 
     console.log('📦 Fetching requests for staff:', id)
@@ -58,7 +58,7 @@ export async function GET(request, context) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    console.log('✅ Found', requests?.length || 0, 'requests')
+    console.log('Found', requests?.length || 0, 'requests')
 
     return NextResponse.json(requests || [])
 

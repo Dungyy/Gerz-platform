@@ -155,7 +155,7 @@ export async function POST(request) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     let userId;
 
-    // ✅ INVITATION METHOD: PASSWORD or MAGIC LINK
+    // INVITATION METHOD: PASSWORD or MAGIC LINK
     if (invitation_method === "magic_link") {
       console.log("📧 Using magic link invitation");
 
@@ -215,7 +215,7 @@ export async function POST(request) {
       userId = inviteData.user.id;
     }
 
-    console.log("✅ User created:", userId);
+    console.log("User created:", userId);
 
     // Create tenant profile
     const { error: profileError } = await supabaseAdmin
@@ -236,7 +236,7 @@ export async function POST(request) {
       throw profileError;
     }
 
-    console.log("✅ Tenant profile created");
+    console.log("Tenant profile created");
 
     // Assign tenant to unit
     const { error: unitError } = await supabaseAdmin
@@ -249,7 +249,7 @@ export async function POST(request) {
       throw unitError;
     }
 
-    console.log("✅ Tenant assigned to unit");
+    console.log("Tenant assigned to unit");
 
     // Create notification preferences
     await supabaseAdmin.from("notification_preferences").insert({
@@ -280,7 +280,7 @@ export async function POST(request) {
             ),
           }),
         });
-        console.log("✅ Welcome email sent");
+        console.log("Welcome email sent");
       } catch (emailError) {
         console.error("❌ Email error:", emailError);
       }
@@ -301,7 +301,7 @@ export async function POST(request) {
           recipientUserId: userId,
           messageType: "invitation",
         });
-        console.log("✅ SMS sent");
+        console.log("SMS sent");
       } catch (smsError) {
         console.error("❌ SMS error:", smsError);
       }
@@ -347,7 +347,7 @@ export async function GET(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("✅ Authenticated user:", user.email);
+    console.log("Authenticated user:", user.email);
 
     // Get user's profile
     const { data: profile } = await supabaseAdmin
@@ -360,7 +360,7 @@ export async function GET(request) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    // ✅ AUTHORIZATION CHECK - Only managers/owners can view all tenants
+    // AUTHORIZATION CHECK - Only managers/owners can view all tenants
     if (profile.role !== "owner" && profile.role !== "manager") {
       return NextResponse.json(
         {
@@ -372,7 +372,7 @@ export async function GET(request) {
     }
 
     console.log(
-      "✅ Authorization passed - fetching tenants for org:",
+      "Authorization passed - fetching tenants for org:",
       profile.organization_id
     );
 
@@ -404,7 +404,7 @@ export async function GET(request) {
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
 
-    console.log("✅ Found", tenants?.length || 0, "tenants");
+    console.log("Found", tenants?.length || 0, "tenants");
 
     return NextResponse.json(tenants || []);
   } catch (error) {

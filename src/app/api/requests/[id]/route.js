@@ -76,7 +76,7 @@ export async function GET(request, context) {
       );
     }
 
-    console.log("✅ Request retrieved:", maintenanceRequest.title);
+    console.log("Request retrieved:", maintenanceRequest.title);
 
     return NextResponse.json(maintenanceRequest);
   } catch (error) {
@@ -190,7 +190,7 @@ export async function PUT(request, context) {
       return NextResponse.json({ error: updateError.message }, { status: 400 });
     }
 
-    console.log("✅ Request updated successfully");
+    console.log("Request updated successfully");
 
     // ========================================
     // SEND NOTIFICATIONS (SMART LOGIC)
@@ -234,7 +234,7 @@ export async function PUT(request, context) {
               ),
             }),
           });
-          console.log("✅ Assignment email sent to worker");
+          console.log("Assignment email sent to worker");
 
           // SMS notification
           if (newWorker.phone && newWorker.sms_notifications) {
@@ -245,7 +245,7 @@ export async function PUT(request, context) {
               recipientUserId: newWorker.id,
               messageType: "assignment",
             });
-            console.log("✅ Assignment SMS sent to worker");
+            console.log("Assignment SMS sent to worker");
           }
         } catch (error) {
           console.error("❌ Worker notification error:", error);
@@ -273,7 +273,7 @@ export async function PUT(request, context) {
               ),
             }),
           });
-          console.log("✅ Assignment notification sent to tenant");
+          console.log("Assignment notification sent to tenant");
 
           // SMS to tenant (only for first assignment)
           if (updatedRequest.tenant.phone && updatedRequest.tenant.sms_notifications) {
@@ -284,7 +284,7 @@ export async function PUT(request, context) {
               recipientUserId: updatedRequest.tenant.id,
               messageType: "status_update",
             });
-            console.log("✅ Assignment SMS sent to tenant");
+            console.log("Assignment SMS sent to tenant");
           }
         } catch (error) {
           console.error("❌ Tenant assignment notification error:", error);
@@ -314,7 +314,7 @@ export async function PUT(request, context) {
             body: JSON.stringify({
               from: process.env.DEFAULT_FROM_EMAIL,
               to: updatedRequest.tenant.email,
-              subject: `${updates.status === 'completed' ? '✅ ' : '🔧 '}${updatedRequest.title}`,
+              subject: `${updates.status === 'completed' ? '' : '🔧 '}${updatedRequest.title}`,
               html: generateTenantUpdateEmail(
                 updatedRequest.tenant.full_name,
                 updatedRequest,
@@ -323,7 +323,7 @@ export async function PUT(request, context) {
               ),
             }),
           });
-          console.log("✅ Status update email sent to tenant");
+          console.log("Status update email sent to tenant");
 
           // SMS to tenant (only for work started and completed)
           if (updatedRequest.tenant.phone && updatedRequest.tenant.sms_notifications) {
@@ -338,7 +338,7 @@ export async function PUT(request, context) {
               recipientUserId: updatedRequest.tenant.id,
               messageType: "status_update",
             });
-            console.log("✅ Status update SMS sent to tenant");
+            console.log("Status update SMS sent to tenant");
           }
         } catch (error) {
           console.error("❌ Tenant status notification error:", error);
@@ -373,7 +373,7 @@ export async function PUT(request, context) {
               ),
             }),
           });
-          console.log("✅ Completion notification sent to assigned worker");
+          console.log("Completion notification sent to assigned worker");
         } catch (error) {
           console.error("❌ Worker completion notification error:", error);
         }
@@ -469,7 +469,7 @@ function generateTenantUpdateEmail(tenantName, request, message, updatedBy) {
       <body>
         <div class="container">
           <div class="header">
-            <h2>✅ Request Update</h2>
+            <h2>Request Update</h2>
           </div>
           <div class="content">
             <p>Hi ${tenantName},</p>

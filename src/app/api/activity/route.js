@@ -31,7 +31,7 @@ export async function GET(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("✅ Authenticated user:", user.email);
+    console.log("Authenticated user:", user.email);
 
     // Get user's profile
     const { data: profile } = await supabaseAdmin
@@ -44,7 +44,7 @@ export async function GET(request) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    // ✅ AUTHORIZATION CHECK - Only managers/owners can view activity logs
+    // AUTHORIZATION CHECK - Only managers/owners can view activity logs
     if (profile.role !== "owner" && profile.role !== "manager") {
       return NextResponse.json(
         {
@@ -56,7 +56,7 @@ export async function GET(request) {
     }
 
     console.log(
-      "✅ Authorization passed - fetching logs for org:",
+      "Authorization passed - fetching logs for org:",
       profile.organization_id
     );
 
@@ -88,7 +88,7 @@ export async function GET(request) {
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
 
-    console.log("✅ Found", logs?.length || 0, "activity logs");
+    console.log("Found", logs?.length || 0, "activity logs");
 
     return NextResponse.json(logs || []);
   } catch (error) {
@@ -168,7 +168,7 @@ export async function POST(request) {
       );
     }
 
-    console.log("✅ Activity log created:", log.id);
+    console.log("Activity log created:", log.id);
 
     return NextResponse.json(log);
   } catch (error) {

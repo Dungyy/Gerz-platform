@@ -143,7 +143,7 @@ export default function TenantDetailPage() {
         throw new Error(data?.error || "Failed to assign unit");
       }
 
-      toast.success("✅ Unit assigned successfully!");
+      toast.success("Unit assigned successfully!");
       setShowAssignModal(false);
       await loadTenant();
       await loadUnits();

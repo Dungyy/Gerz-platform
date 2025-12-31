@@ -114,7 +114,7 @@ export default function EditManagerPage() {
         throw new Error(data?.error || "Failed to update manager");
       }
 
-      toast.success("✅ Manager updated successfully!");
+      toast.success("Manager updated successfully!");
       router.push(`/dashboard/managers/${params.id}`);
     } catch (err) {
       console.error("Error updating manager:", err);

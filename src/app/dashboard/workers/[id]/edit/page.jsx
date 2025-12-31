@@ -121,7 +121,7 @@ export default function EditWorkerPage() {
         throw new Error(data?.error || "Failed to update worker");
       }
 
-      toast.success("✅ Worker updated successfully!");
+      toast.success("Worker updated successfully!");
       router.push(`/dashboard/workers/${params.id}`);
     } catch (err) {
       console.error("Error updating worker:", err);

@@ -69,7 +69,7 @@ export async function POST(request) {
     }
 
     const userId = inviteData.user.id;
-    console.log("✅ Worker invite created:", userId);
+    console.log("Worker invite created:", userId);
 
     // Create worker profile
     const { error: profileError } = await supabaseAdmin
@@ -90,7 +90,7 @@ export async function POST(request) {
       throw profileError;
     }
 
-    console.log("✅ Worker profile created");
+    console.log("Worker profile created");
 
     // Create notification preferences
     await supabaseAdmin.from("notification_preferences").insert({
@@ -119,7 +119,7 @@ export async function POST(request) {
             ),
           }),
         });
-        console.log("✅ Welcome email sent");
+        console.log("Welcome email sent");
       } catch (emailError) {
         console.error("❌ Email error:", emailError);
       }
@@ -137,7 +137,7 @@ export async function POST(request) {
           recipientUserId: userId,
           messageType: "invitation",
         });
-        console.log("✅ SMS sent");
+        console.log("SMS sent");
       } catch (smsError) {
         console.error("❌ SMS error:", smsError);
       }

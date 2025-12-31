@@ -34,7 +34,7 @@ export async function GET(request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    console.log("✅ Found", organizations?.length || 0, "organizations");
+    console.log("Found", organizations?.length || 0, "organizations");
 
     return NextResponse.json(organizations || []);
   } catch (error) {

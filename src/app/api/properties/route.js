@@ -45,7 +45,7 @@ export async function POST(request) {
       address: body.address,
       city: body.city || null,
       state: body.state || null,
-      zip_code: body.zip || body.zip_code || null, // ✅ map zip -> zip_code
+      zip_code: body.zip || body.zip_code || null, // map zip -> zip_code
       property_type: body.property_type || null,
       manager_id: body.manager_id || null,
       // photo_url: body.photo_url || null, // if you have it

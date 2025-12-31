@@ -66,7 +66,7 @@ export async function POST(request) {
     }
 
     const userId = inviteData.user.id;
-    console.log("✅ Manager invite created:", userId);
+    console.log("Manager invite created:", userId);
 
     // Create manager profile
     const { error: profileError } = await supabaseAdmin
@@ -87,7 +87,7 @@ export async function POST(request) {
       throw profileError;
     }
 
-    console.log("✅ Manager profile created");
+    console.log("Manager profile created");
 
     // Create notification preferences
     await supabaseAdmin.from("notification_preferences").insert({
@@ -116,7 +116,7 @@ export async function POST(request) {
             ),
           }),
         });
-        console.log("✅ Welcome email sent");
+        console.log("Welcome email sent");
       } catch (emailError) {
         console.error("❌ Email error:", emailError);
       }
@@ -134,7 +134,7 @@ export async function POST(request) {
           recipientUserId: userId,
           messageType: "invitation",
         });
-        console.log("✅ SMS sent");
+        console.log("SMS sent");
       } catch (smsError) {
         console.error("❌ SMS error:", smsError);
       }

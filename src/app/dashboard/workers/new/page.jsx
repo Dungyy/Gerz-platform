@@ -96,7 +96,7 @@ export default function InviteWorkerPage() {
       });
 
       toast.success(
-        `✅ Worker account created for ${formData.full_name}!\n\nThey can now log in with:\nEmail: ${formData.email}\nPassword: (the one you set)`
+        `Worker account created for ${formData.full_name}!\n\nThey can now log in with:\nEmail: ${formData.email}\nPassword: (the one you set)`
       );
       router.push("/dashboard/workers");
     } catch (err) {

@@ -33,7 +33,7 @@ export async function GET(request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    console.log("✅ Found", organizations?.length || 0, "organizations");
+    console.log("Found", organizations?.length || 0, "organizations");
 
     return NextResponse.json({
       organizations: organizations || [],
@@ -92,7 +92,7 @@ export async function POST(request) {
     }
 
     console.log(
-      "✅ Created organization:",
+      "Created organization:",
       organization.name,
       organization.organization_code
     );
@@ -182,7 +182,7 @@ export async function PUT(request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    console.log("✅ Updated organization:", organization.name);
+    console.log("Updated organization:", organization.name);
 
     return NextResponse.json(organization);
   } catch (error) {

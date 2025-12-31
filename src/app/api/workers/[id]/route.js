@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 
 export async function GET(request, context) {
   try {
-    // ✅ AWAIT PARAMS FOR NEXT.JS 15+
+    // AWAIT PARAMS FOR NEXT.JS 15+
     const { id } = await context.params;
 
     // Get auth token from header
@@ -29,7 +29,7 @@ export async function GET(request, context) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("✅ Fetching worker:", id);
+    console.log("Fetching worker:", id);
 
     // Check if user is manager/owner
     const { data: profile } = await supabaseAdmin
@@ -75,7 +75,7 @@ export async function GET(request, context) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    console.log("✅ Worker found:", worker.full_name);
+    console.log("Worker found:", worker.full_name);
 
     return NextResponse.json(worker);
   } catch (error) {
@@ -89,7 +89,7 @@ export async function GET(request, context) {
 
 export async function DELETE(request, context) {
   try {
-    // ✅ AWAIT PARAMS FOR NEXT.JS 15+
+    // AWAIT PARAMS FOR NEXT.JS 15+
     const { id } = await context.params;
 
     console.log("🗑️ Attempting to delete worker:", id);
@@ -114,7 +114,7 @@ export async function DELETE(request, context) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("✅ Authenticated user:", user.email);
+    console.log("Authenticated user:", user.email);
 
     // Check if user is manager/owner
     const { data: profile } = await supabaseAdmin
@@ -128,7 +128,7 @@ export async function DELETE(request, context) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    console.log("✅ User is", profile.role);
+    console.log("User is", profile.role);
 
     // Check if worker exists and belongs to same organization
     const { data: worker, error: workerError } = await supabaseAdmin
@@ -149,7 +149,7 @@ export async function DELETE(request, context) {
     }
 
     console.log(
-      "✅ Found worker:",
+      "Found worker:",
       worker.full_name,
       "- Org:",
       worker.organization_id
@@ -178,7 +178,7 @@ export async function DELETE(request, context) {
       );
     }
 
-    console.log("✅ No active requests, proceeding with deletion");
+    console.log("No active requests, proceeding with deletion");
 
     // Unassign completed/cancelled requests
     const { error: unassignError } = await supabaseAdmin
@@ -189,7 +189,7 @@ export async function DELETE(request, context) {
     if (unassignError) {
       console.error("❌ Error unassigning requests:", unassignError);
     } else {
-      console.log("✅ Unassigned completed/cancelled requests");
+      console.log("Unassigned completed/cancelled requests");
     }
 
     // Delete worker profile
@@ -204,12 +204,12 @@ export async function DELETE(request, context) {
       throw deleteError;
     }
 
-    console.log("✅ Worker profile deleted");
+    console.log("Worker profile deleted");
 
     // Delete auth user (optional - requires service role key)
     try {
       await supabaseAdmin.auth.admin.deleteUser(id);
-      console.log("✅ Auth user deleted");
+      console.log("Auth user deleted");
     } catch (authDeleteError) {
       console.error(
         "⚠️ Error deleting auth user (non-critical):",

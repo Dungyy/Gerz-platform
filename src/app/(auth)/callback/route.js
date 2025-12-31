@@ -16,7 +16,7 @@ export async function GET(request) {
 
     try {
       await supabase.auth.exchangeCodeForSession(code)
-      console.log('✅ Code exchanged for session')
+      console.log('Code exchanged for session')
     } catch (error) {
       console.error('❌ Code exchange error:', error)
       return NextResponse.redirect(`${requestUrl.origin}/auth/error?message=Invalid+code`)

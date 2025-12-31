@@ -241,7 +241,7 @@ export default function NewPropertyPage() {
       });
 
       toast.success(
-        `✅ Property created with ${data.units_created ?? payload.units.length
+        `Property created with ${data.units_created ?? payload.units.length
         } units!`
       );
       router.push("/dashboard/properties");

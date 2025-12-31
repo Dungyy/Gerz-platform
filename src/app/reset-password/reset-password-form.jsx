@@ -83,7 +83,7 @@ export default function ResetPasswordForm() {
         return;
       }
 
-      console.log("✅ Token is valid for:", resetToken.email);
+      console.log("Token is valid for:", resetToken.email);
       setIsValidToken(true);
       setUserEmail(resetToken.email);
     } catch (error) {
@@ -150,7 +150,7 @@ export default function ResetPasswordForm() {
         throw new Error(data.error || "Failed to reset password");
       }
 
-      console.log("✅ Password reset successful!");
+      console.log("Password reset successful!");
       setPasswordReset(true);
       toast.success("Password reset successfully!");
 

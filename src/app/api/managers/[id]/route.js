@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 
 export async function GET(request, context) {
   try {
-    // ✅ AWAIT PARAMS FOR NEXT.JS 15+
+    // AWAIT PARAMS FOR NEXT.JS 15+
     const { id } = await context.params;
 
     const authHeader = request.headers.get("authorization");
@@ -27,7 +27,7 @@ export async function GET(request, context) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("✅ Fetching manager:", id);
+    console.log("Fetching manager:", id);
 
     // Get current user's profile
     const { data: profile, error: profileError } = await supabaseAdmin
@@ -81,7 +81,7 @@ export async function GET(request, context) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    console.log("✅ Manager found:", manager.full_name);
+    console.log("Manager found:", manager.full_name);
 
     return NextResponse.json(manager);
   } catch (error) {
@@ -117,7 +117,7 @@ export async function PUT(request, context) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("✅ Authenticated user:", user.email);
+    console.log("Authenticated user:", user.email);
 
     const { data: profile } = await supabaseAdmin
       .from("profiles")
@@ -131,7 +131,7 @@ export async function PUT(request, context) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    console.log("✅ User is owner");
+    console.log("User is owner");
 
     // Check if manager exists & same org
     const { data: manager, error: managerError } = await supabaseAdmin
@@ -152,7 +152,7 @@ export async function PUT(request, context) {
     }
 
     console.log(
-      "✅ Found manager:",
+      "Found manager:",
       manager.full_name,
       "- Org:",
       manager.organization_id
@@ -197,7 +197,7 @@ export async function PUT(request, context) {
           console.error("❌ Error updating auth email:", authUpdateError);
           throw authUpdateError;
         }
-        console.log("✅ Auth email updated");
+        console.log("Auth email updated");
       } catch (authUpdateError) {
         console.error("❌ Error updating auth user email:", authUpdateError);
         return NextResponse.json(
@@ -228,7 +228,7 @@ export async function PUT(request, context) {
       throw updateError;
     }
 
-    console.log("✅ Manager profile updated:", updatedManager.full_name);
+    console.log("Manager profile updated:", updatedManager.full_name);
 
     return NextResponse.json({
       success: true,
@@ -268,7 +268,7 @@ export async function DELETE(request, context) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("✅ Authenticated user:", user.email);
+    console.log("Authenticated user:", user.email);
 
     const { data: profile } = await supabaseAdmin
       .from("profiles")
@@ -282,7 +282,7 @@ export async function DELETE(request, context) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    console.log("✅ User is owner");
+    console.log("User is owner");
 
     // Check if manager exists & same org
     const { data: manager, error: managerError } = await supabaseAdmin
@@ -303,7 +303,7 @@ export async function DELETE(request, context) {
     }
 
     console.log(
-      "✅ Found manager:",
+      "Found manager:",
       manager.full_name,
       "- Org:",
       manager.organization_id
@@ -324,12 +324,12 @@ export async function DELETE(request, context) {
       throw deleteError;
     }
 
-    console.log("✅ Manager profile deleted");
+    console.log("Manager profile deleted");
 
     // Delete auth user (non-critical if it fails)
     try {
       await supabaseAdmin.auth.admin.deleteUser(id);
-      console.log("✅ Auth user deleted");
+      console.log("Auth user deleted");
     } catch (authDeleteError) {
       console.error(
         "⚠️ Error deleting auth user (non-critical):",

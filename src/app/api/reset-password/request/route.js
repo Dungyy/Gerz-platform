@@ -83,7 +83,7 @@ export async function POST(request) {
           }),
         });
 
-        console.log("✅ Password reset email sent to:", email);
+        console.log("Password reset email sent to:", email);
       } catch (emailError) {
         console.error("❌ Email send error:", emailError);
         // Don't fail the request if email fails

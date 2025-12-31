@@ -145,7 +145,7 @@ export default function EditTenantPage() {
         throw new Error(data?.error || "Failed to update tenant");
       }
 
-      toast.success("✅ Tenant updated successfully!");
+      toast.success("Tenant updated successfully!");
       router.push(`/dashboard/tenants/${params.id}`);
     } catch (err) {
       console.error("Error updating tenant:", err);

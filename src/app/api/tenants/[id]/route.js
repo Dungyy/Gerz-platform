@@ -84,7 +84,7 @@ export async function GET(request, context) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    console.log('✅ Tenant loaded:', tenant.full_name)
+    console.log('Tenant loaded:', tenant.full_name)
 
     return NextResponse.json(tenant)
     
@@ -140,7 +140,7 @@ export async function DELETE(request, context) {
       throw uErr
     }
 
-    console.log('✅ Tenant unassigned from unit')
+    console.log('Tenant unassigned from unit')
 
     return NextResponse.json({ 
       success: true, 
@@ -256,13 +256,13 @@ export async function PUT(request, context) {
           return NextResponse.json({ error: 'Failed to assign unit' }, { status: 500 })
         }
 
-        console.log('✅ Tenant assigned to unit:', unit_id)
+        console.log('Tenant assigned to unit:', unit_id)
       } else {
-        console.log('✅ Tenant unassigned from all units')
+        console.log('Tenant unassigned from all units')
       }
     }
 
-    console.log('✅ Tenant updated:', tenantId)
+    console.log('Tenant updated:', tenantId)
 
     return NextResponse.json({ 
       success: true, 

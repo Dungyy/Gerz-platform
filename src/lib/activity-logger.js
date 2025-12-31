@@ -47,7 +47,7 @@ export async function logActivity({ action, details = null, request_id = null })
       return null;
     }
 
-    console.log("✅ Activity logged:", action);
+    console.log("Activity logged:", action);
     return data;
   } catch (error) {
     console.error("Error in logActivity:", error);

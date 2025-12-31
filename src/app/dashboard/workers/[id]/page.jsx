@@ -148,7 +148,7 @@ export default function WorkerDetailPage() {
         throw new Error(data?.error || "Failed to delete worker");
       }
 
-      toast.success("✅ Worker deleted successfully");
+      toast.success("Worker deleted successfully");
       router.push("/dashboard/workers");
     } catch (error) {
       console.error("Error deleting worker:", error);

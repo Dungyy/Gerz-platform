@@ -39,7 +39,7 @@ export async function POST(request) {
       );
     }
 
-    console.log("✅ Authenticated user:", user.email);
+    console.log("Authenticated user:", user.email);
 
     // Get user's profile
     const { data: profile } = await supabaseAdmin
@@ -54,7 +54,7 @@ export async function POST(request) {
 
     console.log("👤 User profile:", profile.full_name, "-", profile.role);
 
-    // ✅ AUTHORIZATION CHECK: Tenant can only submit for themselves
+    // AUTHORIZATION CHECK: Tenant can only submit for themselves
     if (profile.role === "tenant" && requestData.tenant_id !== user.id) {
       console.error(
         "❌ Authorization failed: Tenant trying to submit for different user"
@@ -67,7 +67,7 @@ export async function POST(request) {
       );
     }
 
-    // ✅ AUTHORIZATION CHECK: Verify organization
+    // AUTHORIZATION CHECK: Verify organization
     if (requestData.organization_id !== profile.organization_id) {
       console.error("❌ Authorization failed: Organization mismatch");
       return NextResponse.json(
@@ -119,9 +119,9 @@ export async function POST(request) {
       return NextResponse.json({ error: createError.message }, { status: 400 });
     }
 
-    console.log("✅ Request created:", maintenanceRequest.id);
+    console.log("Request created:", maintenanceRequest.id);
 
-    // ✅ SEND NOTIFICATIONS TO PROPERTY MANAGER
+    // SEND NOTIFICATIONS TO PROPERTY MANAGER
     if (unit.property.manager_id) {
       const { data: manager } = await supabaseAdmin
         .from("profiles")
@@ -153,7 +153,7 @@ export async function POST(request) {
                 ),
               }),
             });
-            console.log("✅ Email sent to manager");
+            console.log("Email sent to manager");
           } catch (emailError) {
             console.error("❌ Email error:", emailError);
           }
@@ -171,7 +171,7 @@ export async function POST(request) {
               recipientUserId: manager.id,
               messageType: "new_request",
             });
-            console.log("✅ SMS sent to manager");
+            console.log("SMS sent to manager");
           } catch (smsError) {
             console.error("❌ SMS error:", smsError);
           }
@@ -199,7 +199,7 @@ export async function POST(request) {
             ),
           }),
         });
-        console.log("✅ Confirmation email sent to tenant");
+        console.log("Confirmation email sent to tenant");
       } catch (emailError) {
         console.error("❌ Tenant email error:", emailError);
       }
@@ -259,7 +259,7 @@ export async function GET(request) {
       .eq("organization_id", profile.organization_id)
       .order("created_at", { ascending: false });
 
-    // ✅ AUTHORIZATION: Tenants only see their own requests
+    // AUTHORIZATION: Tenants only see their own requests
     if (profile.role === "tenant") {
       query = query.eq("tenant_id", user.id);
       console.log("🔒 Filtering to tenant requests only");
@@ -272,7 +272,7 @@ export async function GET(request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    console.log("✅ Found", requests?.length || 0, "requests");
+    console.log("Found", requests?.length || 0, "requests");
 
     return NextResponse.json(requests || []);
   } catch (error) {
@@ -369,7 +369,7 @@ function generateTenantConfirmationEmail(tenantName, unit, request) {
       <body>
         <div class="container">
           <div class="header">
-            <h2>✅ Request Received</h2>
+            <h2>Request Received</h2>
           </div>
           <div class="content">
             <p>Hi ${tenantName},</p>

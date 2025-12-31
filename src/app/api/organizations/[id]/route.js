@@ -52,7 +52,7 @@ export async function GET(request, { params }) {
       throw error;
     }
 
-    console.log("✅ Found organization:", organization.name);
+    console.log("Found organization:", organization.name);
 
     return NextResponse.json(organization);
   } catch (error) {
@@ -112,7 +112,7 @@ export async function PATCH(request, { params }) {
       throw error;
     }
 
-    console.log("✅ Updated organization:", organization.name);
+    console.log("Updated organization:", organization.name);
 
     return NextResponse.json(organization);
   } catch (error) {
@@ -168,7 +168,7 @@ export async function DELETE(request, { params }) {
       throw error;
     }
 
-    console.log("✅ Deleted organization:", id);
+    console.log("Deleted organization:", id);
 
     return NextResponse.json({
       success: true,

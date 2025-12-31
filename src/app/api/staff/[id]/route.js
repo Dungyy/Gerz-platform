@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 
 export async function GET(request, context) {
   try {
-    // ✅ Await params in Next.js 15+
+    // Await params in Next.js 15+
     const { id } = await context.params
 
     console.log('📦 Fetching staff member:', id)
@@ -53,7 +53,7 @@ export async function GET(request, context) {
       return NextResponse.json({ error: error.message }, { status: 404 })
     }
 
-    console.log('✅ Staff member found:', staffMember.profile?.full_name)
+    console.log('Staff member found:', staffMember.profile?.full_name)
 
     return NextResponse.json(staffMember)
 
@@ -68,7 +68,7 @@ export async function GET(request, context) {
 
 export async function DELETE(request, context) {
   try {
-    // ✅ Await params in Next.js 15+
+    // Await params in Next.js 15+
     const { id } = await context.params
 
     console.log('🗑️ Deleting staff member:', id)
@@ -125,7 +125,7 @@ export async function DELETE(request, context) {
       return NextResponse.json({ error: deleteError.message }, { status: 400 })
     }
 
-    console.log('✅ Staff member deleted')
+    console.log('Staff member deleted')
 
     // Optionally delete the auth user too
     // await supabaseAdmin.auth.admin.deleteUser(staffMember.profile_id)

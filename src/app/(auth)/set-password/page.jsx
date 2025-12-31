@@ -72,7 +72,7 @@ function SetPasswordContent() {
       }
 
       if (session) {
-        console.log("✅ Active session found for:", session.user.email);
+        console.log("Active session found for:", session.user.email);
         setUserEmail(session.user.email);
         setIsValidSession(true);
       } else {
@@ -129,7 +129,7 @@ function SetPasswordContent() {
 
       if (updateError) throw updateError;
 
-      console.log("✅ Password set successfully!");
+      console.log("Password set successfully!");
       setPasswordSet(true);
       toast.success("Password set successfully!");
 

@@ -160,7 +160,7 @@ export default function NewRequestPage() {
         },
         request_id: data.id,
       });
-      toast.success('✅ Maintenance request submitted successfully!')
+      toast.success('Maintenance request submitted successfully!')
       router.push('/dashboard/requests')
     } catch (error) {
       console.error('Error submitting request:', error)
