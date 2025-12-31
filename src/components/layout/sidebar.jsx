@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import {
@@ -15,6 +16,7 @@ import {
   X,
   BarChart3,
   Activity,
+  User,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -113,21 +115,39 @@ export default function Sidebar({ profile, currentPath }) {
             </Link>
           </div>
 
-          {/* Profile Info */}
+          {/* Profile Info with Avatar */}
           <div className="p-4 border-b">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-transparent hover:border-border transition-colors">
-              <div className="grid h-8 w-8 place-items-center rounded-full bg-foreground text-background font-semibold text-sm shadow-sm">
-                {profile?.full_name?.[0]?.toUpperCase() || "U"}
+            <Link 
+              href="/dashboard/settings"
+              className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-transparent hover:border-border transition-colors"
+            >
+              {/* Avatar */}
+              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-foreground text-background">
+                {profile?.avatar_url ? (
+                  <Image
+                    src={profile.avatar_url}
+                    alt={profile?.full_name || "User"}
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center font-semibold text-sm">
+                    {profile?.full_name?.[0]?.toUpperCase() || "U"}
+                  </div>
+                )}
               </div>
+
+              {/* User Info */}
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate text-sm">
-                  {profile?.full_name}
+                  {profile?.full_name || "User"}
                 </p>
                 <p className="text-xs text-muted-foreground capitalize">
-                  {profile?.role}
+                  {profile?.role || "user"}
                 </p>
               </div>
-            </div>
+            </Link>
           </div>
 
           {/* Navigation */}

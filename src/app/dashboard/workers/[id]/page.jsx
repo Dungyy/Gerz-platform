@@ -395,9 +395,21 @@ export default function WorkerDetailPage() {
             <Card className="shadow-sm">
               <CardContent className="pt-4 sm:pt-6">
                 <div className="text-center mb-3 sm:mb-4">
-                  <div className="grid h-16 w-16 sm:h-20 sm:w-20 place-items-center rounded-full bg-foreground text-white font-bold text-xl sm:text-2xl mx-auto mb-2 sm:mb-3 shadow-lg">
-                    {worker.full_name?.[0]?.toUpperCase() || "W"}
+              <div className="grid h-16 w-16 sm:h-20 sm:w-20 place-items-center rounded-full bg-foreground text-white font-bold text-xl sm:text-2xl mx-auto mb-2 sm:mb-3 shadow-lg">
+                {worker?.avatar_url ? (
+                  <Image
+                    src={worker.avatar_url}
+                    alt={worker?.full_name || "User"}
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    {worker?.full_name?.[0]?.toUpperCase() || "U"}
                   </div>
+                )}
+              </div>
                   <h3 className="font-semibold text-base sm:text-lg truncate px-2">
                     {worker.full_name}
                   </h3>

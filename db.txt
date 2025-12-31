@@ -845,3 +845,98 @@ GRANT SELECT, INSERT ON activity_logs TO authenticated;
 -- Indexes already present:
 -- idx_activity_org on organization_id
 -- idx_activity_request on request_id
+
+
+
+-- ============================================
+-- Avatar Storage Bucket Setup
+-- ============================================
+
+-- Create the avatars bucket (run this in Supabase Dashboard → Storage)
+-- Note: This is typically done through the UI, but here's the equivalent SQL
+
+-- 1. Create bucket through Supabase Dashboard UI:
+-- Go to Storage → Create a new bucket
+-- Name: avatars
+-- Public: YES (so avatars can be viewed)
+-- File size limit: 5242880 (5MB)
+-- Allowed MIME types: image/*
+
+-- ============================================
+-- Storage Policies for avatars bucket
+-- ============================================
+
+-- Policy 1: Anyone can view avatars (public read)
+CREATE POLICY "Public Avatar Access"
+ON storage.objects FOR SELECT
+USING ( bucket_id = 'avatars' );
+
+-- Policy 2: Users can upload their own avatar
+CREATE POLICY "Users can upload own avatar"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'avatars' 
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Policy 3: Users can update their own avatar
+CREATE POLICY "Users can update own avatar"
+ON storage.objects FOR UPDATE
+USING (
+  bucket_id = 'avatars' 
+  AND (storage.foldername(name))[1] = auth.uid()::text
+)
+WITH CHECK (
+  bucket_id = 'avatars' 
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Policy 4: Users can delete their own avatar
+CREATE POLICY "Users can delete own avatar"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'avatars' 
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- ============================================
+-- Verify avatar_url column exists in profiles
+-- ============================================
+
+-- Check if avatar_url column exists
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'profiles' 
+AND column_name = 'avatar_url';
+
+-- If it doesn't exist, add it (but you already have it):
+-- ALTER TABLE profiles ADD COLUMN avatar_url TEXT;
+
+-- ============================================
+-- Index for faster avatar lookups (optional)
+-- ============================================
+
+CREATE INDEX IF NOT EXISTS idx_profiles_avatar 
+ON profiles(avatar_url) 
+WHERE avatar_url IS NOT NULL;
+
+-- ============================================
+-- Notes
+-- ============================================
+
+/*
+Folder Structure in avatars bucket:
+avatars/
+  └── {user_id}/
+      ├── 1234567890.jpg
+      ├── 1234567891.png
+      └── ...
+
+Each user can only access their own folder.
+Avatars are publicly readable.
+
+Usage in JavaScript:
+1. Upload: supabase.storage.from('avatars').upload(`${userId}/${filename}`, file)
+2. Get URL: supabase.storage.from('avatars').getPublicUrl(`${userId}/${filename}`)
+3. Delete: supabase.storage.from('avatars').remove([`${userId}/${filename}`])
+*/

@@ -210,9 +210,21 @@ export default function TenantsPage() {
                 <Card className="shadow-sm hover:shadow-md transition-all cursor-pointer h-full border border-transparent hover:border-border">
                   <CardContent className="pt-4 sm:pt-6 pb-4">
                     <div className="flex items-start gap-3 mb-3 sm:mb-4">
-                      <div className="grid h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 place-items-center rounded-full bg-foreground text-background font-semibold text-base sm:text-lg">
-                        {tenant.full_name?.[0]?.toUpperCase() || "T"}
-                      </div>
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-foreground text-background">
+                {tenant?.avatar_url ? (
+                  <Image
+                    src={tenant.avatar_url}
+                    alt={tenant?.full_name || "User"}
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    {tenant?.full_name?.[0]?.toUpperCase() || "U"}
+                  </div>
+                )}
+              </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold truncate text-sm sm:text-base">
                           {tenant.full_name}

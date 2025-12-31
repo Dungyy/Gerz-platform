@@ -1,9 +1,9 @@
 // app/dashboard/settings/page.jsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { fetchWithAuth } from "@/lib/api-helper";
 import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,16 +18,23 @@ import {
   LogOut,
   Mail,
   MessageSquare,
+  Upload,
+  X,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import Image from "next/image";
 
 export default function SettingsPage() {
   const router = useRouter();
+  const fileInputRef = useRef(null);
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
+  const [avatarPreview, setAvatarPreview] = useState(null);
 
   // Profile form state
   const [profileForm, setProfileForm] = useState({
@@ -35,6 +42,7 @@ export default function SettingsPage() {
     email: "",
     phone: "",
     sms_notifications: false,
+    avatar_url: "",
   });
 
   // Organization form state
@@ -101,6 +109,7 @@ export default function SettingsPage() {
         email: profileData.email || "",
         phone: profileData.phone || "",
         sms_notifications: !!profileData.sms_notifications,
+        avatar_url: profileData.avatar_url || "",
       });
 
       if (profileData.organization) {
@@ -155,6 +164,127 @@ export default function SettingsPage() {
     }
   }
 
+  // ---------- AVATAR UPLOAD ----------
+  async function handleAvatarChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be less than 5MB");
+      return;
+    }
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to Supabase Storage
+    try {
+      setUploadingAvatar(true);
+
+      // Delete old avatar if exists
+      if (profileForm.avatar_url) {
+        const oldPath = profileForm.avatar_url.split("/").pop();
+        await supabase.storage
+          .from("avatars")
+          .remove([`${profile.id}/${oldPath}`]);
+      }
+
+      // Generate unique filename
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${profile.id}/${fileName}`;
+
+      // Upload new avatar
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        toast.error("Failed to upload avatar");
+        return;
+      }
+
+      // Get public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("avatars").getPublicUrl(filePath);
+
+      // Update profile with new avatar URL
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", profile.id);
+
+      if (updateError) {
+        console.error("Update error:", updateError);
+        toast.error("Failed to update profile");
+        return;
+      }
+
+      // Update local state
+      setProfileForm((prev) => ({ ...prev, avatar_url: publicUrl }));
+      setProfile((prev) => ({ ...prev, avatar_url: publicUrl }));
+
+      toast.success("Avatar updated successfully!");
+    } catch (error) {
+      console.error("Avatar upload error:", error);
+      toast.error("Error uploading avatar");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
+  async function handleRemoveAvatar() {
+    if (!profileForm.avatar_url) return;
+
+    try {
+      setUploadingAvatar(true);
+
+      // Delete from storage
+      const oldPath = profileForm.avatar_url.split("/").pop();
+      await supabase.storage
+        .from("avatars")
+        .remove([`${profile.id}/${oldPath}`]);
+
+      // Update profile
+      const { error } = await supabase
+        .from("profiles")
+        .update({ avatar_url: null })
+        .eq("id", profile.id);
+
+      if (error) {
+        toast.error("Failed to remove avatar");
+        return;
+      }
+
+      setProfileForm((prev) => ({ ...prev, avatar_url: "" }));
+      setProfile((prev) => ({ ...prev, avatar_url: null }));
+      setAvatarPreview(null);
+
+      toast.success("Avatar removed successfully!");
+    } catch (error) {
+      console.error("Remove avatar error:", error);
+      toast.error("Error removing avatar");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
   // ---------- PROFILE ----------
   async function handleProfileUpdate(e) {
     e.preventDefault();
@@ -192,7 +322,6 @@ export default function SettingsPage() {
 
     setSaving(true);
     try {
-      // Get auth token
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -201,7 +330,7 @@ export default function SettingsPage() {
         return;
       }
 
-      const response = await fetch("/api/org", {
+      const response = await fetchWithAuth("/api/organizations", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -269,7 +398,6 @@ export default function SettingsPage() {
 
     setSaving(true);
     try {
-      // 1) Update phone + sms_notifications in profiles
       const { error: profileError } = await supabase
         .from("profiles")
         .update({
@@ -285,7 +413,6 @@ export default function SettingsPage() {
         return;
       }
 
-      // 2) Update notification_preferences row
       const { error: prefsError } = await supabase
         .from("notification_preferences")
         .update({
@@ -402,67 +529,149 @@ export default function SettingsPage() {
 
       {/* PROFILE TAB */}
       {activeTab === "profile" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleProfileUpdate} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Full Name
-                </label>
-                <Input
-                  value={profileForm.full_name}
-                  onChange={(e) =>
-                    setProfileForm((prev) => ({
-                      ...prev,
-                      full_name: e.target.value,
-                    }))
-                  }
-                  placeholder="John Doe"
-                />
-              </div>
+        <div className="space-y-6">
+          {/* Avatar Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile Picture</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row items-center gap-6">
+                {/* Avatar Display */}
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-full overflow-hidden bg-muted flex items-center justify-center border-2 border-border">
+                    {avatarPreview || profileForm.avatar_url ? (
+                      <Image
+                        src={avatarPreview || profileForm.avatar_url}
+                        alt="Avatar"
+                        width={96}
+                        height={96}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="h-12 w-12 text-muted-foreground" />
+                    )}
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2">Email</label>
-                <Input
-                  type="email"
-                  value={profileForm.email}
-                  disabled
-                  className="bg-muted"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Contact support to change your email address.
-                </p>
-              </div>
+                  {uploadingAvatar && (
+                    <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                      <Loader2 className="h-6 w-6 text-white animate-spin" />
+                    </div>
+                  )}
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2">Phone</label>
-                <Input
-                  type="tel"
-                  value={profileForm.phone}
-                  onChange={(e) =>
-                    setProfileForm((prev) => ({
-                      ...prev,
-                      phone: e.target.value,
-                    }))
-                  }
-                  placeholder="(555) 123-4567"
-                />
-              </div>
+                {/* Upload Controls */}
+                <div className="flex-1 space-y-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
 
-              <div>
-                <label className="block text-sm font-medium mb-2">Role</label>
-                <Badge className="capitalize">{profile.role}</Badge>
-              </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Photo
+                    </Button>
 
-              <Button type="submit" disabled={saving}>
-                {saving ? "Saving..." : "Save Changes"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                    {(profileForm.avatar_url || avatarPreview) && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRemoveAvatar}
+                        disabled={uploadingAvatar}
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    JPG, PNG or GIF. Max size 5MB.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Profile Info Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleProfileUpdate} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Full Name
+                  </label>
+                  <Input
+                    value={profileForm.full_name}
+                    onChange={(e) =>
+                      setProfileForm((prev) => ({
+                        ...prev,
+                        full_name: e.target.value,
+                      }))
+                    }
+                    placeholder="John Doe"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Email
+                  </label>
+                  <Input
+                    type="email"
+                    value={profileForm.email}
+                    disabled
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Contact support to change your email address.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Phone
+                  </label>
+                  <Input
+                    type="tel"
+                    value={profileForm.phone}
+                    onChange={(e) =>
+                      setProfileForm((prev) => ({
+                        ...prev,
+                        phone: e.target.value,
+                      }))
+                    }
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Role</label>
+                  <Badge className="capitalize">{profile.role}</Badge>
+                </div>
+
+                <Button type="submit" disabled={saving}>
+                  {saving ? "Saving..." : "Save Changes"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* ORGANIZATION TAB */}
@@ -495,7 +704,10 @@ export default function SettingsPage() {
                     type="tel"
                     value={orgForm.phone}
                     onChange={(e) =>
-                      setOrgForm((prev) => ({ ...prev, phone: e.target.value }))
+                      setOrgForm((prev) => ({
+                        ...prev,
+                        phone: e.target.value,
+                      }))
                     }
                     placeholder="(555) 123-4567"
                   />
@@ -509,7 +721,10 @@ export default function SettingsPage() {
                     type="email"
                     value={orgForm.email}
                     onChange={(e) =>
-                      setOrgForm((prev) => ({ ...prev, email: e.target.value }))
+                      setOrgForm((prev) => ({
+                        ...prev,
+                        email: e.target.value,
+                      }))
                     }
                     placeholder="contact@acme.com"
                   />
@@ -722,7 +937,7 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              {/* Master SMS toggle (local only; saved on submit) */}
+              {/* Master SMS toggle */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-3 border-t">
                 <div>
                   <p className="font-medium">Enable SMS Notifications</p>
@@ -868,7 +1083,7 @@ export default function SettingsPage() {
             </Card>
           )}
 
-          {/* Save notifications button – the ONLY time these values hit the DB */}
+          {/* Save button */}
           <div className="flex justify-end">
             <Button type="submit" disabled={saving}>
               {saving ? "Saving..." : "Save Notification Settings"}
