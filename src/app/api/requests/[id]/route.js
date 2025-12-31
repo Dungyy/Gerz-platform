@@ -12,161 +12,77 @@ const supabaseAdmin = createClient(
 // ============================================
 export async function GET(request, context) {
   try {
-    console.log("📥 GET request for maintenance request");
-
     const authHeader = request.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
 
     if (!token) {
-      console.error("❌ No authorization token");
-      return NextResponse.json(
-        { error: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const {
       data: { user },
-      error: authError,
     } = await supabaseAdmin.auth.getUser(token);
 
-    if (authError || !user) {
-      console.error("❌ Invalid token:", authError);
-      return NextResponse.json(
-        { error: "Unauthorized - Invalid token" },
-        { status: 401 }
-      );
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    console.log("✅ Authenticated user:", user.email);
 
     const params = await context.params;
     const requestId = params.id;
 
-    console.log("🔍 Fetching request ID:", requestId);
+    console.log("📥 Fetching request:", requestId);
 
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("id, organization_id, role, full_name")
+      .select("role, organization_id")
       .eq("id", user.id)
       .single();
 
-    if (profileError || !profile) {
-      console.error("❌ Profile not found:", profileError);
+    if (!profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    console.log(
-      "👤 User role:",
-      profile.role,
-      "| Org:",
-      profile.organization_id
-    );
-
-    const { data: maintenanceRequest, error: requestError } =
-      await supabaseAdmin
-        .from("maintenance_requests")
-        .select(
-          `
+    const { data: maintenanceRequest, error } = await supabaseAdmin
+      .from("maintenance_requests")
+      .select(
+        `
         *,
-        tenant:profiles!maintenance_requests_tenant_id_fkey(
-          id,
-          full_name, 
-          email, 
-          phone
-        ),
-        property:properties(
-          id, 
-          name, 
-          address, 
-          city, 
-          state, 
-          zip,
-          manager_id
-        ),
-        unit:units(
-          id, 
-          unit_number
-        ),
-        assigned_to_user:profiles!maintenance_requests_assigned_to_fkey(
-          id, 
-          full_name, 
-          email, 
-          phone
-        )
+        tenant:profiles!maintenance_requests_tenant_id_fkey(id, full_name, email, phone),
+        property:properties(id, name, address, city, state),
+        unit:units(id, unit_number),
+        assigned_to_user:profiles!maintenance_requests_assigned_to_fkey(id, full_name, email, phone)
       `
-        )
-        .eq("id", requestId)
-        .single();
+      )
+      .eq("id", requestId)
+      .single();
 
-    if (requestError) {
-      console.error("❌ Request fetch error:", requestError);
-
-      if (requestError.code === "PGRST116") {
-        return NextResponse.json(
-          { error: "Request not found" },
-          { status: 404 }
-        );
-      }
-
-      return NextResponse.json(
-        { error: requestError.message },
-        { status: 500 }
-      );
-    }
-
-    if (!maintenanceRequest) {
-      console.error("❌ Request not found");
+    if (error || !maintenanceRequest) {
+      console.error("Request not found:", error);
       return NextResponse.json({ error: "Request not found" }, { status: 404 });
     }
 
-    console.log("📄 Request found:", maintenanceRequest.title);
+    // Authorization check
+    const canView =
+      profile.role === "owner" ||
+      profile.role === "manager" ||
+      (profile.role === "worker" &&
+        maintenanceRequest.organization_id === profile.organization_id) ||
+      (profile.role === "tenant" && maintenanceRequest.tenant_id === user.id);
 
-    // ✅ AUTHORIZATION CHECKS
-    let authorized = false;
-
-    if (profile.role === "owner" || profile.role === "manager") {
-      authorized =
-        maintenanceRequest.organization_id === profile.organization_id;
-      console.log(
-        "🔐 Manager/Owner check:",
-        authorized ? "✅ Authorized" : "❌ Denied"
-      );
-    } else if (profile.role === "worker") {
-      authorized =
-        maintenanceRequest.organization_id === profile.organization_id;
-      console.log(
-        "🔐 Worker check:",
-        authorized ? "✅ Authorized" : "❌ Denied"
-      );
-    } else if (profile.role === "tenant") {
-      authorized = maintenanceRequest.tenant_id === user.id;
-      console.log(
-        "🔐 Tenant check:",
-        authorized ? "✅ Authorized (own request)" : "❌ Denied"
-      );
-    } else {
-      console.error("❌ Unknown role:", profile.role);
-    }
-
-    if (!authorized) {
-      console.error("❌ Authorization failed");
+    if (!canView) {
       return NextResponse.json(
-        {
-          error:
-            "Unauthorized - You do not have permission to view this request",
-        },
+        { error: "Unauthorized to view this request" },
         { status: 403 }
       );
     }
 
-    console.log("✅ Authorization passed");
+    console.log("✅ Request retrieved:", maintenanceRequest.title);
 
     return NextResponse.json(maintenanceRequest);
   } catch (error) {
-    console.error("❌ Maintenance request GET error:", error);
+    console.error("❌ Request GET error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch maintenance request" },
+      { error: error.message || "Failed to fetch request" },
       { status: 500 }
     );
   }
@@ -177,10 +93,6 @@ export async function GET(request, context) {
 // ============================================
 export async function PUT(request, context) {
   try {
-    const updates = await request.json();
-
-    console.log("📥 PUT request for maintenance request:", updates);
-
     const authHeader = request.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
 
@@ -190,21 +102,21 @@ export async function PUT(request, context) {
 
     const {
       data: { user },
-      error: authError,
     } = await supabaseAdmin.auth.getUser(token);
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const params = await context.params;
     const requestId = params.id;
+    const updates = await request.json();
 
-    console.log("🔄 Updating request ID:", requestId);
+    console.log("📝 Updating request:", requestId, updates);
 
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("organization_id, role, full_name")
+      .select("*")
       .eq("id", user.id)
       .single();
 
@@ -212,14 +124,16 @@ export async function PUT(request, context) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    console.log("👤 User:", profile.full_name, "(", profile.role, ")");
-
+    // Get current request state BEFORE update
     const { data: currentRequest } = await supabaseAdmin
       .from("maintenance_requests")
       .select(
         `
         *,
-        tenant:profiles!maintenance_requests_tenant_id_fkey(full_name, email, phone, sms_notifications)
+        tenant:profiles!maintenance_requests_tenant_id_fkey(id, full_name, email, phone, sms_notifications),
+        property:properties(id, name, address, city, state),
+        unit:units(id, unit_number),
+        assigned_to_user:profiles!maintenance_requests_assigned_to_fkey(id, full_name, email, phone, sms_notifications)
       `
       )
       .eq("id", requestId)
@@ -229,80 +143,79 @@ export async function PUT(request, context) {
       return NextResponse.json({ error: "Request not found" }, { status: 404 });
     }
 
-    // ✅ AUTHORIZATION CHECK
+    // Authorization check
     const canUpdate =
       profile.role === "owner" ||
       profile.role === "manager" ||
-      (profile.role === "worker" &&
-        currentRequest.organization_id === profile.organization_id);
+      (profile.role === "worker" && currentRequest.assigned_to === user.id);
 
     if (!canUpdate) {
-      console.error("❌ Update authorization failed");
       return NextResponse.json(
-        {
-          error:
-            "Unauthorized - Insufficient permissions to update this request",
-        },
+        { error: "Unauthorized to update this request" },
         { status: 403 }
       );
     }
 
-    console.log("✅ Update authorization passed");
+    // Track what changed for notifications
+    const statusChanged = updates.status && updates.status !== currentRequest.status;
+    const assignmentChanged = updates.assigned_to !== undefined && updates.assigned_to !== currentRequest.assigned_to;
+    const oldStatus = currentRequest.status;
+    const oldAssignedTo = currentRequest.assigned_to;
 
-    // ✅ HANDLE SELF-ASSIGNMENT
-    if (
-      updates.assigned_to === user.id &&
-      currentRequest.assigned_to !== user.id
-    ) {
-      console.log("🙋 Self-assignment detected");
-      if (currentRequest.status === "submitted") {
-        updates.status = "assigned";
-      }
+    // Prepare update object
+    const updateData = { ...updates };
+    if (updates.status === "completed") {
+      updateData.completed_at = new Date().toISOString();
+      updateData.completed_by = user.id;
     }
 
-    // Add completion tracking
-    if (
-      updates.status === "completed" &&
-      currentRequest.status !== "completed"
-    ) {
-      updates.completed_at = new Date().toISOString();
-      updates.completed_by = user.id;
-    }
-
+    // Update the request
     const { data: updatedRequest, error: updateError } = await supabaseAdmin
       .from("maintenance_requests")
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq("id", requestId)
       .select(
         `
         *,
-        tenant:profiles!maintenance_requests_tenant_id_fkey(full_name, email, phone, sms_notifications),
-        assigned_to_user:profiles!maintenance_requests_assigned_to_fkey(id, full_name, email, phone, sms_notifications),
+        tenant:profiles!maintenance_requests_tenant_id_fkey(id, full_name, email, phone, sms_notifications),
         property:properties(id, name, address, city, state),
-        unit:units(id, unit_number)
+        unit:units(id, unit_number),
+        assigned_to_user:profiles!maintenance_requests_assigned_to_fkey(id, full_name, email, phone, sms_notifications)
       `
       )
       .single();
 
     if (updateError) {
-      console.error("❌ Update error:", updateError);
+      console.error("Update error:", updateError);
       return NextResponse.json({ error: updateError.message }, { status: 400 });
     }
 
     console.log("✅ Request updated successfully");
 
-    // ✅ NOTIFICATIONS
-    if (
-      updates.assigned_to &&
-      updates.assigned_to !== currentRequest.assigned_to
-    ) {
-      const worker = updatedRequest.assigned_to_user;
-      const isSelfAssignment = updates.assigned_to === user.id;
+    // ========================================
+    // SEND NOTIFICATIONS (SMART LOGIC)
+    // ========================================
 
-      if (worker?.email && process.env.RESEND_API_KEY && !isSelfAssignment) {
+    // Only notify on IMPORTANT changes, not every status change
+    const shouldNotifyTenant = 
+      assignmentChanged || // New worker assigned
+      (statusChanged && ['in_progress', 'completed'].includes(updates.status)); // Work started or finished
+
+    const shouldNotifyWorker = 
+      assignmentChanged || // New assignment
+      (statusChanged && updates.status === 'completed' && updatedRequest.assigned_to !== user.id); // Completed by someone else
+
+    // 1. ASSIGNMENT CHANGE - Notify new worker
+    if (assignmentChanged && updates.assigned_to) {
+      console.log("📧 Sending assignment notification to new worker");
+
+      const { data: newWorker } = await supabaseAdmin
+        .from("profiles")
+        .select("id, full_name, email, phone, sms_notifications")
+        .eq("id", updates.assigned_to)
+        .single();
+
+      if (newWorker && newWorker.email && process.env.RESEND_API_KEY) {
         try {
           await fetch("https://api.resend.com/emails", {
             method: "POST",
@@ -312,34 +225,35 @@ export async function PUT(request, context) {
             },
             body: JSON.stringify({
               from: process.env.DEFAULT_FROM_EMAIL,
-              to: worker.email,
-              subject: `New Request Assigned: ${updatedRequest.title}`,
+              to: newWorker.email,
+              subject: `New Assignment: ${updatedRequest.title}`,
               html: generateWorkerAssignmentEmail(
-                worker.full_name,
+                newWorker.full_name,
                 updatedRequest,
                 profile.full_name
               ),
             }),
           });
+          console.log("✅ Assignment email sent to worker");
 
-          if (worker.phone && worker.sms_notifications) {
+          // SMS notification
+          if (newWorker.phone && newWorker.sms_notifications) {
             await sendSMS({
-              to: formatPhoneNumber(worker.phone),
-              message: `You've been assigned a ${updatedRequest.priority} priority maintenance request by ${profile.full_name}: ${updatedRequest.title}. Check your dashboard for details.`,
+              to: formatPhoneNumber(newWorker.phone),
+              message: `New assignment: ${updatedRequest.title} at ${updatedRequest.property.name} Unit ${updatedRequest.unit.unit_number}. Priority: ${updatedRequest.priority}. Check dashboard for details.`,
               organizationId: profile.organization_id,
-              recipientUserId: worker.id,
-              messageType: "new_request",
+              recipientUserId: newWorker.id,
+              messageType: "assignment",
             });
+            console.log("✅ Assignment SMS sent to worker");
           }
-
-          console.log("✅ Worker notification sent");
-        } catch (err) {
-          console.error("❌ Worker notification error:", err);
+        } catch (error) {
+          console.error("❌ Worker notification error:", error);
         }
       }
 
-      const tenant = currentRequest.tenant;
-      if (tenant?.email && process.env.RESEND_API_KEY) {
+      // Notify tenant about assignment (only if first time being assigned)
+      if (!oldAssignedTo && updatedRequest.tenant?.email && process.env.RESEND_API_KEY) {
         try {
           await fetch("https://api.resend.com/emails", {
             method: "POST",
@@ -349,41 +263,47 @@ export async function PUT(request, context) {
             },
             body: JSON.stringify({
               from: process.env.DEFAULT_FROM_EMAIL,
-              to: tenant.email,
-              subject: `Worker Assigned to Your Request: ${updatedRequest.title}`,
-              html: generateTenantAssignmentEmail(
-                tenant.full_name,
+              to: updatedRequest.tenant.email,
+              subject: `Update: ${updatedRequest.title}`,
+              html: generateTenantUpdateEmail(
+                updatedRequest.tenant.full_name,
                 updatedRequest,
-                worker.full_name
+                `Your request has been assigned to ${newWorker?.full_name || "a technician"}.`,
+                profile.full_name
               ),
             }),
           });
+          console.log("✅ Assignment notification sent to tenant");
 
-          if (tenant.phone && tenant.sms_notifications) {
+          // SMS to tenant (only for first assignment)
+          if (updatedRequest.tenant.phone && updatedRequest.tenant.sms_notifications) {
             await sendSMS({
-              to: formatPhoneNumber(tenant.phone),
-              message: `Your maintenance request has been assigned to ${worker.full_name}. They will be in touch soon.`,
+              to: formatPhoneNumber(updatedRequest.tenant.phone),
+              message: `Good news! Your request "${updatedRequest.title}" has been assigned to ${newWorker?.full_name || "a technician"}.`,
               organizationId: profile.organization_id,
-              recipientUserId: currentRequest.tenant_id,
+              recipientUserId: updatedRequest.tenant.id,
               messageType: "status_update",
             });
+            console.log("✅ Assignment SMS sent to tenant");
           }
-
-          console.log("✅ Tenant assignment notification sent");
-        } catch (err) {
-          console.error("❌ Tenant notification error:", err);
+        } catch (error) {
+          console.error("❌ Tenant assignment notification error:", error);
         }
       }
     }
 
-    if (
-      updates.status &&
-      updates.status !== currentRequest.status &&
-      updates.status !== "assigned"
-    ) {
-      const tenant = currentRequest.tenant;
+    // 2. IMPORTANT STATUS CHANGES - Only notify tenant for key milestones
+    if (shouldNotifyTenant && statusChanged) {
+      console.log(`📧 Sending important status notification: ${updates.status}`);
 
-      if (tenant?.email && process.env.RESEND_API_KEY) {
+      const statusMessages = {
+        in_progress: `Great news! Work has started on your request.`,
+        completed: `Your request has been completed! If you have any concerns, please let us know.`,
+      };
+
+      const message = statusMessages[updates.status];
+
+      if (message && updatedRequest.tenant?.email && process.env.RESEND_API_KEY) {
         try {
           await fetch("https://api.resend.com/emails", {
             method: "POST",
@@ -393,33 +313,69 @@ export async function PUT(request, context) {
             },
             body: JSON.stringify({
               from: process.env.DEFAULT_FROM_EMAIL,
-              to: tenant.email,
-              subject: `Status Update: ${updatedRequest.title}`,
-              html: generateStatusUpdateEmail(
-                tenant.full_name,
+              to: updatedRequest.tenant.email,
+              subject: `${updates.status === 'completed' ? '✅ ' : '🔧 '}${updatedRequest.title}`,
+              html: generateTenantUpdateEmail(
+                updatedRequest.tenant.full_name,
                 updatedRequest,
-                currentRequest.status,
+                message,
                 profile.full_name
               ),
             }),
           });
+          console.log("✅ Status update email sent to tenant");
 
-          if (tenant.phone && tenant.sms_notifications) {
+          // SMS to tenant (only for work started and completed)
+          if (updatedRequest.tenant.phone && updatedRequest.tenant.sms_notifications) {
+            const smsMessage = updates.status === 'completed' 
+              ? `Your request "${updatedRequest.title}" has been completed!`
+              : `Work has started on "${updatedRequest.title}". We'll keep you updated!`;
+
             await sendSMS({
-              to: formatPhoneNumber(tenant.phone),
-              message: `Your maintenance request status updated to: ${updates.status.replace(
-                "_",
-                " "
-              )}. Request: ${updatedRequest.title}`,
+              to: formatPhoneNumber(updatedRequest.tenant.phone),
+              message: smsMessage,
               organizationId: profile.organization_id,
-              recipientUserId: currentRequest.tenant_id,
+              recipientUserId: updatedRequest.tenant.id,
               messageType: "status_update",
             });
+            console.log("✅ Status update SMS sent to tenant");
           }
+        } catch (error) {
+          console.error("❌ Tenant status notification error:", error);
+        }
+      }
+    }
 
-          console.log("✅ Status update notification sent");
-        } catch (err) {
-          console.error("❌ Status notification error:", err);
+    // 3. Notify worker if someone else completed their request
+    if (shouldNotifyWorker && statusChanged && updates.status === 'completed') {
+      if (
+        updatedRequest.assigned_to_user &&
+        updatedRequest.assigned_to_user.email &&
+        process.env.RESEND_API_KEY
+      ) {
+        try {
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+            },
+            body: JSON.stringify({
+              from: process.env.DEFAULT_FROM_EMAIL,
+              to: updatedRequest.assigned_to_user.email,
+              subject: `Completed: ${updatedRequest.title}`,
+              html: generateWorkerStatusUpdateEmail(
+                updatedRequest.assigned_to_user.full_name,
+                updatedRequest,
+                oldStatus,
+                updates.status,
+                profile.full_name
+              ),
+            }),
+          });
+          console.log("✅ Completion notification sent to assigned worker");
+        } catch (error) {
+          console.error("❌ Worker completion notification error:", error);
         }
       }
     }
@@ -427,7 +383,6 @@ export async function PUT(request, context) {
     return NextResponse.json({
       success: true,
       request: updatedRequest,
-      self_assigned: updates.assigned_to === user.id,
     });
   } catch (error) {
     console.error("❌ Request PUT error:", error);
@@ -438,7 +393,11 @@ export async function PUT(request, context) {
   }
 }
 
-function generateWorkerAssignmentEmail(workerName, request, assignerName) {
+// ========================================
+// EMAIL TEMPLATES
+// ========================================
+
+function generateWorkerAssignmentEmail(workerName, request, assignedBy) {
   const priorityColors = {
     low: "#10b981",
     medium: "#f59e0b",
@@ -449,67 +408,41 @@ function generateWorkerAssignmentEmail(workerName, request, assignerName) {
   return `
     <!DOCTYPE html>
     <html>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: #2563eb; color: white; padding: 20px; text-align: center;">
-            <h2>New Request Assigned to You</h2>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+          .badge { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+          .info-box { background: white; padding: 15px; border-left: 4px solid #2563eb; margin: 15px 0; border-radius: 4px; }
+          .button { display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>🔧 New Assignment</h2>
           </div>
-          <div style="background: #f9fafb; padding: 20px;">
+          <div class="content">
             <p>Hi ${workerName},</p>
             
-            <p><strong>${assignerName}</strong> has assigned a maintenance request to you:</p>
+            <p>${assignedBy} has assigned you to a new maintenance request:</p>
             
-            <div style="background: white; padding: 15px; border-left: 4px solid #2563eb; margin: 15px 0;">
+            <div class="info-box">
               <h3>${request.title}</h3>
-              <p><strong>Priority:</strong> <span style="background: ${
-                priorityColors[request.priority]
-              }; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">${request.priority.toUpperCase()}</span></p>
+              <p><strong>Priority:</strong> <span class="badge" style="background: ${priorityColors[request.priority]}; color: white;">${request.priority.toUpperCase()}</span></p>
               <p><strong>Category:</strong> ${request.category}</p>
-              <p><strong>Location:</strong> ${request.property?.name} - Unit ${
-    request.unit?.unit_number
-  }</p>
+              <p><strong>Location:</strong> ${request.property.name} - Unit ${request.unit.unit_number}</p>
               <p><strong>Description:</strong><br>${request.description}</p>
+              ${request.location_details ? `<p><strong>Specific Location:</strong> ${request.location_details}</p>` : ""}
             </div>
 
-            <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests/${
-    request.id
-  }" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">View Request</a></p>
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard/requests/${request.id}" class="button">View Request Details</a>
+            </p>
 
-            <p>Please review and update the status accordingly.</p>
-
-            <p>Thank you,<br><strong>Dingy.app Maintenance</strong></p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
-}
-
-function generateTenantAssignmentEmail(tenantName, request, workerName) {
-  return `
-    <!DOCTYPE html>
-    <html>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: #10b981; color: white; padding: 20px; text-align: center;">
-            <h2>Worker Assigned to Your Request</h2>
-          </div>
-          <div style="background: #f9fafb; padding: 20px;">
-            <p>Hi ${tenantName},</p>
-            
-            <p>Good news! A maintenance worker has been assigned to your request:</p>
-            
-            <div style="background: white; padding: 15px; border-left: 4px solid #10b981; margin: 15px 0;">
-              <h3>${request.title}</h3>
-              <p><strong>Assigned to:</strong> ${workerName}</p>
-              <p><strong>Status:</strong> <span style="color: #10b981; font-weight: bold;">Assigned</span></p>
-            </div>
-
-            <p>${workerName} will be handling your request and will be in touch soon if needed.</p>
-
-            <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests/${request.id}" style="display: inline-block; background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Track Your Request</a></p>
-
-            <p>Thank you for your patience!</p>
+            <p>Please review and start work when ready.</p>
 
             <p>Best regards,<br><strong>Dingy.app Maintenance Team</strong></p>
           </div>
@@ -519,43 +452,84 @@ function generateTenantAssignmentEmail(tenantName, request, workerName) {
   `;
 }
 
-function generateStatusUpdateEmail(tenantName, request, oldStatus, updatedBy) {
-  const statusLabels = {
-    submitted: "Submitted",
-    assigned: "Assigned to Worker",
-    in_progress: "In Progress",
-    completed: "Completed",
-    cancelled: "Cancelled",
-  };
-
+function generateTenantUpdateEmail(tenantName, request, message, updatedBy) {
   return `
     <!DOCTYPE html>
     <html>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: #10b981; color: white; padding: 20px; text-align: center;">
-            <h2>Request Status Updated</h2>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #10b981; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+          .info-box { background: white; padding: 15px; border-left: 4px solid #10b981; margin: 15px 0; border-radius: 4px; }
+          .button { display: inline-block; background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>✅ Request Update</h2>
           </div>
-          <div style="background: #f9fafb; padding: 20px;">
+          <div class="content">
             <p>Hi ${tenantName},</p>
             
-            <p>Your maintenance request status has been updated by <strong>${updatedBy}</strong>:</p>
+            <p><strong>${message}</strong></p>
             
-            <div style="background: white; padding: 15px; border-left: 4px solid #10b981; margin: 15px 0;">
+            <div class="info-box">
               <h3>${request.title}</h3>
-              <p><strong>Previous Status:</strong> ${
-                statusLabels[oldStatus]
-              }</p>
-              <p><strong>New Status:</strong> <span style="color: #10b981; font-weight: bold;">${
-                statusLabels[request.status]
-              }</span></p>
+              <p><strong>Location:</strong> ${request.property.name} - Unit ${request.unit.unit_number}</p>
+              <p><strong>Status:</strong> ${request.status.replace("_", " ").toUpperCase()}</p>
+              ${request.assigned_to_user ? `<p><strong>Assigned to:</strong> ${request.assigned_to_user.full_name}</p>` : ""}
             </div>
 
-            <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/requests/${
-    request.id
-  }" style="display: inline-block; background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">View Request</a></p>
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard/requests/${request.id}" class="button">View Request</a>
+            </p>
 
-            <p>Thank you for your patience.</p>
+            <p>Thank you for your patience!</p>
+
+            <p>Best regards,<br><strong>${request.property.name} Management</strong></p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
+function generateWorkerStatusUpdateEmail(workerName, request, oldStatus, newStatus, updatedBy) {
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #8b5cf6; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+          .info-box { background: white; padding: 15px; border-left: 4px solid #8b5cf6; margin: 15px 0; border-radius: 4px; }
+          .button { display: inline-block; background: #8b5cf6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>📊 Status Changed</h2>
+          </div>
+          <div class="content">
+            <p>Hi ${workerName},</p>
+            
+            <p>${updatedBy} has updated the status of a request assigned to you:</p>
+            
+            <div class="info-box">
+              <h3>${request.title}</h3>
+              <p><strong>Location:</strong> ${request.property.name} - Unit ${request.unit.unit_number}</p>
+              <p><strong>Status Changed:</strong> ${oldStatus.replace("_", " ")} → ${newStatus.replace("_", " ")}</p>
+            </div>
+
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard/requests/${request.id}" class="button">View Request</a>
+            </p>
 
             <p>Best regards,<br><strong>Dingy.app Maintenance Team</strong></p>
           </div>

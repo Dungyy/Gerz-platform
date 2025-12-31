@@ -302,12 +302,12 @@ export default function RequestDetailPage() {
     <div className="space-y-6 pb-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
-        <button
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors border"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
+          <button
+            onClick={() => router.back()}
+            className="grid h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border mt-0.5 sm:mt-0"
+          >
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+          </button>
 
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" className="h-9">
