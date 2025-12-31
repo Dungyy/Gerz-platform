@@ -27,6 +27,7 @@ import {
   ChevronDown,
   User,
 } from "lucide-react";
+import Image from "next/image";
 
 export default function Navbar() {
   const router = useRouter();
@@ -175,9 +176,20 @@ export default function Navbar() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="gap-2">
-                      <div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-semibold text-sm">
-                        {profile?.full_name?.[0]?.toUpperCase() || "U"}
-                      </div>
+                      <div className="w-9 h-9 rounded-full overflow-hidden bg-foreground text-background">
+                {profile?.avatar_url ? (
+                  <Image
+                    src={profile.avatar_url}
+                    alt={profile?.full_name || "User"}
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    {profile?.full_name?.[0]?.toUpperCase() || "U"}
+                  </div>
+                )}                      </div>
                       <span className="hidden lg:inline text-sm font-medium">
                         {profile?.full_name?.split(" ")[0]}
                       </span>

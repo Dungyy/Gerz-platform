@@ -240,6 +240,9 @@ export default function SettingsPage() {
       setProfileForm((prev) => ({ ...prev, avatar_url: publicUrl }));
       setProfile((prev) => ({ ...prev, avatar_url: publicUrl }));
 
+      // Trigger global profile refresh for sidebar
+      window.dispatchEvent(new CustomEvent("profile-updated"));
+
       toast.success("Avatar updated successfully!");
     } catch (error) {
       console.error("Avatar upload error:", error);
@@ -276,6 +279,9 @@ export default function SettingsPage() {
       setProfile((prev) => ({ ...prev, avatar_url: null }));
       setAvatarPreview(null);
 
+      // Trigger global profile refresh for sidebar
+      window.dispatchEvent(new CustomEvent("profile-updated"));
+
       toast.success("Avatar removed successfully!");
     } catch (error) {
       console.error("Remove avatar error:", error);
@@ -304,6 +310,9 @@ export default function SettingsPage() {
       if (!error) {
         toast.success("Profile updated successfully!");
         await loadProfileAndSettings();
+        
+        // Trigger global profile refresh for sidebar
+        window.dispatchEvent(new CustomEvent("profile-updated"));
       } else {
         toast.error("Error updating profile");
       }

@@ -8,67 +8,79 @@ import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 
 export default function DashboardLayout({ children }) {
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  async function checkUser() {
+  useEffect(() => {
+    checkAuth();
+
+    // Listen for profile updates from settings page
+    const handleProfileUpdate = () => {
+      console.log("Profile update event received, reloading...");
+      loadProfile();
+    };
+
+    window.addEventListener("profile-updated", handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener("profile-updated", handleProfileUpdate);
+    };
+  }, []);
+
+  async function checkAuth() {
     try {
       const {
         data: { user },
-        error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError || !user) {
-        console.error("No user found:", userError);
+      if (!user) {
         router.push("/login");
         return;
       }
 
-      console.log("User found:", user.id);
+      await loadProfile(user.id);
+    } catch (error) {
+      console.error("Auth check error:", error);
+      router.push("/login");
+    }
+  }
 
-      // Get profile with organization
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select(
-          `
-          *,
-          organization:organizations(*)
-        `
-        )
-        .eq("id", user.id)
-        .single();
+  async function loadProfile(userId) {
+    try {
+      const uid = userId || (await supabase.auth.getUser()).data.user?.id;
 
-      if (profileError) {
-        console.error("Profile error:", profileError);
-        setLoading(false);
+      if (!uid) {
+        router.push("/login");
         return;
       }
 
-      console.log("Profile loaded:", profileData);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*, organization:organizations(*)")
+        .eq("id", uid)
+        .single();
 
-      setUser(user);
-      setProfile(profileData);
-      setLoading(false);
+      if (error) {
+        console.error("Profile load error:", error);
+        router.push("/login");
+        return;
+      }
+
+      console.log("Profile loaded:", data);
+      setProfile(data);
     } catch (error) {
-      console.error("Check user error:", error);
+      console.error("Load profile error:", error);
+    } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    checkUser();
-  }, []);
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
       </div>
     );
   }
@@ -91,17 +103,13 @@ export default function DashboardLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Sidebar */}
+    <div className="min-h-screen bg-background">
       <Sidebar profile={profile} currentPath={pathname} />
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col lg:pl-64">
-        {/* Header */}
+      
+      <div className="lg:pl-64">
         <Header profile={profile} />
-
-        {/* Main Content - Add top padding on mobile for fixed navbar */}
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 pt-20 lg:pt-6 pb-6">
+        
+        <main className="p-4 sm:p-6 lg:p-8">
           {children}
         </main>
 

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Header({ profile }) {
   const [notifications, setNotifications] = useState([]);
