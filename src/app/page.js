@@ -13,6 +13,10 @@ import {
   Timer,
   BadgeCheck,
   ChevronRight,
+  Mail,
+  Zap,
+  Crown,
+  TrendingUp,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -93,25 +97,72 @@ const TESTIMONIALS = [
   { quote: "Assignments and status make my day way easier.", who: "Maintenance Tech" },
 ];
 
+// ✅ UPDATED PLANS WITH REAL SUBSCRIPTION TIERS
 const PLANS = [
   {
-    name: "Starter",
+    name: "Free",
     price: "$0",
-    note: "For testing and small properties",
-    items: ["Unlimited requests", "Tenant messaging", "Basic statuses"],
+    note: "Perfect for getting started",
+    items: [
+      "1 property",
+      "5 units",
+      "Unlimited requests",
+      "Email notifications",
+      "Mobile access",
+    ],
+    highlight: false,
+    badge: null,
   },
   {
-    name: "Pro",
-    price: "$49/mo",
-    note: "For growing complexes",
+    name: "Starter",
+    price: "$29",
+    period: "/month",
+    note: "For small property managers",
+    items: [
+      "3 properties",
+      "50 units",
+      "Unlimited requests",
+      "Email notifications",
+      "Priority support",
+      "Custom branding",
+    ],
+    highlight: false,
+    badge: null,
+  },
+  {
+    name: "Professional",
+    price: "$79",
+    period: "/month",
+    note: "For growing portfolios",
     highlight: true,
-    items: ["Everything in Starter", "Assignments & roles", "Unit history + reporting"],
+    badge: "Most Popular",
+    items: [
+      "10 properties",
+      "200 units",
+      "Unlimited requests",
+      "✨ SMS notifications (2000/month)",
+      "Advanced analytics",
+      "API access",
+      "Phone support",
+    ],
   },
   {
-    name: "Team",
-    price: "Custom",
-    note: "For larger operations",
-    items: ["Multi-property", "Advanced permissions", "Priority support"],
+    name: "Enterprise",
+    price: "$199",
+    period: "/month",
+    note: "For large companies",
+    items: [
+      "Unlimited properties",
+      "Unlimited units",
+      "Unlimited requests",
+      "✨ Unlimited SMS",
+      "Dedicated account manager",
+      "Custom integrations",
+      "SLA guarantee",
+      "White label option",
+    ],
+    highlight: false,
+    badge: null,
   },
 ];
 
@@ -180,7 +231,7 @@ function Hero() {
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button asChild size="lg">
               <Link href="/signup">
-                Create account <ArrowRight className="ml-2 h-4 w-4" />
+                Start free <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
 
@@ -267,7 +318,7 @@ function Features() {
     <section id="features" className="mx-auto max-w-6xl px-6 py-12">
       <SectionHeading
         title="Everything in one place"
-        subtitle="A clean workflow from “submitted” to “completed”, with a paper trail per unit."
+        subtitle="A clean workflow from 'submitted' to 'completed', with a paper trail per unit."
       />
 
       <div className="mt-8 grid gap-4 md:grid-cols-3">
@@ -317,24 +368,28 @@ function Pricing() {
       <div className="rounded-3xl border bg-card p-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <SectionHeading
-            title="Simple pricing"
-            subtitle="Start small. Upgrade when you’re ready."
+            title="Simple, transparent pricing"
+            subtitle="Start free. Scale as you grow. No hidden fees."
             flush
           />
-          <Button asChild>
-            <Link href="/signup">Start free</Link>
+          <Button asChild size="lg">
+            <Link href="/signup">
+              Start free <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
           </Button>
         </div>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
+        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {PLANS.map((p) => (
             <Plan
               key={p.name}
               name={p.name}
               price={p.price}
+              period={p.period}
               note={p.note}
               items={p.items}
               highlight={p.highlight}
+              badge={p.badge}
             />
           ))}
         </div>
@@ -353,12 +408,14 @@ function FinalCTA() {
               Ready to clean up maintenance requests?
             </h2>
             <p className="mt-2 text-muted-foreground">
-              Launch dingy.app for your property in minutes.
+              Start with the Free plan. Upgrade anytime as you grow.
             </p>
           </div>
           <div className="flex gap-2">
             <Button asChild size="lg">
-              <Link href="/signup">Get started</Link>
+              <Link href="/signup">
+                Start free <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
               <Link href="/login">Sign in</Link>
@@ -373,14 +430,6 @@ function FinalCTA() {
 /* ----------------------------- */
 /* UI building blocks            */
 /* ----------------------------- */
-
-function NavLink({ href, children }) {
-  return (
-    <a href={href} className="text-sm text-muted-foreground hover:text-foreground">
-      {children}
-    </a>
-  );
-}
 
 function SectionHeading({ title, subtitle, flush }) {
   return (
@@ -432,46 +481,67 @@ function Step({ n, title, desc }) {
 function Quote({ quote, who }) {
   return (
     <div className="rounded-2xl border bg-card p-6">
-      <p className="text-sm leading-relaxed">“{quote}”</p>
+      <p className="text-sm leading-relaxed">"{quote}"</p>
       <p className="mt-3 text-sm font-semibold">{who}</p>
       <p className="text-xs text-muted-foreground">dingy.app user</p>
     </div>
   );
 }
 
-function Plan({ name, price, note, items, highlight }) {
+function Plan({ name, price, period, note, items, highlight, badge }) {
   return (
     <div
       className={cn(
-        "rounded-2xl border bg-background p-6",
-        highlight && "ring-1 ring-blue-600/40"
+        "rounded-2xl border bg-background p-6 relative",
+        highlight && "ring-2 ring-blue-600/40 shadow-lg"
       )}
     >
+      {badge && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+          <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1">
+            <Crown className="h-3 w-3 mr-1 inline" />
+            {badge}
+          </Badge>
+        </div>
+      )}
+
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-semibold">{name}</p>
           <p className="mt-1 text-xs text-muted-foreground">{note}</p>
         </div>
-        {highlight ? (
-          <Badge className="bg-blue-600/15 text-blue-700 hover:bg-blue-600/15">
-            Popular
+        {name === "Professional" && !badge && (
+          <Badge variant="secondary" className="gap-1">
+            <MessageSquare className="h-3 w-3" />
+            SMS
           </Badge>
-        ) : null}
+        )}
+        {name === "Free" && (
+          <Badge variant="outline" className="gap-1">
+            <Mail className="h-3 w-3" />
+            Email
+          </Badge>
+        )}
       </div>
 
-      <div className="mt-4 text-3xl font-bold">{price}</div>
+      <div className="mt-4 flex items-baseline gap-1">
+        <span className="text-3xl font-bold">{price}</span>
+        {period && <span className="text-muted-foreground text-sm">{period}</span>}
+      </div>
 
       <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
         {items.map((it) => (
           <li key={it} className="flex items-start gap-2">
-            <CheckCircle2 className="mt-0.5 h-4 w-4" />
+            <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0" />
             <span>{it}</span>
           </li>
         ))}
       </ul>
 
       <Button className="mt-6 w-full" variant={highlight ? "default" : "outline"} asChild>
-        <Link href="/signup">Choose {name}</Link>
+        <Link href="/signup">
+          {name === "Free" ? "Start free" : `Choose ${name}`}
+        </Link>
       </Button>
     </div>
   );
@@ -502,7 +572,7 @@ function HeroMock() {
         <div className="rounded-xl border bg-muted/30 p-4">
           <p className="font-medium">Sink leaking under cabinet</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Tenant note: “Water pools after 2 minutes of running.”
+            Tenant note: "Water pools after 2 minutes of running."
           </p>
           <div className="mt-3 flex gap-2">
             <Badge variant="secondary" className="gap-1">
@@ -536,7 +606,7 @@ function HeroMock() {
           <div className="min-w-0">
             <p className="text-sm font-medium">Message thread</p>
             <p className="text-sm text-muted-foreground">
-              “We can stop by between 2–4pm. Please confirm access.”
+              "We can stop by between 2–4pm. Please confirm access."
             </p>
           </div>
         </div>
