@@ -100,13 +100,13 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6 pb-6 max-w-6xl mx-auto">
+    <div className="space-y-6 pb-6 max-w-6xl mx-auto overflow-x-hidden">
       {/* Welcome Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">
+      <div className="overflow-x-hidden">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
           Welcome back, {profile?.full_name?.split(' ')[0] || 'there'}! 👋
         </h1>
-        <p className="text-gray-600 mt-1">
+        <p className="text-gray-600 mt-1 text-sm sm:text-base">
           {isTenant
             ? "Here's what's happening with your maintenance requests"
             : "Here's your maintenance overview"}
@@ -114,17 +114,17 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-3 flex-wrap overflow-x-hidden">
         {isTenant && (
-          <Link href="/dashboard/requests/new">
-            <Button size="lg" className="h-11">
+          <Link href="/dashboard/requests/new" className="flex-shrink-0">
+            <Button size="lg" className="h-11 w-full sm:w-auto">
               <Plus className="h-5 w-5 mr-2" />
               New Request
             </Button>
           </Link>
         )}
-        <Link href="/dashboard/requests">
-          <Button variant="outline" size="lg" className="h-11">
+        <Link href="/dashboard/requests" className="flex-shrink-0">
+          <Button variant="outline" size="lg" className="h-11 w-full sm:w-auto">
             <Wrench className="h-5 w-5 mr-2" />
             View All Requests
           </Button>
@@ -132,7 +132,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-hidden">
         <StatCard
           title="Total Requests"
           value={stats.total}
@@ -160,24 +160,25 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent Requests */}
-      <Card>
+      <Card className="overflow-x-hidden">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-lg font-semibold">Recent Requests</CardTitle>
           <Link href="/dashboard/requests">
             <Button variant="ghost" size="sm">
-              View All
+              <span className="hidden sm:inline">View All</span>
+              <span className="sm:hidden">All</span>
               <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </Link>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-hidden">
           {recentRequests.length === 0 ? (
             <div className="text-center py-12">
               <Wrench className="h-12 w-12 text-gray-300 mx-auto mb-3" />
               <p className="text-sm text-gray-600 mb-4">No requests yet</p>
               {isTenant && (
                 <Link href="/dashboard/requests/new">
-                  <Button>
+                  <Button className="w-full sm:w-auto">
                     <Plus className="h-4 w-4 mr-2" />
                     Create Your First Request
                   </Button>
@@ -185,7 +186,7 @@ export default function DashboardPage() {
               )}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 overflow-x-hidden">
               {recentRequests.map((request) => (
                 <RequestRow key={request.id} request={request} />
               ))}
@@ -195,42 +196,42 @@ export default function DashboardPage() {
       </Card>
 
       {/* Quick Tips */}
-      <Card className="border-blue-200 bg-blue-50/50">
+      <Card className="border-blue-200 bg-blue-50/50 overflow-x-hidden">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-blue-600" />
             Quick Tips
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-hidden">
           <ul className="space-y-2 text-sm text-gray-700">
             {isTenant ? (
               <>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 mt-0.5">•</span>
+                  <span className="text-blue-600 mt-0.5 flex-shrink-0">•</span>
                   <span>Add photos to your requests for faster resolution</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 mt-0.5">•</span>
+                  <span className="text-blue-600 mt-0.5 flex-shrink-0">•</span>
                   <span>Include specific location details (e.g., "master bathroom sink")</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 mt-0.5">•</span>
+                  <span className="text-blue-600 mt-0.5 flex-shrink-0">•</span>
                   <span>Check your request status and messages regularly</span>
                 </li>
               </>
             ) : (
               <>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 mt-0.5">•</span>
+                  <span className="text-blue-600 mt-0.5 flex-shrink-0">•</span>
                   <span>Respond to requests within 24 hours for better tenant satisfaction</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 mt-0.5">•</span>
+                  <span className="text-blue-600 mt-0.5 flex-shrink-0">•</span>
                   <span>Use internal notes to communicate with your team</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 mt-0.5">•</span>
+                  <span className="text-blue-600 mt-0.5 flex-shrink-0">•</span>
                   <span>Update request status regularly to keep tenants informed</span>
                 </li>
               </>
@@ -251,11 +252,11 @@ function StatCard({ title, value, icon: Icon, color }) {
   }
 
   return (
-    <Card className="border-2">
-      <CardContent className="p-5">
+    <Card className="border-2 overflow-x-hidden">
+      <CardContent className="p-5 overflow-x-hidden">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <div className={`p-2 rounded-lg ${colorClasses[color]}/10`}>
+          <p className="text-sm font-medium text-gray-600 truncate pr-2">{title}</p>
+          <div className={`p-2 rounded-lg ${colorClasses[color]}/10 flex-shrink-0`}>
             <Icon className={`h-5 w-5 text-${color}-600`} />
           </div>
         </div>
@@ -267,19 +268,19 @@ function StatCard({ title, value, icon: Icon, color }) {
 
 function RequestRow({ request }) {
   return (
-    <Link href={`/dashboard/requests/${request.id}`}>
-      <div className="flex items-center justify-between p-3 rounded-lg border-2 hover:border-gray-400 hover:bg-gray-50 transition-all">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+    <Link href={`/dashboard/requests/${request.id}`} className="block overflow-x-hidden">
+      <div className="flex items-center justify-between p-3 rounded-lg border-2 hover:border-gray-400 hover:bg-gray-50 transition-all overflow-x-hidden">
+        <div className="flex-1 min-w-0 overflow-x-hidden">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <h4 className="font-medium text-sm truncate">{request.title}</h4>
             <StatusBadge status={request.status} />
           </div>
-          <div className="flex items-center gap-2 text-xs text-gray-600">
-            <span>Unit {request.unit?.unit_number}</span>
-            <span>•</span>
-            <span className="capitalize">{request.priority} priority</span>
-            <span>•</span>
-            <span>{formatTimestamp(request.created_at)}</span>
+          <div className="flex items-center gap-2 text-xs text-gray-600 flex-wrap">
+            <span className="whitespace-nowrap">Unit {request.unit?.unit_number}</span>
+            <span className="hidden sm:inline">•</span>
+            <span className="capitalize whitespace-nowrap">{request.priority} priority</span>
+            <span className="hidden sm:inline">•</span>
+            <span className="whitespace-nowrap">{formatTimestamp(request.created_at)}</span>
           </div>
         </div>
         <ArrowRight className="h-5 w-5 text-gray-400 flex-shrink-0 ml-2" />
@@ -306,7 +307,7 @@ function StatusBadge({ status }) {
   }
 
   return (
-    <Badge className={`${variants[status]} text-xs font-medium px-2 py-0.5 border-0`}>
+    <Badge className={`${variants[status]} text-xs font-medium px-2 py-0.5 border-0 whitespace-nowrap flex-shrink-0`}>
       {labels[status] || status}
     </Badge>
   )

@@ -195,9 +195,11 @@ export default function SettingsPage() {
       // Delete old avatar if exists
       if (profileForm.avatar_url) {
         const oldPath = profileForm.avatar_url.split("/").pop();
-        await supabase.storage
-          .from("avatars")
-          .remove([`${profile.id}/${oldPath}`]);
+        if (oldPath) {
+          await supabase.storage
+            .from("avatars")
+            .remove([`${profile.id}/${oldPath}`]);
+        }
       }
 
       // Generate unique filename
@@ -260,9 +262,11 @@ export default function SettingsPage() {
 
       // Delete from storage
       const oldPath = profileForm.avatar_url.split("/").pop();
-      await supabase.storage
-        .from("avatars")
-        .remove([`${profile.id}/${oldPath}`]);
+      if (oldPath) {
+        await supabase.storage
+          .from("avatars")
+          .remove([`${profile.id}/${oldPath}`]);
+      }
 
       // Update profile
       const { error } = await supabase
@@ -310,7 +314,7 @@ export default function SettingsPage() {
       if (!error) {
         toast.success("Profile updated successfully!");
         await loadProfileAndSettings();
-        
+
         // Trigger global profile refresh for sidebar
         window.dispatchEvent(new CustomEvent("profile-updated"));
       } else {
@@ -483,178 +487,479 @@ export default function SettingsPage() {
   const canManageOrg = profile.role === "owner" || profile.role === "manager";
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 px-4 sm:px-0 pb-8">
-      {/* Header */}
-      <div className="mt-4">
+    <div className="w-full min-h-screen pb-8 overflow-x-hidden">
+      {/* Header - fixed width container */}
+      <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 mb-6">
         <h2 className="text-2xl sm:text-3xl font-bold">Settings</h2>
         <p className="text-muted-foreground mt-1 text-sm sm:text-base">
           Manage your account and preferences
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b">
-        <div className="flex gap-3 sm:gap-6 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
-          <TabButton
-            active={activeTab === "profile"}
-            onClick={() => setActiveTab("profile")}
-            icon={User}
-            label="Profile"
-          />
+      {/* Tabs - full width with side scroll */}
+      <div className="w-full border-b mb-6 sticky top-0 bg-background z-10 overflow-x-hidden">
+        <div className="w-full max-w-4xl mx-auto overflow-x-hidden">
+          <div className="overflow-x-auto scrollbar-hide -mx-4 sm:-mx-6 lg:-mx-8">
+            <div className="flex gap-4 sm:gap-6 min-w-max px-4 sm:px-6 lg:px-8">
+              <TabButton
+                active={activeTab === "profile"}
+                onClick={() => setActiveTab("profile")}
+                icon={User}
+                label="Profile"
+              />
 
-          {canManageOrg && (
-            <TabButton
-              active={activeTab === "organization"}
-              onClick={() => setActiveTab("organization")}
-              icon={Building2}
-              label="Organization"
-            />
-          )}
+              {canManageOrg && (
+                <TabButton
+                  active={activeTab === "organization"}
+                  onClick={() => setActiveTab("organization")}
+                  icon={Building2}
+                  label="Organization"
+                />
+              )}
 
-          <TabButton
-            active={activeTab === "security"}
-            onClick={() => setActiveTab("security")}
-            icon={Shield}
-            label="Security"
-          />
+              <TabButton
+                active={activeTab === "security"}
+                onClick={() => setActiveTab("security")}
+                icon={Shield}
+                label="Security"
+              />
 
-          {canManageOrg && (
-            <TabButton
-              active={activeTab === "billing"}
-              onClick={() => setActiveTab("billing")}
-              icon={CreditCard}
-              label="Billing"
-            />
-          )}
+              {canManageOrg && (
+                <TabButton
+                  active={activeTab === "billing"}
+                  onClick={() => setActiveTab("billing")}
+                  icon={CreditCard}
+                  label="Billing"
+                />
+              )}
 
-          <TabButton
-            active={activeTab === "notifications"}
-            onClick={() => setActiveTab("notifications")}
-            icon={Bell}
-            label="Notifications"
-          />
+              <TabButton
+                active={activeTab === "notifications"}
+                onClick={() => setActiveTab("notifications")}
+                icon={Bell}
+                label="Notifications"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* PROFILE TAB */}
-      {activeTab === "profile" && (
-        <div className="space-y-6">
-          {/* Avatar Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile Picture</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row items-center gap-6">
-                {/* Avatar Display */}
-                <div className="relative">
-                  <div className="w-24 h-24 rounded-full overflow-hidden bg-muted flex items-center justify-center border-2 border-border">
-                    {avatarPreview || profileForm.avatar_url ? (
-                      <Image
-                        src={avatarPreview || profileForm.avatar_url}
-                        alt="Avatar"
-                        width={96}
-                        height={96}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <User className="h-12 w-12 text-muted-foreground" />
+      {/* Content - fixed width container */}
+      <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 overflow-x-hidden">
+        {/* PROFILE TAB */}
+        {activeTab === "profile" && (
+          <div className="space-y-6 overflow-x-hidden">
+            {/* Avatar Card */}
+            <Card className="overflow-x-hidden">
+              <CardHeader>
+                <CardTitle>Profile Picture</CardTitle>
+              </CardHeader>
+              <CardContent className="overflow-x-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+                  {/* Avatar Display */}
+                  <div className="relative flex-shrink-0 mx-auto sm:mx-0">
+                    <div className="w-24 h-24 rounded-full overflow-hidden bg-muted flex items-center justify-center border-2 border-border">
+                      {avatarPreview || profileForm.avatar_url ? (
+                        <Image
+                          src={avatarPreview || profileForm.avatar_url}
+                          alt="Avatar"
+                          width={96}
+                          height={96}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="h-12 w-12 text-muted-foreground" />
+                      )}
+                    </div>
+
+                    {uploadingAvatar && (
+                      <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                        <Loader2 className="h-6 w-6 text-white animate-spin" />
+                      </div>
                     )}
                   </div>
 
-                  {uploadingAvatar && (
-                    <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                      <Loader2 className="h-6 w-6 text-white animate-spin" />
-                    </div>
-                  )}
-                </div>
+                  {/* Upload Controls */}
+                  <div className="flex-1 space-y-3 w-full">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
 
-                {/* Upload Controls */}
-                <div className="flex-1 space-y-3">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarChange}
-                    className="hidden"
-                  />
-
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploadingAvatar}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload Photo
-                    </Button>
-
-                    {(profileForm.avatar_url || avatarPreview) && (
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={handleRemoveAvatar}
+                        onClick={() => fileInputRef.current?.click()}
                         disabled={uploadingAvatar}
-                        className="text-red-600 border-red-200 hover:bg-red-50"
+                        className="w-full sm:w-auto"
                       >
-                        <X className="h-4 w-4 mr-2" />
-                        Remove
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload Photo
                       </Button>
-                    )}
+
+                      {(profileForm.avatar_url || avatarPreview) && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRemoveAvatar}
+                          disabled={uploadingAvatar}
+                          className="w-full sm:w-auto text-red-600 border-red-200 hover:bg-red-50"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      JPG, PNG or GIF. Max size 5MB.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Profile Info Card */}
+            <Card className="overflow-x-hidden">
+              <CardHeader>
+                <CardTitle>Profile Information</CardTitle>
+              </CardHeader>
+              <CardContent className="overflow-x-hidden">
+                <form onSubmit={handleProfileUpdate} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Full Name
+                    </label>
+                    <Input
+                      value={profileForm.full_name}
+                      onChange={(e) =>
+                        setProfileForm((prev) => ({
+                          ...prev,
+                          full_name: e.target.value,
+                        }))
+                      }
+                      placeholder="John Doe"
+                    />
                   </div>
 
-                  <p className="text-xs text-muted-foreground">
-                    JPG, PNG or GIF. Max size 5MB.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Email
+                    </label>
+                    <Input
+                      type="email"
+                      value={profileForm.email}
+                      disabled
+                      className="bg-muted"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Contact support to change your email address.
+                    </p>
+                  </div>
 
-          {/* Profile Info Card */}
-          <Card>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Phone
+                    </label>
+                    <Input
+                      type="tel"
+                      value={profileForm.phone}
+                      onChange={(e) =>
+                        setProfileForm((prev) => ({
+                          ...prev,
+                          phone: e.target.value,
+                        }))
+                      }
+                      placeholder="(555) 123-4567"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Role
+                    </label>
+                    <Badge className="capitalize">{profile.role}</Badge>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={saving}
+                    className="w-full sm:w-auto"
+                  >
+                    {saving ? "Saving..." : "Save Changes"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* ORGANIZATION TAB */}
+        {activeTab === "organization" && canManageOrg && (
+          <div className="space-y-6 overflow-x-hidden">
+            <Card className="overflow-x-hidden">
+              <CardHeader>
+                <CardTitle>Organization Details</CardTitle>
+              </CardHeader>
+              <CardContent className="overflow-x-hidden">
+                <form onSubmit={handleOrgUpdate} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Organization Name
+                    </label>
+                    <Input
+                      value={orgForm.name}
+                      onChange={(e) =>
+                        setOrgForm((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
+                      placeholder="Acme Property Management"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Phone
+                    </label>
+                    <Input
+                      type="tel"
+                      value={orgForm.phone}
+                      onChange={(e) =>
+                        setOrgForm((prev) => ({
+                          ...prev,
+                          phone: e.target.value,
+                        }))
+                      }
+                      placeholder="(555) 123-4567"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Email
+                    </label>
+                    <Input
+                      type="email"
+                      value={orgForm.email}
+                      onChange={(e) =>
+                        setOrgForm((prev) => ({
+                          ...prev,
+                          email: e.target.value,
+                        }))
+                      }
+                      placeholder="contact@acme.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Address
+                    </label>
+                    <Input
+                      value={orgForm.address}
+                      onChange={(e) =>
+                        setOrgForm((prev) => ({
+                          ...prev,
+                          address: e.target.value,
+                        }))
+                      }
+                      placeholder="123 Main St, City, State 12345"
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={saving}
+                    className="w-full sm:w-auto"
+                  >
+                    {saving ? "Saving..." : "Save Changes"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card className="overflow-x-hidden">
+              <CardHeader>
+                <CardTitle>Organization Code</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 overflow-x-hidden">
+                <div className="overflow-x-hidden">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Share this code with team members to invite them to your
+                    organization
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 overflow-x-hidden">
+                    <code className="text-sm sm:text-base font-mono bg-muted px-4 py-3 rounded border flex-1 break-all overflow-x-auto scrollbar-hide">
+                      {profile.organization?.organization_code || "N/A"}
+                    </code>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          profile.organization?.organization_code || ""
+                        );
+                        toast.success("Code copied to clipboard!");
+                      }}
+                      className="w-full sm:w-auto whitespace-nowrap"
+                    >
+                      Copy Code
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="overflow-x-hidden">
+              <CardHeader>
+                <CardTitle>Subscription</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 overflow-x-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium">Current Plan</p>
+                    <p className="text-sm text-muted-foreground capitalize">
+                      {profile.organization?.plan || "Free"}
+                    </p>
+                  </div>
+                  <Badge className="capitalize w-fit">
+                    {profile.organization?.subscription_status || "Active"}
+                  </Badge>
+                </div>
+
+                {profile.organization?.trial_ends_at && (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-900">
+                    Trial ends on{" "}
+                    {new Date(
+                      profile.organization.trial_ends_at
+                    ).toLocaleDateString()}
+                  </div>
+                )}
+
+                <Button variant="outline" className="w-full sm:w-auto">
+                  Upgrade Plan
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* SECURITY TAB */}
+        {activeTab === "security" && (
+          <Card className="overflow-x-hidden">
             <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
+              <CardTitle>Change Password</CardTitle>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleProfileUpdate} className="space-y-4">
+            <CardContent className="overflow-x-hidden">
+              <form onSubmit={handlePasswordChange} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    Full Name
+                    New Password
                   </label>
                   <Input
-                    value={profileForm.full_name}
+                    type="password"
+                    value={passwordForm.new_password}
                     onChange={(e) =>
-                      setProfileForm((prev) => ({
+                      setPasswordForm((prev) => ({
                         ...prev,
-                        full_name: e.target.value,
+                        new_password: e.target.value,
                       }))
                     }
-                    placeholder="John Doe"
+                    placeholder="Enter new password"
+                    minLength={6}
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    Email
+                    Confirm Password
                   </label>
                   <Input
-                    type="email"
-                    value={profileForm.email}
-                    disabled
-                    className="bg-muted"
+                    type="password"
+                    value={passwordForm.confirm_password}
+                    onChange={(e) =>
+                      setPasswordForm((prev) => ({
+                        ...prev,
+                        confirm_password: e.target.value,
+                      }))
+                    }
+                    placeholder="Confirm new password"
+                    minLength={6}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Contact support to change your email address.
-                  </p>
                 </div>
 
+                <Button
+                  type="submit"
+                  disabled={saving}
+                  className="w-full sm:w-auto"
+                >
+                  {saving ? "Updating..." : "Update Password"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* BILLING TAB */}
+        {activeTab === "billing" && canManageOrg && (
+          <div className="space-y-6 overflow-x-hidden">
+            <Card className="overflow-x-hidden">
+              <CardHeader>
+                <CardTitle>Payment Method</CardTitle>
+              </CardHeader>
+              <CardContent className="overflow-x-hidden">
+                <div className="text-center py-8">
+                  <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">
+                    No payment method on file
+                  </p>
+                  <Button className="w-full sm:w-auto">
+                    Add Payment Method
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="overflow-x-hidden">
+              <CardHeader>
+                <CardTitle>Billing History</CardTitle>
+              </CardHeader>
+              <CardContent className="overflow-x-hidden">
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No billing history</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* NOTIFICATIONS TAB */}
+        {activeTab === "notifications" && (
+          <form
+            onSubmit={handleNotificationSave}
+            className="space-y-6 overflow-x-hidden"
+            autoComplete="off"
+          >
+            {/* SMS Settings */}
+            <Card className="overflow-x-hidden">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  SMS Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 overflow-x-hidden">
+                {/* Phone */}
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    Phone
+                    Phone Number
                   </label>
                   <Input
                     type="tel"
@@ -667,461 +972,203 @@ export default function SettingsPage() {
                     }
                     placeholder="(555) 123-4567"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Role</label>
-                  <Badge className="capitalize">{profile.role}</Badge>
-                </div>
-
-                <Button type="submit" disabled={saving}>
-                  {saving ? "Saving..." : "Save Changes"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* ORGANIZATION TAB */}
-      {activeTab === "organization" && canManageOrg && (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Organization Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleOrgUpdate} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Organization Name
-                  </label>
-                  <Input
-                    value={orgForm.name}
-                    onChange={(e) =>
-                      setOrgForm((prev) => ({ ...prev, name: e.target.value }))
-                    }
-                    placeholder="Acme Property Management"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Phone
-                  </label>
-                  <Input
-                    type="tel"
-                    value={orgForm.phone}
-                    onChange={(e) =>
-                      setOrgForm((prev) => ({
-                        ...prev,
-                        phone: e.target.value,
-                      }))
-                    }
-                    placeholder="(555) 123-4567"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Email
-                  </label>
-                  <Input
-                    type="email"
-                    value={orgForm.email}
-                    onChange={(e) =>
-                      setOrgForm((prev) => ({
-                        ...prev,
-                        email: e.target.value,
-                      }))
-                    }
-                    placeholder="contact@acme.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Address
-                  </label>
-                  <Input
-                    value={orgForm.address}
-                    onChange={(e) =>
-                      setOrgForm((prev) => ({
-                        ...prev,
-                        address: e.target.value,
-                      }))
-                    }
-                    placeholder="123 Main St, City, State 12345"
-                  />
-                </div>
-
-                <Button type="submit" disabled={saving}>
-                  {saving ? "Saving..." : "Save Changes"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Organization Code</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Share this code with team members to invite them to your
-                  organization
-                </p>
-                <div className="flex items-center gap-2">
-                  <code className="text-lg font-mono bg-muted px-4 py-2 rounded border flex-1">
-                    {profile.organization?.organization_code || "N/A"}
-                  </code>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      navigator.clipboard.writeText(
-                        profile.organization?.organization_code || ""
-                      );
-                      toast.success("Code copied to clipboard!");
-                    }}
-                  >
-                    Copy
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Subscription</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <p className="font-medium">Current Plan</p>
-                  <p className="text-sm text-muted-foreground capitalize">
-                    {profile.organization?.plan || "Free"}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Required for SMS notifications.
                   </p>
                 </div>
-                <Badge className="capitalize w-fit">
-                  {profile.organization?.subscription_status || "Active"}
-                </Badge>
-              </div>
 
-              {profile.organization?.trial_ends_at && (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-900">
-                  Trial ends on{" "}
-                  {new Date(
-                    profile.organization.trial_ends_at
-                  ).toLocaleDateString()}
+                {/* Master SMS toggle */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 border-t">
+                  <div className="flex-1">
+                    <p className="font-medium">Enable SMS Notifications</p>
+                    <p className="text-sm text-muted-foreground">
+                      Receive text message updates
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={profileForm.sms_notifications}
+                    onChange={(e) =>
+                      setProfileForm((prev) => ({
+                        ...prev,
+                        sms_notifications: e.target.checked,
+                      }))
+                    }
+                    disabled={!profileForm.phone}
+                    className="h-5 w-5 rounded flex-shrink-0"
+                  />
                 </div>
-              )}
-
-              <Button variant="outline" className="w-full">
-                Upgrade Plan
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* SECURITY TAB */}
-      {activeTab === "security" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Change Password</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handlePasswordChange} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  New Password
-                </label>
-                <Input
-                  type="password"
-                  value={passwordForm.new_password}
-                  onChange={(e) =>
-                    setPasswordForm((prev) => ({
-                      ...prev,
-                      new_password: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter new password"
-                  minLength={6}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Confirm Password
-                </label>
-                <Input
-                  type="password"
-                  value={passwordForm.confirm_password}
-                  onChange={(e) =>
-                    setPasswordForm((prev) => ({
-                      ...prev,
-                      confirm_password: e.target.value,
-                    }))
-                  }
-                  placeholder="Confirm new password"
-                  minLength={6}
-                />
-              </div>
-
-              <Button type="submit" disabled={saving}>
-                {saving ? "Updating..." : "Update Password"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* BILLING TAB */}
-      {activeTab === "billing" && canManageOrg && (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment Method</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">
-                  No payment method on file
-                </p>
-                <Button>Add Payment Method</Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Billing History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No billing history</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* NOTIFICATIONS TAB */}
-      {activeTab === "notifications" && (
-        <form
-          onSubmit={handleNotificationSave}
-          className="space-y-6"
-          autoComplete="off"
-        >
-          {/* SMS Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
-                SMS Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Phone */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Phone Number
-                </label>
-                <Input
-                  type="tel"
-                  value={profileForm.phone}
-                  onChange={(e) =>
-                    setProfileForm((prev) => ({
-                      ...prev,
-                      phone: e.target.value,
-                    }))
-                  }
-                  placeholder="(555) 123-4567"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Required for SMS notifications.
-                </p>
-              </div>
-
-              {/* Master SMS toggle */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-3 border-t">
-                <div>
-                  <p className="font-medium">Enable SMS Notifications</p>
-                  <p className="text-sm text-muted-foreground">
-                    Receive text message updates
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={profileForm.sms_notifications}
-                  onChange={(e) =>
-                    setProfileForm((prev) => ({
-                      ...prev,
-                      sms_notifications: e.target.checked,
-                    }))
-                  }
-                  disabled={!profileForm.phone}
-                  className="h-5 w-5 rounded"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Email Notifications */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                Email Notifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <NotificationToggle
-                label="New Request"
-                description="Notify when a new request is submitted"
-                checked={preferencesForm.email_new_request}
-                onChange={(v) =>
-                  setPreferencesForm((prev) => ({
-                    ...prev,
-                    email_new_request: v,
-                  }))
-                }
-              />
-              <NotificationToggle
-                label="Status Updates"
-                description="Notify when request status changes"
-                checked={preferencesForm.email_status_update}
-                onChange={(v) =>
-                  setPreferencesForm((prev) => ({
-                    ...prev,
-                    email_status_update: v,
-                  }))
-                }
-              />
-              <NotificationToggle
-                label="Assignments"
-                description="Notify when requests are assigned"
-                checked={preferencesForm.email_assignment}
-                onChange={(v) =>
-                  setPreferencesForm((prev) => ({
-                    ...prev,
-                    email_assignment: v,
-                  }))
-                }
-              />
-              <NotificationToggle
-                label="Comments"
-                description="Notify about new comments"
-                checked={preferencesForm.email_comment}
-                onChange={(v) =>
-                  setPreferencesForm((prev) => ({
-                    ...prev,
-                    email_comment: v,
-                  }))
-                }
-              />
-            </CardContent>
-          </Card>
-
-          {/* SMS Notifications */}
-          {profileForm.phone && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5" />
-                  SMS Notifications
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <NotificationToggle
-                  label="Status Updates"
-                  description="Text when request status changes"
-                  checked={preferencesForm.sms_status_update}
-                  onChange={(v) =>
-                    setPreferencesForm((prev) => ({
-                      ...prev,
-                      sms_status_update: v,
-                    }))
-                  }
-                  disabled={!profileForm.sms_notifications}
-                />
-                <NotificationToggle
-                  label="Emergency Alerts"
-                  description="Text for urgent requests"
-                  checked={preferencesForm.sms_emergency}
-                  onChange={(v) =>
-                    setPreferencesForm((prev) => ({
-                      ...prev,
-                      sms_emergency: v,
-                    }))
-                  }
-                  disabled={!profileForm.sms_notifications}
-                />
-                {profile.role !== "tenant" && (
-                  <>
-                    <NotificationToggle
-                      label="New Requests"
-                      description="Text when new request submitted"
-                      checked={preferencesForm.sms_new_request}
-                      onChange={(v) =>
-                        setPreferencesForm((prev) => ({
-                          ...prev,
-                          sms_new_request: v,
-                        }))
-                      }
-                      disabled={!profileForm.sms_notifications}
-                    />
-                    <NotificationToggle
-                      label="Assignments"
-                      description="Text when request is assigned to you"
-                      checked={preferencesForm.sms_assignment}
-                      onChange={(v) =>
-                        setPreferencesForm((prev) => ({
-                          ...prev,
-                          sms_assignment: v,
-                        }))
-                      }
-                      disabled={!profileForm.sms_notifications}
-                    />
-                  </>
-                )}
               </CardContent>
             </Card>
-          )}
 
-          {/* Save button */}
-          <div className="flex justify-end">
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving..." : "Save Notification Settings"}
-            </Button>
-          </div>
-        </form>
-      )}
+            {/* Email Notifications */}
+            <Card className="overflow-x-hidden">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="h-5 w-5" />
+                  Email Notifications
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 overflow-x-hidden">
+                <NotificationToggle
+                  label="New Request"
+                  description="Notify when a new request is submitted"
+                  checked={preferencesForm.email_new_request}
+                  onChange={(v) =>
+                    setPreferencesForm((prev) => ({
+                      ...prev,
+                      email_new_request: v,
+                    }))
+                  }
+                />
+                <NotificationToggle
+                  label="Status Updates"
+                  description="Notify when request status changes"
+                  checked={preferencesForm.email_status_update}
+                  onChange={(v) =>
+                    setPreferencesForm((prev) => ({
+                      ...prev,
+                      email_status_update: v,
+                    }))
+                  }
+                />
+                <NotificationToggle
+                  label="Assignments"
+                  description="Notify when requests are assigned"
+                  checked={preferencesForm.email_assignment}
+                  onChange={(v) =>
+                    setPreferencesForm((prev) => ({
+                      ...prev,
+                      email_assignment: v,
+                    }))
+                  }
+                />
+                <NotificationToggle
+                  label="Comments"
+                  description="Notify about new comments"
+                  checked={preferencesForm.email_comment}
+                  onChange={(v) =>
+                    setPreferencesForm((prev) => ({
+                      ...prev,
+                      email_comment: v,
+                    }))
+                  }
+                />
+              </CardContent>
+            </Card>
 
-      {/* Logout */}
-      <Card className="border-red-200">
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <p className="font-medium">Sign Out</p>
-              <p className="text-sm text-muted-foreground">
-                Sign out of your account
-              </p>
+            {/* SMS Notifications */}
+            {profileForm.phone && (
+              <Card className="overflow-x-hidden">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5" />
+                    SMS Notifications
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 overflow-x-hidden">
+                  <NotificationToggle
+                    label="Status Updates"
+                    description="Text when request status changes"
+                    checked={preferencesForm.sms_status_update}
+                    onChange={(v) =>
+                      setPreferencesForm((prev) => ({
+                        ...prev,
+                        sms_status_update: v,
+                      }))
+                    }
+                    disabled={!profileForm.sms_notifications}
+                  />
+                  <NotificationToggle
+                    label="Emergency Alerts"
+                    description="Text for urgent requests"
+                    checked={preferencesForm.sms_emergency}
+                    onChange={(v) =>
+                      setPreferencesForm((prev) => ({
+                        ...prev,
+                        sms_emergency: v,
+                      }))
+                    }
+                    disabled={!profileForm.sms_notifications}
+                  />
+                  {profile.role !== "tenant" && (
+                    <>
+                      <NotificationToggle
+                        label="New Requests"
+                        description="Text when new request submitted"
+                        checked={preferencesForm.sms_new_request}
+                        onChange={(v) =>
+                          setPreferencesForm((prev) => ({
+                            ...prev,
+                            sms_new_request: v,
+                          }))
+                        }
+                        disabled={!profileForm.sms_notifications}
+                      />
+                      <NotificationToggle
+                        label="Assignments"
+                        description="Text when request is assigned to you"
+                        checked={preferencesForm.sms_assignment}
+                        onChange={(v) =>
+                          setPreferencesForm((prev) => ({
+                            ...prev,
+                            sms_assignment: v,
+                          }))
+                        }
+                        disabled={!profileForm.sms_notifications}
+                      />
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Save button */}
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                disabled={saving}
+                className="w-full sm:w-auto"
+              >
+                {saving ? "Saving..." : "Save Notification Settings"}
+              </Button>
             </div>
-            <Button
-              onClick={handleLogout}
-              variant="outline"
-              className="text-red-600 border-red-200 hover:bg-red-50 w-full sm:w-auto"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </form>
+        )}
+
+        {/* Logout */}
+        <Card className="border-red-200 overflow-x-hidden">
+          <CardContent className="pt-6 overflow-x-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex-1">
+                <p className="font-medium">Sign Out</p>
+                <p className="text-sm text-muted-foreground">
+                  Sign out of your account
+                </p>
+              </div>
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                className="text-red-600 border-red-200 hover:bg-red-50 w-full sm:w-auto"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Custom scrollbar hide styles */}
+      <style jsx global>{`
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 }
@@ -1131,11 +1178,18 @@ function TabButton({ active, onClick, icon: Icon, label }) {
     <button
       type="button"
       onClick={onClick}
-      className={`pb-3 px-1 border-b-2 font-medium text-sm sm:text-base flex items-center gap-2 whitespace-nowrap transition-colors ${
-        active
-          ? "border-blue-600 text-blue-600"
-          : "border-transparent text-muted-foreground hover:text-foreground"
-      }`}
+      className={`
+        pb-3 px-1 border-b-2 font-medium text-sm sm:text-base
+        flex items-center gap-2
+        whitespace-nowrap
+        flex-shrink-0
+        transition-colors
+        ${
+          active
+            ? "border-blue-600 text-blue-600"
+            : "border-transparent text-muted-foreground hover:text-foreground"
+        }
+      `}
     >
       <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
       <span>{label}</span>
@@ -1151,8 +1205,8 @@ function NotificationToggle({
   disabled,
 }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-3 border-b last:border-0">
-      <div>
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 border-b last:border-0">
+      <div className="flex-1">
         <p
           className={`font-medium ${
             disabled ? "text-muted-foreground/70" : ""
@@ -1173,7 +1227,7 @@ function NotificationToggle({
         checked={!!checked}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}
-        className="h-5 w-5 rounded"
+        className="h-5 w-5 rounded flex-shrink-0"
       />
     </div>
   );

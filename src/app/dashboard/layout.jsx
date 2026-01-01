@@ -103,13 +103,13 @@ export default function DashboardLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex overflow-x-hidden">
       <Sidebar profile={profile} currentPath={pathname} />
 
-      <div className="flex flex-col flex-1 pt-14 sm:pt-16 lg:pt-0 lg:pl-64">
+      <div className="flex flex-col flex-1 pt-14 sm:pt-16 lg:pt-0 lg:pl-64 overflow-x-hidden">
         <Header profile={profile} />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
           {children}
         </main>
 
