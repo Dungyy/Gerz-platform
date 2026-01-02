@@ -690,16 +690,11 @@ export default function TenantDetailPage() {
 
 function StatusBadge({ status }) {
   const variants = {
-    submitted:
-      "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400",
-    assigned:
-      "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
-    in_progress:
-      "bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400",
-    completed:
-      "bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400",
-    cancelled:
-      "bg-gray-100 text-gray-700 dark:bg-gray-950/30 dark:text-gray-400",
+    submitted: "bg-amber-100 text-amber-700",
+    assigned: "bg-blue-100 text-blue-700",
+    in_progress: "bg-purple-100 text-purple-700",
+    completed: "bg-green-100 text-green-700",
+    cancelled: "bg-gray-100 text-gray-700",
   };
 
   return (
