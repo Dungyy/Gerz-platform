@@ -1,4 +1,3 @@
-// app/dashboard/settings/page.jsx
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -9,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   User,
   Building2,
@@ -21,6 +21,12 @@ import {
   Upload,
   X,
   Loader2,
+  TrendingUp,
+  CheckCircle,
+  Home,
+  Users,
+  Briefcase,
+  MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
@@ -30,6 +36,7 @@ export default function SettingsPage() {
   const fileInputRef = useRef(null);
 
   const [profile, setProfile] = useState(null);
+  const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -73,8 +80,21 @@ export default function SettingsPage() {
 
   useEffect(() => {
     loadProfileAndSettings();
+    loadSubscription();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function loadSubscription() {
+    try {
+      const response = await fetchWithAuth("/api/subscription");
+      if (response.ok) {
+        const data = await response.json();
+        setSubscription(data);
+      }
+    } catch (error) {
+      console.error("Error loading subscription:", error);
+    }
+  }
 
   async function loadProfileAndSettings() {
     try {
@@ -457,6 +477,26 @@ export default function SettingsPage() {
     }
   }
 
+  // ---------- BILLING ----------
+  async function handleManageBilling() {
+    try {
+      const response = await fetchWithAuth("/api/subscription/portal", {
+        method: "POST",
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error(data.error || "Failed to open billing portal");
+      }
+    } catch (error) {
+      console.error("Portal error:", error);
+      toast.error("Failed to open billing portal");
+    }
+  }
+
   // ---------- LOGOUT ----------
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -526,10 +566,10 @@ export default function SettingsPage() {
 
               {canManageOrg && (
                 <TabButton
-                  active={activeTab === "billing"}
-                  onClick={() => setActiveTab("billing")}
+                  active={activeTab === "subscription"}
+                  onClick={() => setActiveTab("subscription")}
                   icon={CreditCard}
-                  label="Billing"
+                  label="Subscription"
                 />
               )}
 
@@ -816,38 +856,6 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
-
-            <Card className="overflow-x-hidden">
-              <CardHeader>
-                <CardTitle>Subscription</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 overflow-x-hidden">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <p className="font-medium">Current Plan</p>
-                    <p className="text-sm text-muted-foreground capitalize">
-                      {profile.organization?.plan || "Free"}
-                    </p>
-                  </div>
-                  <Badge className="capitalize w-fit">
-                    {profile.organization?.subscription_status || "Active"}
-                  </Badge>
-                </div>
-
-                {profile.organization?.trial_ends_at && (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-900">
-                    Trial ends on{" "}
-                    {new Date(
-                      profile.organization.trial_ends_at
-                    ).toLocaleDateString()}
-                  </div>
-                )}
-
-                <Button variant="outline" className="w-full sm:w-auto">
-                  Upgrade Plan
-                </Button>
-              </CardContent>
-            </Card>
           </div>
         )}
 
@@ -907,36 +915,148 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {/* BILLING TAB */}
-        {activeTab === "billing" && canManageOrg && (
+        {/* SUBSCRIPTION TAB */}
+        {activeTab === "subscription" && canManageOrg && (
           <div className="space-y-6 overflow-x-hidden">
-            <Card className="overflow-x-hidden">
+            {/* Current Plan Card */}
+            <Card className="border-blue-500 shadow-sm overflow-x-hidden">
               <CardHeader>
-                <CardTitle>Payment Method</CardTitle>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl">Current Plan</CardTitle>
+                    <p className="text-muted-foreground text-sm mt-1">
+                      {subscription?.tier?.display_name || "Free"}
+                    </p>
+                  </div>
+                  <Badge className="bg-blue-500 text-white text-base px-3 py-1">
+                    {subscription?.tier?.name?.toUpperCase() || "FREE"}
+                  </Badge>
+                </div>
               </CardHeader>
-              <CardContent className="overflow-x-hidden">
-                <div className="text-center py-8">
-                  <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">
-                    No payment method on file
-                  </p>
-                  <Button className="w-full sm:w-auto">
-                    Add Payment Method
+              <CardContent className="space-y-6">
+                {/* Price */}
+                {subscription?.tier && (
+                  <div>
+                    <p className="text-3xl font-bold">
+                      ${subscription.tier.price_monthly}
+                      <span className="text-base font-normal text-muted-foreground">/month</span>
+                    </p>
+                  </div>
+                )}
+
+                {/* Usage Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <UsageStat
+                    icon={Home}
+                    label="Properties"
+                    current={subscription?.usage?.properties || 0}
+                    max={subscription?.limits?.properties}
+                  />
+                  <UsageStat
+                    icon={Building2}
+                    label="Units"
+                    current={subscription?.usage?.units || 0}
+                    max={subscription?.limits?.units}
+                  />
+                  <UsageStat
+                    icon={Users}
+                    label="Tenants"
+                    current={subscription?.usage?.tenants || 0}
+                    max={subscription?.limits?.tenants}
+                  />
+                  <UsageStat
+                    icon={Briefcase}
+                    label="Workers"
+                    current={subscription?.usage?.workers || 0}
+                    max={subscription?.limits?.workers}
+                  />
+                </div>
+
+                {/* SMS Usage */}
+                {subscription?.limits?.sms !== null && subscription?.limits?.sms > 0 && (
+                  <div className="pt-4 border-t">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">SMS Messages</span>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {subscription?.usage?.sms || 0} / {subscription?.limits?.sms}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={((subscription?.usage?.sms || 0) / subscription?.limits?.sms) * 100} 
+                      className="h-2"
+                    />
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                  <Button
+                    onClick={() => router.push("/dashboard/subscription")}
+                    className="flex-1 gap-2"
+                  >
+                    <TrendingUp className="h-4 w-4" />
+                    {subscription?.tier?.name === "free" ? "Upgrade Plan" : "View All Plans"}
                   </Button>
+
+                  {subscription?.tier?.name !== "free" && (
+                    <Button
+                      variant="outline"
+                      onClick={handleManageBilling}
+                      className="flex-1"
+                    >
+                      Manage Billing
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="overflow-x-hidden">
-              <CardHeader>
-                <CardTitle>Billing History</CardTitle>
-              </CardHeader>
-              <CardContent className="overflow-x-hidden">
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No billing history</p>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Features Card */}
+            {subscription?.tier?.features && (
+              <Card className="overflow-x-hidden">
+                <CardHeader>
+                  <CardTitle>Plan Features</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-3">
+                    {subscription.tier.features.map((feature, i) => (
+                      <li key={i} className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                        <span className="text-sm">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Billing Info */}
+            {subscription?.organization?.stripe_subscription_status && (
+              <Card className="overflow-x-hidden">
+                <CardHeader>
+                  <CardTitle>Billing Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Status</span>
+                    <Badge variant="outline" className="capitalize">
+                      {subscription.organization.stripe_subscription_status}
+                    </Badge>
+                  </div>
+                  {subscription.organization.stripe_current_period_end && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Next billing date</span>
+                      <span className="text-sm font-medium">
+                        {new Date(subscription.organization.stripe_current_period_end).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 
@@ -1229,6 +1349,35 @@ function NotificationToggle({
         disabled={disabled}
         className="h-5 w-5 rounded flex-shrink-0"
       />
+    </div>
+  );
+}
+
+function UsageStat({ icon: Icon, label, current, max }) {
+  const isUnlimited = max === null;
+  const percentage = isUnlimited ? 0 : (current / max) * 100;
+  const isNearLimit = percentage >= 80;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      </div>
+      <div>
+        <p className={`text-2xl font-bold ${isNearLimit ? "text-orange-600" : ""}`}>
+          {current}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {isUnlimited ? "Unlimited" : `of ${max}`}
+        </p>
+      </div>
+      {!isUnlimited && (
+        <Progress
+          value={Math.min(percentage, 100)}
+          className={`h-1 ${isNearLimit ? "[&>div]:bg-orange-500" : ""}`}
+        />
+      )}
     </div>
   );
 }
