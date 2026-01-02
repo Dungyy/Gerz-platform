@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,6 @@ import {
   Wrench,
   Edit,
   Trash2,
-  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
@@ -53,24 +53,24 @@ export default function TenantDetailPage() {
         .from("profiles")
         .select(
           `
-        *,
-        unit:units!units_tenant_id_fkey(
-          id,
-          unit_number,
-          floor,
-          bedrooms,
-          bathrooms,
-          square_feet,
-          property:properties(
+          *,
+          unit:units!units_tenant_id_fkey(
             id,
-            name,
-            address,
-            city,
-            state,
-            zip
+            unit_number,
+            floor,
+            bedrooms,
+            bathrooms,
+            square_feet,
+            property:properties(
+              id,
+              name,
+              address,
+              city,
+              state,
+              zip
+            )
           )
-        )
-      `
+        `
         )
         .eq("id", params.id)
         .eq("role", "tenant")
@@ -86,10 +86,10 @@ export default function TenantDetailPage() {
         .from("maintenance_requests")
         .select(
           `
-        *,
-        property:properties(name),
-        unit:units(unit_number)
-      `
+          *,
+          property:properties(name),
+          unit:units(unit_number)
+        `
         )
         .eq("tenant_id", params.id)
         .order("created_at", { ascending: false })
@@ -162,11 +162,17 @@ export default function TenantDetailPage() {
       setRemoveLoading(true);
 
       // Unassign from unit
-      if (tenant.unit && tenant.unit.length > 0) {
+      if (
+        (Array.isArray(tenant.unit) && tenant.unit.length > 0) ||
+        (tenant.unit && typeof tenant.unit === "object")
+      ) {
+        const unitToUnassign = Array.isArray(tenant.unit)
+          ? tenant.unit[0]
+          : tenant.unit;
         await supabase
           .from("units")
           .update({ tenant_id: null })
-          .eq("id", tenant.unit[0].id);
+          .eq("id", unitToUnassign.id);
       }
 
       toast.success("Tenant removed from unit successfully");
@@ -220,7 +226,12 @@ export default function TenantDetailPage() {
     );
   }
 
-  const unit = tenant.unit && tenant.unit.length > 0 ? tenant.unit[0] : null;
+  const unit =
+    Array.isArray(tenant.unit) && tenant.unit.length > 0
+      ? tenant.unit[0]
+      : tenant.unit && typeof tenant.unit === "object"
+      ? tenant.unit
+      : null;
   const property = unit?.property;
 
   // Group units by property
@@ -231,12 +242,17 @@ export default function TenantDetailPage() {
     return acc;
   }, {});
 
+  const hasAvatar =
+    tenant?.avatar_url &&
+    typeof tenant.avatar_url === "string" &&
+    tenant.avatar_url.trim().length > 0;
+
   return (
     <>
       <div className="space-y-4 sm:space-y-6 pb-6">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 sm:gap-4">
             <button
               onClick={() => router.back()}
               className="grid h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
@@ -350,7 +366,9 @@ export default function TenantDetailPage() {
                     <p className="text-xs sm:text-sm text-muted-foreground">
                       Role
                     </p>
-                    <Badge className="capitalize text-xs mt-1">{tenant.role}</Badge>
+                    <Badge className="capitalize text-xs mt-1">
+                      {tenant.role}
+                    </Badge>
                   </div>
                 </div>
               </CardContent>
@@ -416,6 +434,35 @@ export default function TenantDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-4 sm:space-y-6">
+            {/* Profile Card with Avatar (like workers page) */}
+            <Card className="shadow-sm">
+              <CardContent className="pt-4 sm:pt-6">
+                <div className="text-center mb-3 sm:mb-4">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-foreground text-background mx-auto mb-2">
+                    {hasAvatar ? (
+                      <Image
+                        src={tenant.avatar_url}
+                        alt={tenant.full_name || "User"}
+                        width={96}
+                        height={96}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center font-semibold text-sm">
+                        {tenant.full_name?.[0]?.toUpperCase() || "U"}
+                      </div>
+                    )}
+                  </div>
+                  <h3 className="font-semibold text-base sm:text-lg truncate px-2">
+                    {tenant.full_name}
+                  </h3>
+                  <Badge variant="secondary" className="mt-2 text-xs">
+                    Tenant
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Unit Information */}
             {unit && property ? (
               <Card>
@@ -602,7 +649,7 @@ export default function TenantDetailPage() {
             <p className="text-sm text-muted-foreground">
               Select a unit to assign to this tenant:
             </p>
-            
+
             {units.length === 0 ? (
               <div className="p-4 border-2 border-dashed rounded-lg text-center">
                 <Home className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
@@ -618,16 +665,20 @@ export default function TenantDetailPage() {
                 disabled={assigning}
               >
                 <option value="">— Select a unit —</option>
-                {Object.entries(unitsByProperty).map(([propertyName, propertyUnits]) => (
-                  <optgroup key={propertyName} label={propertyName}>
-                    {propertyUnits.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        Unit {u.unit_number}
-                        {u.bedrooms ? ` • ${u.bedrooms} bed, ${u.bathrooms} bath` : ""}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
+                {Object.entries(unitsByProperty).map(
+                  ([propertyName, propertyUnits]) => (
+                    <optgroup key={propertyName} label={propertyName}>
+                      {propertyUnits.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          Unit {u.unit_number}
+                          {u.bedrooms
+                            ? ` • ${u.bedrooms} bed, ${u.bathrooms} bath`
+                            : ""}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )
+                )}
               </select>
             )}
           </div>

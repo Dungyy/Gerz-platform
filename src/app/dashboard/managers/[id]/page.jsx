@@ -395,17 +395,18 @@ export default function ManagerDetailPage() {
             <Card className="shadow-sm">
               <CardContent className="pt-4 sm:pt-6">
                 <div className="text-center mb-3 sm:mb-4">
-              <div className="grid h-16 w-16 sm:h-20 sm:w-20 place-items-center rounded-full bg-foreground text-white font-bold text-xl sm:text-2xl mx-auto mb-2 sm:mb-3 shadow-lg">
+              {/* Avatar */}
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-foreground text-background mx-auto mb-2">
                 {manager?.avatar_url ? (
                   <Image
                     src={manager.avatar_url}
                     alt={manager?.full_name || "User"}
-                    width={32}
-                    height={32}
+                    width={96}
+                    height={96}
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
+                  <div className="w-full h-full flex items-center justify-center font-semibold text-sm">
                     {manager?.full_name?.[0]?.toUpperCase() || "U"}
                   </div>
                 )}
