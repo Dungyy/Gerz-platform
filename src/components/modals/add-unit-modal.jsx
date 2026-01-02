@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSubscriptionLimit } from "@/components/modals/upgrade-prompt";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,7 @@ import { Home, Plus } from "lucide-react";
 
 export function AddUnitModal({ isOpen, onClose, propertyId, onSuccess }) {
   const [loading, setLoading] = useState(false);
+  const { checkLimit, UpgradePrompt } = useSubscriptionLimit();
   const [formData, setFormData] = useState({
     unit_number: "",
     floor: "",
@@ -33,6 +35,12 @@ export function AddUnitModal({ isOpen, onClose, propertyId, onSuccess }) {
     if (!formData.unit_number.trim()) {
       toast.error("Unit number is required");
       return;
+    }
+
+    // ✅ Check subscription limit for units
+    const canAdd = await checkLimit("units");
+    if (!canAdd) {
+      return; // Upgrade prompt shows automatically
     }
 
     setLoading(true);
@@ -82,114 +90,119 @@ export function AddUnitModal({ isOpen, onClose, propertyId, onSuccess }) {
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="h-10 w-10 rounded-lg bg-blue-500/10 grid place-items-center">
-              <Home className="h-5 w-5 text-blue-600" />
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="h-10 w-10 rounded-lg bg-blue-500/10 grid place-items-center">
+                <Home className="h-5 w-5 text-blue-600" />
+              </div>
+              <DialogTitle className="text-xl">Add New Unit</DialogTitle>
             </div>
-            <DialogTitle className="text-xl">Add New Unit</DialogTitle>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Unit Number <span className="text-red-500">*</span>
-            </label>
-            <Input
-              name="unit_number"
-              placeholder="e.g., 101, A-5, 2B"
-              value={formData.unit_number}
-              onChange={handleChange}
-              className="h-10"
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Floor</label>
-              <Input
-                name="floor"
-                type="number"
-                placeholder="1"
-                value={formData.floor}
-                onChange={handleChange}
-                className="h-10"
-                min="0"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Bedrooms</label>
-              <Input
-                name="bedrooms"
-                type="number"
-                min="0"
-                value={formData.bedrooms}
-                onChange={handleChange}
-                className="h-10"
-              />
-            </div>
-
+          <form onSubmit={handleSubmit} className="space-y-4 mt-2">
             <div>
               <label className="block text-sm font-medium mb-2">
-                Bathrooms
+                Unit Number <span className="text-red-500">*</span>
               </label>
               <Input
-                name="bathrooms"
-                type="number"
-                min="0"
-                step="0.5"
-                value={formData.bathrooms}
+                name="unit_number"
+                placeholder="e.g., 101, A-5, 2B"
+                value={formData.unit_number}
                 onChange={handleChange}
                 className="h-10"
+                required
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Square Feet
-              </label>
-              <Input
-                name="square_feet"
-                type="number"
-                min="0"
-                placeholder="850"
-                value={formData.square_feet}
-                onChange={handleChange}
-                className="h-10"
-              />
-            </div>
-          </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Floor</label>
+                <Input
+                  name="floor"
+                  type="number"
+                  placeholder="1"
+                  value={formData.floor}
+                  onChange={handleChange}
+                  className="h-10"
+                  min="0"
+                />
+              </div>
 
-          <div className="flex gap-3 pt-4">
-            <Button type="submit" disabled={loading} className="flex-1 gap-2">
-              {loading ? (
-                <>
-                  <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4" />
-                  Create Unit
-                </>
-              )}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+              <div>
+                <label className="block text-sm font-medium mb-2">Bedrooms</label>
+                <Input
+                  name="bedrooms"
+                  type="number"
+                  min="0"
+                  value={formData.bedrooms}
+                  onChange={handleChange}
+                  className="h-10"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Bathrooms
+                </label>
+                <Input
+                  name="bathrooms"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={formData.bathrooms}
+                  onChange={handleChange}
+                  className="h-10"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Square Feet
+                </label>
+                <Input
+                  name="square_feet"
+                  type="number"
+                  min="0"
+                  placeholder="850"
+                  value={formData.square_feet}
+                  onChange={handleChange}
+                  className="h-10"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button type="submit" disabled={loading} className="flex-1 gap-2">
+                {loading ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" />
+                    Create Unit
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ✅ Add upgrade prompt */}
+      <UpgradePrompt />
+    </>
   );
 }

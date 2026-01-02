@@ -21,7 +21,7 @@ export async function POST(request) {
 
     const body = await request.json()
 
-    // requester profile (org + role)
+    // Get requester profile (org + role)
     const { data: profile, error: pErr } = await supabaseAdmin
       .from('profiles')
       .select('organization_id, role')
@@ -33,11 +33,38 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // ---- Map UI fields -> DB fields (IMPORTANT) ----
     const orgId = body.organization_id || profile.organization_id
     if (orgId !== profile.organization_id) {
       return NextResponse.json({ error: 'Organization mismatch' }, { status: 403 })
     }
+
+    // ✅ ADD THIS: CHECK SUBSCRIPTION LIMIT
+    const { data: canAdd, error: limitError } = await supabaseAdmin.rpc(
+      "check_subscription_limit",
+      {
+        org_id: orgId,
+        limit_type: "properties",
+      }
+    )
+
+    if (limitError) {
+      console.error("Limit check error:", limitError)
+      return NextResponse.json(
+        { error: "Failed to check subscription limit" },
+        { status: 500 }
+      )
+    }
+
+    if (!canAdd) {
+      return NextResponse.json(
+        {
+          error: "Property limit reached for your subscription plan. Please upgrade to add more properties.",
+          limit_reached: true,
+        },
+        { status: 403 }
+      )
+    }
+    // ✅ END OF ADDITION
 
     const propertyInsert = {
       organization_id: orgId,
@@ -45,13 +72,12 @@ export async function POST(request) {
       address: body.address,
       city: body.city || null,
       state: body.state || null,
-      zip_code: body.zip || body.zip_code || null, // map zip -> zip_code
+      zip_code: body.zip || body.zip_code || null,
       property_type: body.property_type || null,
       manager_id: body.manager_id || null,
-      // photo_url: body.photo_url || null, // if you have it
     }
 
-    // remove undefined keys (optional safety)
+    // Remove undefined keys
     Object.keys(propertyInsert).forEach((k) => {
       if (typeof propertyInsert[k] === 'undefined') delete propertyInsert[k]
     })
@@ -65,7 +91,7 @@ export async function POST(request) {
 
     if (propErr) throw propErr
 
-    // ---- Create units ----
+    // Create units
     const units = Array.isArray(body.units) ? body.units : []
 
     const cleanedUnits = units
@@ -88,7 +114,7 @@ export async function POST(request) {
         .select('id')
 
       if (unitErr) {
-        // cleanup property if units fail
+        // Cleanup property if units fail
         await supabaseAdmin.from('properties').delete().eq('id', property.id)
         throw unitErr
       }
@@ -110,6 +136,7 @@ export async function POST(request) {
   }
 }
 
+// GET function stays the same...
 export async function GET(request) {
   try {
     const token = getToken(request)
@@ -126,7 +153,6 @@ export async function GET(request) {
 
     if (pErr) throw pErr
 
-    // Return properties + unit counts
     const { data, error } = await supabaseAdmin
       .from('properties')
       .select(`
@@ -138,7 +164,6 @@ export async function GET(request) {
 
     if (error) throw error
 
-    // normalize units_count
     const normalized = (data || []).map((p) => ({
       ...p,
       units_count: p.units?.[0]?.count || 0,

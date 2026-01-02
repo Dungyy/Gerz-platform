@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSubscriptionLimit } from '@/components/modals/upgrade-prompt'
 import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,7 @@ export default function NewPropertyPage() {
   const [loading, setLoading] = useState(false);
   const [orgId, setOrgId] = useState(null);
   const [showBulkImport, setShowBulkImport] = useState(false);
-
+  const { checkLimit, UpgradePrompt } = useSubscriptionLimit()
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -204,6 +205,15 @@ export default function NewPropertyPage() {
       return;
     }
 
+    // ✅ STEP 1: Check subscription limit FIRST (before setLoading)
+    const canAdd = await checkLimit('properties')
+    
+    if (!canAdd) {
+      // Upgrade prompt shows automatically via the hook
+      return
+    }
+
+    // ✅ STEP 2: Now set loading and proceed with creation
     setLoading(true);
     try {
       const payload = {
@@ -228,6 +238,11 @@ export default function NewPropertyPage() {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        // Handle limit_reached error from API (backup check)
+        if (data.limit_reached) {
+          toast.error("Property limit reached. Please upgrade your plan.");
+          return;
+        }
         throw new Error(data.error || "Failed to create property");
       }
 
@@ -241,8 +256,7 @@ export default function NewPropertyPage() {
       });
 
       toast.success(
-        `Property created with ${data.units_created ?? payload.units.length
-        } units!`
+        `Property created with ${data.units_created ?? payload.units.length} units!`
       );
       router.push("/dashboard/properties");
     } catch (err) {
@@ -254,301 +268,305 @@ export default function NewPropertyPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6  px-2 sm:px-0">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-        <button
-          onClick={() => router.back()}
-          className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            Add Property
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Create a new property with units
-          </p>
-        </div>
-      </div>
-
-      {/* Info Box */}
-      <Card className="shadow-sm border-blue-500/20 bg-blue-500/5">
-        <CardContent className="pt-6">
-          <div className="flex gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-lg bg-blue-500/10 flex-shrink-0">
-              <AlertCircle className="h-5 w-5 text-blue-600" />
-            </div>
-            <div className="text-sm">
-              <p className="font-semibold mb-1">Quick tip</p>
-              <p className="text-muted-foreground">
-                Use bulk import or range generator to quickly add multiple units
-                at once.
-              </p>
-            </div>
+    <>
+      <div className="max-w-4xl mx-auto space-y-6 px-2 sm:px-0">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          <button
+            onClick={() => router.back()}
+            className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+              Add Property
+            </h1>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Create a new property with units
+            </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Property Details */}
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">Property Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                name="name"
-                placeholder="Property Name *"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                className="md:col-span-2"
-              />
-
-              <Input
-                name="address"
-                placeholder="Street Address *"
-                value={formData.address}
-                onChange={handleChange}
-                required
-                className="md:col-span-2"
-              />
-
-              <Input
-                name="city"
-                placeholder="City *"
-                value={formData.city}
-                onChange={handleChange}
-                required
-              />
-              <Input
-                name="state"
-                placeholder="State *"
-                value={formData.state}
-                onChange={handleChange}
-                required
-              />
-              <Input
-                name="zip"
-                placeholder="ZIP Code *"
-                value={formData.zip}
-                onChange={handleChange}
-                required
-              />
-
-              <select
-                name="property_type"
-                value={formData.property_type}
-                onChange={handleChange}
-                className="px-3 py-2 border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-foreground/20"
-              >
-                <option value="apartment">Apartment Building</option>
-                <option value="house">Single Family Home</option>
-                <option value="condo">Condo</option>
-                <option value="commercial">Commercial</option>
-                <option value="mixed">Mixed Use</option>
-              </select>
-
-              <Input
-                type="number"
-                name="year_built"
-                placeholder="Year Built"
-                value={formData.year_built}
-                onChange={handleChange}
-              />
-
-              <Textarea
-                name="description"
-                placeholder="Description (optional)"
-                value={formData.description}
-                onChange={handleChange}
-                className="md:col-span-2"
-                rows={3}
-              />
+        {/* Info Box */}
+        <Card className="shadow-sm border-gray-500/20 bg-gray-500/5">
+          <CardContent className="pt-6">
+            <div className="flex gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-lg bg-gray-500/10 flex-shrink-0">
+                <AlertCircle className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="text-sm">
+                <p className="font-semibold mb-1">Quick tip</p>
+                <p className="text-muted-foreground">
+                  Use bulk import or range generator to quickly add multiple units
+                  at once.
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Units */}
-        <Card className="shadow-sm">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-              <CardTitle className="text-lg">Units ({units.length})</CardTitle>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowBulkImport((v) => !v)}
-                  className="gap-1"
-                >
-                  <Upload className="h-4 w-4" />
-                  <span className="hidden sm:inline">Bulk Import</span>
-                  <span className="sm:hidden">Bulk</span>
-                </Button>
-                <Button
-                  type="button"
-                  onClick={addUnit}
-                  size="sm"
-                  className="gap-1"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Unit
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Property Details */}
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg">Property Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  name="name"
+                  placeholder="Property Name *"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  className="md:col-span-2"
+                />
 
-          <CardContent className="space-y-4">
-            {showBulkImport && (
-              <div className="p-4 border-2 border-dashed rounded-lg bg-blue-50 dark:bg-blue-950/20">
-                <h4 className="font-semibold mb-3 text-sm">
-                  Quick Add Multiple Units
-                </h4>
+                <Input
+                  name="address"
+                  placeholder="Street Address *"
+                  value={formData.address}
+                  onChange={handleChange}
+                  required
+                  className="md:col-span-2"
+                />
+
+                <Input
+                  name="city"
+                  placeholder="City *"
+                  value={formData.city}
+                  onChange={handleChange}
+                  required
+                />
+                <Input
+                  name="state"
+                  placeholder="State *"
+                  value={formData.state}
+                  onChange={handleChange}
+                  required
+                />
+                <Input
+                  name="zip"
+                  placeholder="ZIP Code *"
+                  value={formData.zip}
+                  onChange={handleChange}
+                  required
+                />
+
+                <select
+                  name="property_type"
+                  value={formData.property_type}
+                  onChange={handleChange}
+                  className="px-3 py-2 border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-foreground/20"
+                >
+                  <option value="apartment">Apartment Building</option>
+                  <option value="house">Single Family Home</option>
+                  <option value="condo">Condo</option>
+                  <option value="commercial">Commercial</option>
+                  <option value="mixed">Mixed Use</option>
+                </select>
+
+                <Input
+                  type="number"
+                  name="year_built"
+                  placeholder="Year Built"
+                  value={formData.year_built}
+                  onChange={handleChange}
+                />
+
+                <Textarea
+                  name="description"
+                  placeholder="Description (optional)"
+                  value={formData.description}
+                  onChange={handleChange}
+                  className="md:col-span-2"
+                  rows={3}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Units */}
+          <Card className="shadow-sm">
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                <CardTitle className="text-lg">Units ({units.length})</CardTitle>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={generateUnitsFromRange}
-                  >
-                    Generate Range
-                  </Button>
-
-                  <label>
-                    <input
-                      type="file"
-                      accept=".csv"
-                      onChange={handleCSVImport}
-                      className="hidden"
-                    />
-                    <Button type="button" variant="outline" size="sm" asChild>
-                      <span className="inline-flex items-center gap-1">
-                        <Upload className="h-4 w-4" />
-                        Import CSV
-                      </span>
-                    </Button>
-                  </label>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={downloadTemplate}
+                    onClick={() => setShowBulkImport((v) => !v)}
                     className="gap-1"
                   >
-                    <Download className="h-4 w-4" />
-                    Template
+                    <Upload className="h-4 w-4" />
+                    <span className="hidden sm:inline">Bulk Import</span>
+                    <span className="sm:hidden">Bulk</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={addUnit}
+                    size="sm"
+                    className="gap-1"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Unit
                   </Button>
                 </div>
-
-                <p className="text-xs text-muted-foreground mt-2">
-                  Generate units 101-120, or import CSV with columns:
-                  unit_number, floor, bedrooms, bathrooms, square_feet
-                </p>
               </div>
-            )}
+            </CardHeader>
 
-            <div className="space-y-3 max-h-[26rem] overflow-y-auto">
-              {units.map((unit, index) => (
-                <div
-                  key={index}
-                  className="flex flex-col sm:flex-row gap-3 items-start p-3 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                >
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 flex-1 w-full">
-                    <Input
-                      placeholder="Unit #"
-                      value={unit.unit_number}
-                      onChange={(e) =>
-                        updateUnit(index, "unit_number", e.target.value)
-                      }
-                      required
-                      className="text-sm col-span-2 sm:col-span-1"
-                    />
-                    <Input
-                      placeholder="Floor"
-                      value={unit.floor}
-                      onChange={(e) =>
-                        updateUnit(index, "floor", e.target.value)
-                      }
-                      className="text-sm"
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Beds"
-                      value={unit.bedrooms}
-                      onChange={(e) =>
-                        updateUnit(index, "bedrooms", e.target.value)
-                      }
-                      min="0"
-                      className="text-sm"
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Baths"
-                      value={unit.bathrooms}
-                      onChange={(e) =>
-                        updateUnit(index, "bathrooms", e.target.value)
-                      }
-                      min="0"
-                      step="0.5"
-                      className="text-sm"
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Sq Ft"
-                      value={unit.square_feet}
-                      onChange={(e) =>
-                        updateUnit(index, "square_feet", e.target.value)
-                      }
-                      min="0"
-                      className="text-sm"
-                    />
-                  </div>
-
-                  {units.length > 1 && (
+            <CardContent className="space-y-4">
+              {showBulkImport && (
+                <div className="p-4 border-2 border-dashed rounded-lg bg-gray-50 dark:bg-gray-950/20">
+                  <h4 className="font-semibold mb-3 text-sm">
+                    Quick Add Multiple Units
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => removeUnit(index)}
-                      className="shrink-0"
+                      onClick={generateUnitsFromRange}
                     >
-                      <X className="h-4 w-4" />
+                      Generate Range
                     </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-          <Button
-            type="submit"
-            disabled={loading || !orgId}
-            className="gap-2 w-full sm:w-auto"
-          >
-            {loading
-              ? "Creating..."
-              : `Create Property with ${units.length} ${units.length === 1 ? "Unit" : "Units"
-              }`}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-            disabled={loading}
-            className="w-full sm:w-auto"
-          >
-            Cancel
-          </Button>
-        </div>
-      </form>
-    </div>
+                    <label>
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleCSVImport}
+                        className="hidden"
+                      />
+                      <Button type="button" variant="outline" size="sm" asChild>
+                        <span className="inline-flex items-center gap-1">
+                          <Upload className="h-4 w-4" />
+                          Import CSV
+                        </span>
+                      </Button>
+                    </label>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={downloadTemplate}
+                      className="gap-1"
+                    >
+                      <Download className="h-4 w-4" />
+                      Template
+                    </Button>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Generate units 101-120, or import CSV with columns:
+                    unit_number, floor, bedrooms, bathrooms, square_feet
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-3 max-h-[26rem] overflow-y-auto">
+                {units.map((unit, index) => (
+                  <div
+                    key={index}
+                    className="flex flex-col sm:flex-row gap-3 items-start p-3 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 flex-1 w-full">
+                      <Input
+                        placeholder="Unit #"
+                        value={unit.unit_number}
+                        onChange={(e) =>
+                          updateUnit(index, "unit_number", e.target.value)
+                        }
+                        required
+                        className="text-sm col-span-2 sm:col-span-1"
+                      />
+                      <Input
+                        placeholder="Floor"
+                        value={unit.floor}
+                        onChange={(e) =>
+                          updateUnit(index, "floor", e.target.value)
+                        }
+                        className="text-sm"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Beds"
+                        value={unit.bedrooms}
+                        onChange={(e) =>
+                          updateUnit(index, "bedrooms", e.target.value)
+                        }
+                        min="0"
+                        className="text-sm"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Baths"
+                        value={unit.bathrooms}
+                        onChange={(e) =>
+                          updateUnit(index, "bathrooms", e.target.value)
+                        }
+                        min="0"
+                        step="0.5"
+                        className="text-sm"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Sq Ft"
+                        value={unit.square_feet}
+                        onChange={(e) =>
+                          updateUnit(index, "square_feet", e.target.value)
+                        }
+                        min="0"
+                        className="text-sm"
+                      />
+                    </div>
+
+                    {units.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeUnit(index)}
+                        className="shrink-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <Button
+              type="submit"
+              disabled={loading || !orgId}
+              className="gap-2 w-full sm:w-auto"
+            >
+              {loading
+                ? "Creating..."
+                : `Create Property with ${units.length} ${units.length === 1 ? "Unit" : "Units"}`}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              disabled={loading}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      {/* ✅ CRITICAL: Render upgrade prompt */}
+      <UpgradePrompt />
+    </>
   );
 }

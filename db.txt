@@ -940,3 +940,796 @@ Usage in JavaScript:
 2. Get URL: supabase.storage.from('avatars').getPublicUrl(`${userId}/${filename}`)
 3. Delete: supabase.storage.from('avatars').remove([`${userId}/${filename}`])
 */
+
+-- =====================================================
+-- PART 1: SUBSCRIPTION TIERS TABLE
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS subscription_tiers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL UNIQUE,
+  display_name TEXT NOT NULL,
+  description TEXT,
+  
+  -- Pricing
+  price_monthly DECIMAL(10,2) NOT NULL DEFAULT 0,
+  price_yearly DECIMAL(10,2),
+  
+  -- Limits
+  max_properties INTEGER,
+  max_units INTEGER,
+  max_tenants INTEGER,
+  max_workers INTEGER,
+  max_sms_per_month INTEGER DEFAULT 0,
+  
+  -- Features (JSON array)
+  features JSONB DEFAULT '[]'::jsonb,
+  
+  -- Stripe integration
+  stripe_price_id_monthly TEXT,
+  stripe_price_id_yearly TEXT,
+  
+  -- Status
+  is_active BOOLEAN DEFAULT true,
+  
+  -- Timestamps
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =====================================================
+-- PART 2: UPDATE ORGANIZATIONS TABLE
+-- =====================================================
+
+-- Add subscription columns
+ALTER TABLE organizations 
+ADD COLUMN IF NOT EXISTS subscription_tier_id UUID REFERENCES subscription_tiers(id),
+ADD COLUMN IF NOT EXISTS subscription_period_start TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'active';
+
+-- Add Stripe columns
+ALTER TABLE organizations 
+ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT UNIQUE,
+ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT UNIQUE,
+ADD COLUMN IF NOT EXISTS stripe_subscription_status TEXT,
+ADD COLUMN IF NOT EXISTS stripe_current_period_end TIMESTAMPTZ;
+
+-- =====================================================
+-- PART 3: SUBSCRIPTION HISTORY TABLE
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS subscription_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Action type: 'upgraded', 'downgraded', 'renewed', 'canceled', etc.
+  action TEXT NOT NULL,
+  
+  -- Tier changes
+  previous_tier_id UUID REFERENCES subscription_tiers(id),
+  new_tier_id UUID REFERENCES subscription_tiers(id),
+  
+  -- Payment info
+  amount DECIMAL(10,2),
+  
+  -- Additional data
+  metadata JSONB DEFAULT '{}'::jsonb,
+  
+  -- Timestamps
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID REFERENCES profiles(id)
+);
+
+-- =====================================================
+-- PART 4: STRIPE EVENTS TABLE (Idempotency)
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS stripe_events (
+  id TEXT PRIMARY KEY, -- Stripe event ID
+  type TEXT NOT NULL,
+  processed BOOLEAN DEFAULT false,
+  data JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =====================================================
+-- PART 5: ORGANIZATION USAGE TRACKING TABLE
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS organization_usage (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Month tracking (e.g., '2024-01-01')
+  month DATE NOT NULL,
+  
+  -- Usage counters
+  sms_sent INTEGER DEFAULT 0,
+  api_calls INTEGER DEFAULT 0,
+  storage_mb DECIMAL(10,2) DEFAULT 0,
+  
+  -- Timestamps
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  -- Unique constraint: one record per org per month
+  UNIQUE(organization_id, month)
+);
+
+-- =====================================================
+-- PART 6: INSERT SUBSCRIPTION TIERS
+-- =====================================================
+
+INSERT INTO subscription_tiers (
+  name, 
+  display_name, 
+  description, 
+  price_monthly, 
+  price_yearly, 
+  max_properties, 
+  max_units, 
+  max_tenants, 
+  max_workers, 
+  max_sms_per_month,
+  features
+) VALUES
+  -- FREE TIER
+  (
+    'free',
+    'Free',
+    'Perfect for getting started',
+    0.00,
+    0.00,
+    1,           -- 1 property
+    5,           -- 5 units
+    5,           -- 5 tenants
+    2,           -- 2 workers (manager + 1 maintenance)
+    0,           -- No SMS
+    '[
+      "1 property",
+      "5 units",
+      "5 tenants",
+      "2 workers",
+      "Unlimited requests",
+      "Email notifications",
+      "Mobile access",
+      "Basic support"
+    ]'::jsonb
+  ),
+  
+  -- STARTER TIER
+  (
+    'starter',
+    'Starter',
+    'For small property managers',
+    29.00,
+    290.00,      -- Save $58/year (2 months free)
+    3,           -- 3 properties
+    50,          -- 50 units
+    50,          -- 50 tenants
+    5,           -- 5 workers
+    0,           -- No SMS (email only)
+    '[
+      "3 properties",
+      "50 units",
+      "50 tenants",
+      "5 workers",
+      "Unlimited requests",
+      "Email notifications",
+      "Priority support",
+      "Custom branding",
+      "Basic analytics"
+    ]'::jsonb
+  ),
+  
+  -- PROFESSIONAL TIER (Most Popular)
+  (
+    'professional',
+    'Professional',
+    'For growing portfolios',
+    79.00,
+    790.00,      -- Save $158/year
+    10,          -- 10 properties
+    200,         -- 200 units
+    200,         -- 200 tenants
+    15,          -- 15 workers
+    2000,        -- 2000 SMS per month
+    '[
+      "10 properties",
+      "200 units",
+      "200 tenants",
+      "15 workers",
+      "Unlimited requests",
+      "✨ SMS notifications (2000/month)",
+      "Email notifications",
+      "Advanced analytics",
+      "API access",
+      "Phone support",
+      "Custom integrations"
+    ]'::jsonb
+  ),
+  
+  -- ENTERPRISE TIER
+  (
+    'enterprise',
+    'Enterprise',
+    'For large companies',
+    199.00,
+    1990.00,     -- Save $398/year
+    NULL,        -- Unlimited properties
+    NULL,        -- Unlimited units
+    NULL,        -- Unlimited tenants
+    NULL,        -- Unlimited workers
+    NULL,        -- Unlimited SMS
+    '[
+      "Unlimited properties",
+      "Unlimited units",
+      "Unlimited tenants",
+      "Unlimited workers",
+      "Unlimited requests",
+      "✨ Unlimited SMS",
+      "Email notifications",
+      "Dedicated account manager",
+      "Custom integrations",
+      "White label option",
+      "SLA guarantee",
+      "Priority 24/7 support",
+      "Advanced security features"
+    ]'::jsonb
+  )
+ON CONFLICT (name) DO UPDATE SET
+  display_name = EXCLUDED.display_name,
+  description = EXCLUDED.description,
+  price_monthly = EXCLUDED.price_monthly,
+  price_yearly = EXCLUDED.price_yearly,
+  max_properties = EXCLUDED.max_properties,
+  max_units = EXCLUDED.max_units,
+  max_tenants = EXCLUDED.max_tenants,
+  max_workers = EXCLUDED.max_workers,
+  max_sms_per_month = EXCLUDED.max_sms_per_month,
+  features = EXCLUDED.features;
+
+-- =====================================================
+-- PART 7: MIGRATE EXISTING ORGANIZATIONS TO FREE TIER
+-- =====================================================
+
+-- Sync organizations that already have a 'plan' column
+UPDATE organizations o
+SET subscription_tier_id = st.id
+FROM subscription_tiers st
+WHERE o.plan = st.name 
+  AND o.subscription_tier_id IS NULL;
+
+-- Set all remaining organizations to free tier
+UPDATE organizations 
+SET subscription_tier_id = (SELECT id FROM subscription_tiers WHERE name = 'free')
+WHERE subscription_tier_id IS NULL;
+
+-- =====================================================
+-- PART 8: CREATE SUBSCRIPTION CHECK FUNCTION
+-- =====================================================
+
+CREATE OR REPLACE FUNCTION check_subscription_limit(
+  org_id UUID,
+  limit_type TEXT
+) RETURNS BOOLEAN AS $$
+DECLARE
+  current_tier subscription_tiers;
+  current_count INTEGER;
+  max_limit INTEGER;
+  current_month DATE := date_trunc('month', NOW())::DATE;
+BEGIN
+  -- Get organization's current tier
+  SELECT st.* INTO current_tier
+  FROM organizations o
+  JOIN subscription_tiers st ON o.subscription_tier_id = st.id
+  WHERE o.id = org_id;
+
+  IF NOT FOUND THEN 
+    RETURN FALSE; 
+  END IF;
+
+  -- Check based on limit type
+  CASE limit_type
+    WHEN 'properties' THEN
+      SELECT COUNT(*) INTO current_count 
+      FROM properties 
+      WHERE organization_id = org_id;
+      max_limit := current_tier.max_properties;
+      
+    WHEN 'units' THEN
+      SELECT COUNT(*) INTO current_count 
+      FROM units u 
+      JOIN properties p ON u.property_id = p.id
+      WHERE p.organization_id = org_id;
+      max_limit := current_tier.max_units;
+      
+    WHEN 'tenants' THEN
+      SELECT COUNT(*) INTO current_count 
+      FROM profiles 
+      WHERE organization_id = org_id AND role = 'tenant';
+      max_limit := current_tier.max_tenants;
+      
+    WHEN 'workers' THEN
+      SELECT COUNT(*) INTO current_count 
+      FROM profiles 
+      WHERE organization_id = org_id 
+        AND role IN ('maintenance', 'manager');
+      max_limit := current_tier.max_workers;
+      
+    WHEN 'sms' THEN
+      max_limit := current_tier.max_sms_per_month;
+      
+      -- If SMS is disabled (0), return false
+      IF max_limit = 0 THEN 
+        RETURN FALSE; 
+      END IF;
+      
+      -- If unlimited SMS, return true
+      IF max_limit IS NULL THEN 
+        RETURN TRUE; 
+      END IF;
+      
+      -- Check current month usage
+      SELECT COALESCE(sms_sent, 0) INTO current_count
+      FROM organization_usage 
+      WHERE organization_id = org_id 
+        AND month = current_month;
+      
+    ELSE 
+      RETURN FALSE;
+  END CASE;
+
+  -- NULL means unlimited
+  IF max_limit IS NULL THEN 
+    RETURN TRUE; 
+  END IF;
+
+  -- Check if under limit
+  RETURN current_count < max_limit;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =====================================================
+-- PART 9: CREATE TRIGGER FUNCTIONS FOR ENFORCEMENT
+-- =====================================================
+
+-- Function to enforce property limit
+CREATE OR REPLACE FUNCTION enforce_property_limit()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NOT check_subscription_limit(NEW.organization_id, 'properties') THEN
+    RAISE EXCEPTION 'Property limit reached for your subscription plan. Please upgrade to add more properties.';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to enforce unit limit
+CREATE OR REPLACE FUNCTION enforce_unit_limit()
+RETURNS TRIGGER AS $$
+DECLARE 
+  org_id UUID;
+BEGIN
+  -- Get organization_id from property
+  SELECT organization_id INTO org_id 
+  FROM properties 
+  WHERE id = NEW.property_id;
+  
+  IF NOT check_subscription_limit(org_id, 'units') THEN
+    RAISE EXCEPTION 'Unit limit reached for your subscription plan. Please upgrade to add more units.';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to enforce user limit (tenants/workers)
+CREATE OR REPLACE FUNCTION enforce_user_limit()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.role = 'tenant' THEN
+    IF NOT check_subscription_limit(NEW.organization_id, 'tenants') THEN
+      RAISE EXCEPTION 'Tenant limit reached for your subscription plan. Please upgrade to add more tenants.';
+    END IF;
+  ELSIF NEW.role IN ('maintenance', 'manager') THEN
+    IF NOT check_subscription_limit(NEW.organization_id, 'workers') THEN
+      RAISE EXCEPTION 'Worker limit reached for your subscription plan. Please upgrade to add more workers.';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================
+-- PART 10: CREATE TRIGGERS
+-- =====================================================
+
+-- Drop existing triggers if they exist
+DROP TRIGGER IF EXISTS property_limit_check ON properties;
+DROP TRIGGER IF EXISTS unit_limit_check ON units;
+DROP TRIGGER IF EXISTS user_limit_check ON profiles;
+
+-- Create triggers
+CREATE TRIGGER property_limit_check
+  BEFORE INSERT ON properties
+  FOR EACH ROW 
+  EXECUTE FUNCTION enforce_property_limit();
+
+CREATE TRIGGER unit_limit_check
+  BEFORE INSERT ON units
+  FOR EACH ROW 
+  EXECUTE FUNCTION enforce_unit_limit();
+
+CREATE TRIGGER user_limit_check
+  BEFORE INSERT ON profiles
+  FOR EACH ROW
+  WHEN (NEW.role IN ('tenant', 'maintenance', 'manager'))
+  EXECUTE FUNCTION enforce_user_limit();
+
+-- =====================================================
+-- PART 11: CREATE INDEXES
+-- =====================================================
+
+-- Organizations indexes
+CREATE INDEX IF NOT EXISTS idx_organizations_subscription_tier 
+  ON organizations(subscription_tier_id);
+CREATE INDEX IF NOT EXISTS idx_organizations_stripe_customer 
+  ON organizations(stripe_customer_id);
+CREATE INDEX IF NOT EXISTS idx_organizations_stripe_subscription 
+  ON organizations(stripe_subscription_id);
+
+-- Subscription history indexes
+CREATE INDEX IF NOT EXISTS idx_subscription_history_org 
+  ON subscription_history(organization_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_subscription_history_action 
+  ON subscription_history(action, created_at DESC);
+
+-- Stripe events indexes
+CREATE INDEX IF NOT EXISTS idx_stripe_events_processed 
+  ON stripe_events(processed, created_at);
+CREATE INDEX IF NOT EXISTS idx_stripe_events_type 
+  ON stripe_events(type, created_at DESC);
+
+-- Usage tracking indexes
+CREATE INDEX IF NOT EXISTS idx_organization_usage_org_month 
+  ON organization_usage(organization_id, month);
+
+-- =====================================================
+-- PART 12: ROW LEVEL SECURITY (RLS)
+-- =====================================================
+
+-- Enable RLS on new tables
+ALTER TABLE subscription_tiers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscription_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stripe_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE organization_usage ENABLE ROW LEVEL SECURITY;
+
+-- Subscription tiers: Anyone can view active tiers
+CREATE POLICY "Anyone can view active subscription tiers"
+  ON subscription_tiers 
+  FOR SELECT 
+  USING (is_active = true);
+
+-- Subscription history: Users can view their org's history
+CREATE POLICY "Users can view their organization subscription history"
+  ON subscription_history 
+  FOR SELECT
+  USING (
+    organization_id IN (
+      SELECT organization_id 
+      FROM profiles 
+      WHERE id = auth.uid()
+    )
+  );
+
+-- Subscription history: System can insert
+CREATE POLICY "System can insert subscription history"
+  ON subscription_history 
+  FOR INSERT 
+  WITH CHECK (true);
+
+-- Stripe events: System only
+CREATE POLICY "System can manage stripe events"
+  ON stripe_events 
+  FOR ALL 
+  USING (true);
+
+-- Organization usage: Users can view their org's usage
+CREATE POLICY "Users can view their organization usage"
+  ON organization_usage 
+  FOR SELECT
+  USING (
+    organization_id IN (
+      SELECT organization_id 
+      FROM profiles 
+      WHERE id = auth.uid()
+    )
+  );
+
+-- Organization usage: System can insert/update
+CREATE POLICY "System can manage organization usage"
+  ON organization_usage 
+  FOR ALL 
+  USING (true);
+
+-- =====================================================
+-- PART 13: GRANT PERMISSIONS
+-- =====================================================
+
+GRANT SELECT ON subscription_tiers TO authenticated, anon;
+GRANT SELECT ON subscription_history TO authenticated;
+GRANT ALL ON stripe_events TO authenticated;
+GRANT SELECT ON organization_usage TO authenticated;
+
+GRANT EXECUTE ON FUNCTION check_subscription_limit TO authenticated;
+
+-- =====================================================
+-- PART 14: CREATE HELPER FUNCTIONS
+-- =====================================================
+
+-- Function to get organization's current subscription status
+CREATE OR REPLACE FUNCTION get_organization_subscription(org_id UUID)
+RETURNS TABLE (
+  organization_id UUID,
+  organization_name TEXT,
+  tier_id UUID,
+  tier_name TEXT,
+  tier_display_name TEXT,
+  price_monthly DECIMAL,
+  max_properties INTEGER,
+  max_units INTEGER,
+  max_tenants INTEGER,
+  max_workers INTEGER,
+  max_sms INTEGER,
+  stripe_status TEXT,
+  period_end TIMESTAMPTZ
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    o.id as organization_id,
+    o.name as organization_name,
+    st.id as tier_id,
+    st.name as tier_name,
+    st.display_name as tier_display_name,
+    st.price_monthly,
+    st.max_properties,
+    st.max_units,
+    st.max_tenants,
+    st.max_workers,
+    st.max_sms_per_month as max_sms,
+    o.stripe_subscription_status as stripe_status,
+    o.stripe_current_period_end as period_end
+  FROM organizations o
+  JOIN subscription_tiers st ON o.subscription_tier_id = st.id
+  WHERE o.id = org_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to increment SMS usage
+CREATE OR REPLACE FUNCTION increment_sms_usage(
+  org_id UUID,
+  count INTEGER DEFAULT 1
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+  current_month DATE := date_trunc('month', NOW())::DATE;
+BEGIN
+  -- Insert or update usage
+  INSERT INTO organization_usage (organization_id, month, sms_sent)
+  VALUES (org_id, current_month, count)
+  ON CONFLICT (organization_id, month)
+  DO UPDATE SET 
+    sms_sent = organization_usage.sms_sent + count,
+    updated_at = NOW();
+  
+  RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION get_organization_subscription TO authenticated;
+GRANT EXECUTE ON FUNCTION increment_sms_usage TO authenticated;
+
+-- =====================================================
+-- PART 15: CREATE VIEWS FOR REPORTING
+-- =====================================================
+
+-- View: Active subscriptions
+CREATE OR REPLACE VIEW active_subscriptions AS
+SELECT 
+  o.id as organization_id,
+  o.name as organization_name,
+  st.display_name as tier,
+  st.price_monthly,
+  o.stripe_subscription_status,
+  o.stripe_current_period_end,
+  CASE 
+    WHEN o.stripe_current_period_end < NOW() THEN 'Expired'
+    WHEN o.stripe_current_period_end < NOW() + INTERVAL '7 days' THEN 'Expiring Soon'
+    ELSE 'Active'
+  END as status
+FROM organizations o
+JOIN subscription_tiers st ON o.subscription_tier_id = st.id
+WHERE o.stripe_subscription_id IS NOT NULL;
+
+-- View: Revenue metrics
+CREATE OR REPLACE VIEW revenue_metrics AS
+SELECT 
+  st.display_name as tier,
+  st.price_monthly,
+  COUNT(*) as customer_count,
+  COUNT(*) * st.price_monthly as monthly_recurring_revenue
+FROM organizations o
+JOIN subscription_tiers st ON o.subscription_tier_id = st.id
+WHERE o.stripe_subscription_status = 'active'
+GROUP BY st.display_name, st.price_monthly
+ORDER BY monthly_recurring_revenue DESC;
+
+-- =====================================================
+-- VERIFICATION QUERIES
+-- =====================================================
+
+-- ✅ Verify subscription tiers created
+SELECT 
+  display_name, 
+  price_monthly, 
+  max_properties, 
+  max_units,
+  max_sms_per_month,
+  jsonb_array_length(features) as feature_count
+FROM subscription_tiers 
+ORDER BY price_monthly;
+
+-- ✅ Verify organizations have tiers
+SELECT 
+  o.name,
+  st.display_name as tier
+FROM organizations o
+LEFT JOIN subscription_tiers st ON o.subscription_tier_id = st.id
+LIMIT 10;
+
+-- ✅ Count organizations by tier
+SELECT 
+  st.display_name as tier,
+  COUNT(*) as organization_count
+FROM organizations o
+JOIN subscription_tiers st ON o.subscription_tier_id = st.id
+GROUP BY st.display_name
+ORDER BY COUNT(*) DESC;
+
+-- =====================================================
+-- DONE! ✅
+-- =====================================================
+
+-- =====================================================
+-- IMPORTANT: UPDATE STRIPE PRICE IDs
+-- =====================================================
+
+-- After creating products in Stripe, run these queries:
+-- (Replace 'price_xxxxx' with your actual Stripe Price IDs)
+
+
+UPDATE subscription_tiers 
+SET stripe_price_id_monthly = 'price_1Sl4F2RCrlBsTPfX5iHHfNJM'
+WHERE name = 'starter';
+
+UPDATE subscription_tiers 
+SET stripe_price_id_monthly = 'price_1Sl4FeRCrlBsTPfXQPSMT9XP'
+WHERE name = 'professional';
+
+UPDATE subscription_tiers 
+SET stripe_price_id_monthly = 'price_1Sl4G9RCrlBsTPfXjjXv9EHx'
+WHERE name = 'enterprise';
+
+-- Optional: Add yearly prices
+UPDATE subscription_tiers 
+SET stripe_price_id_yearly = 'price_1Sl4IiRCrlBsTPfXK84RV96f'
+WHERE name = 'starter';
+
+UPDATE subscription_tiers 
+SET stripe_price_id_yearly = 'price_1Sl4JMRCrlBsTPfX2IfghDCp'
+WHERE name = 'professional';
+
+UPDATE subscription_tiers 
+SET stripe_price_id_yearly = 'price_1Sl4JsRCrlBsTPfXZWnhxOfA'
+WHERE name = 'enterprise';
+
+
+
+-- ✅ Create check_subscription_limit function
+CREATE OR REPLACE FUNCTION check_subscription_limit(
+  org_id uuid,
+  limit_type text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  tier_record RECORD;
+  current_count integer;
+  max_allowed integer;
+BEGIN
+  -- Get organization's tier (with fallback to free tier)
+  SELECT 
+    COALESCE(st.max_properties, ft.max_properties) as max_properties,
+    COALESCE(st.max_units, ft.max_units) as max_units,
+    COALESCE(st.max_tenants, ft.max_tenants) as max_tenants,
+    COALESCE(st.max_workers, ft.max_workers) as max_workers,
+    COALESCE(st.max_sms_per_month, ft.max_sms_per_month) as max_sms_per_month
+  INTO tier_record
+  FROM organizations o
+  CROSS JOIN (SELECT * FROM subscription_tiers WHERE name = 'free' LIMIT 1) ft
+  LEFT JOIN subscription_tiers st ON st.id = o.subscription_tier_id
+  WHERE o.id = org_id;
+
+  -- If organization not found, deny
+  IF NOT FOUND THEN
+    RAISE LOG 'Organization not found: %', org_id;
+    RETURN false;
+  END IF;
+
+  -- Get the limit and current count for this resource type
+  CASE limit_type
+    WHEN 'properties' THEN
+      max_allowed := tier_record.max_properties;
+      SELECT COUNT(*) INTO current_count 
+      FROM properties 
+      WHERE organization_id = org_id;
+    
+    WHEN 'units' THEN
+      max_allowed := tier_record.max_units;
+      SELECT COUNT(*) INTO current_count 
+      FROM units u 
+      JOIN properties p ON p.id = u.property_id 
+      WHERE p.organization_id = org_id;
+    
+    WHEN 'tenants' THEN
+      max_allowed := tier_record.max_tenants;
+      SELECT COUNT(*) INTO current_count 
+      FROM profiles 
+      WHERE organization_id = org_id AND role = 'tenant';
+    
+    WHEN 'workers' THEN
+      max_allowed := tier_record.max_workers;
+      SELECT COUNT(*) INTO current_count 
+      FROM profiles 
+      WHERE organization_id = org_id AND role IN ('manager', 'maintenance');
+    
+    WHEN 'sms' THEN
+      max_allowed := tier_record.max_sms_per_month;
+      -- For SMS, check current month usage
+      SELECT COALESCE(sms_sent, 0) INTO current_count
+      FROM organization_usage
+      WHERE organization_id = org_id 
+        AND month = date_trunc('month', CURRENT_DATE);
+      
+      -- If no usage record exists, count is 0
+      IF current_count IS NULL THEN
+        current_count := 0;
+      END IF;
+    
+    ELSE
+      RAISE LOG 'Invalid limit_type: %', limit_type;
+      RETURN false;
+  END CASE;
+
+  -- Log for debugging
+  RAISE LOG 'Checking % limit for org %: current=%, max=%', limit_type, org_id, current_count, max_allowed;
+
+  -- NULL limit means unlimited (Enterprise tier)
+  IF max_allowed IS NULL THEN
+    RETURN true;
+  END IF;
+
+  -- Check if under limit (< not <=, so if limit is 1 and count is 0, return true)
+  RETURN current_count < max_allowed;
+END;
+$$;
+
+-- ✅ Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION check_subscription_limit(uuid, text) TO authenticated;
+
+-- ✅ Add comment for documentation
+COMMENT ON FUNCTION check_subscription_limit IS 'Checks if organization can add more of a resource type based on subscription tier limits';
