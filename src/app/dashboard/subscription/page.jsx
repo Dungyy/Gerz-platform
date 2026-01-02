@@ -108,8 +108,11 @@ export default function SubscriptionPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <div className="text-center px-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-sm">Loading subscription...</p>
+        </div>
       </div>
     )
   }
