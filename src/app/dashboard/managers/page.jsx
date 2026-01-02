@@ -43,7 +43,7 @@ export default function ManagersPage() {
         .single();
 
       // Only owners can see managers page + invite managers
-      if (profile?.role !== "owner") {
+      if (profile?.role !== "owner" && profile?.role !== "manager") {
         router.push("/dashboard");
         return;
       }
