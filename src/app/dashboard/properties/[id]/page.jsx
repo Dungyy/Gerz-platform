@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { toast } from "sonner";
 import { fetchWithAuth } from "@/lib/api-helper";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -173,7 +174,7 @@ export default function PropertyDetailPage() {
   // Error
   if (error) {
     return (
-      <div className="space-y-4 sm:space-y-6 pb-6">
+      <div className="space-y-4 sm:space-y-6 pb-6 overflow-x-hidden">
         <button
           onClick={() => router.back()}
           className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border"
@@ -242,7 +243,7 @@ export default function PropertyDetailPage() {
   const paginatedUnits = filteredUnits.slice(startIndex, endIndex);
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-6">
+    <div className="space-y-4 sm:space-y-6 pb-6 overflow-x-hidden">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:gap-4">
         <div className="flex items-start gap-3">
@@ -252,6 +253,7 @@ export default function PropertyDetailPage() {
           >
             <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
+
           <div className="flex-1 min-w-0">
             <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight truncate">
               {property.name}
@@ -318,7 +320,7 @@ export default function PropertyDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Units */}
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-          <Card className="shadow-sm border-2">
+          <Card className="shadow-sm border-2 overflow-x-hidden">
             <CardHeader className="pb-3 sm:pb-4">
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
@@ -354,12 +356,12 @@ export default function PropertyDetailPage() {
                       onChange={(e) => setUnitSearch(e.target.value)}
                     />
                   </div>
-                  <div className="flex gap-2 overflow-x-auto pb-1">
+                  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                     <Button
                       variant={unitFilter === "all" ? "default" : "outline"}
                       size="sm"
                       onClick={() => setUnitFilter("all")}
-                      className="gap-1 whitespace-nowrap h-8 text-xs sm:text-sm"
+                      className="gap-1 whitespace-nowrap h-8 text-xs sm:text-sm flex-shrink-0"
                     >
                       <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       All
@@ -370,7 +372,7 @@ export default function PropertyDetailPage() {
                       }
                       size="sm"
                       onClick={() => setUnitFilter("occupied")}
-                      className="whitespace-nowrap h-8 text-xs sm:text-sm"
+                      className="whitespace-nowrap h-8 text-xs sm:text-sm flex-shrink-0"
                     >
                       Occupied
                     </Button>
@@ -378,7 +380,7 @@ export default function PropertyDetailPage() {
                       variant={unitFilter === "vacant" ? "default" : "outline"}
                       size="sm"
                       onClick={() => setUnitFilter("vacant")}
-                      className="whitespace-nowrap h-8 text-xs sm:text-sm"
+                      className="whitespace-nowrap h-8 text-xs sm:text-sm flex-shrink-0"
                     >
                       Vacant
                     </Button>
@@ -429,7 +431,7 @@ export default function PropertyDetailPage() {
                     {paginatedUnits.map((unit) => (
                       <div
                         key={unit.id}
-                        className="border-2 rounded-lg hover:bg-muted/30 hover:border-gray-400 transition-all"
+                        className="border-2 rounded-lg hover:bg-muted/30 hover:border-gray-400 transition-all overflow-x-hidden"
                       >
                         {/* Desktop row - hidden on tablet and mobile */}
                         <div className="hidden lg:grid lg:grid-cols-12 gap-4 items-center p-4">
@@ -630,31 +632,79 @@ export default function PropertyDetailPage() {
 
         {/* Sidebar */}
         <div className="space-y-4 sm:space-y-6">
+          {/* Property Profile Card */}
+          <Card className="shadow-sm border-2 overflow-x-hidden">
+            <CardContent className="pt-4 sm:pt-6">
+              <div className="text-center mb-3 sm:mb-4">
+                {/* Property Image */}
+                <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-xl overflow-hidden bg-muted mx-auto mb-3 border-2 border-border">
+                  {property.photo_url ? (
+                    <Image
+                      src={property.photo_url}
+                      alt={property.name}
+                      width={160}
+                      height={160}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Building2 className="h-14 w-14 sm:h-16 sm:w-16 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                <h3 className="font-semibold text-base sm:text-lg truncate px-2">
+                  {property.name}
+                </h3>
+                <Badge variant="secondary" className="mt-2 text-xs capitalize">
+                  {property.property_type || "Property"}
+                </Badge>
+              </div>
+
+              <Separator className="my-3 sm:my-4" />
+
+              <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">Location</span>
+                  <span className="font-medium text-right truncate">
+                    {property.city}, {property.state}
+                  </span>
+                </div>
+                {property.year_built && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Built</span>
+                    <span className="font-medium">{property.year_built}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Units</span>
+                  <Badge className="bg-blue-500/15 text-blue-700 hover:bg-blue-500/15 text-xs">
+                    {units.length} {units.length === 1 ? "unit" : "units"}
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Property Info */}
-          <Card className="shadow-sm border-2">
+          <Card className="shadow-sm border-2 overflow-x-hidden">
             <CardHeader className="pb-3 sm:pb-4">
               <CardTitle className="text-base sm:text-lg">
                 Property Details
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Type</span>
-                <Badge variant="secondary" className="capitalize text-xs">
-                  {property.property_type || "Property"}
-                </Badge>
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-muted-foreground">Address</span>
+                <span className="font-medium text-right">
+                  {property.address}
+                </span>
               </div>
 
-              {property.year_built && (
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Year Built</span>
-                  <span className="font-medium">{property.year_built}</span>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Total Units</span>
-                <span className="font-medium">{units.length}</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground">ZIP Code</span>
+                <span className="font-medium">
+                  {property.zip_code || property.zip || "—"}
+                </span>
               </div>
 
               {property.description && (
@@ -673,7 +723,7 @@ export default function PropertyDetailPage() {
 
           {/* Manager */}
           {property.manager && (
-            <Card className="shadow-sm border-2">
+            <Card className="shadow-sm border-2 overflow-x-hidden">
               <CardHeader className="pb-3 sm:pb-4">
                 <CardTitle className="text-base sm:text-lg flex items-center gap-2">
                   <User className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -711,7 +761,7 @@ export default function PropertyDetailPage() {
           )}
 
           {/* Danger Zone */}
-          <Card className="shadow-sm border-2 border-red-500/20">
+          <Card className="shadow-sm border-2 border-red-500/20 overflow-x-hidden">
             <CardHeader className="pb-3 sm:pb-4">
               <CardTitle className="text-base sm:text-lg text-red-600">
                 Danger Zone
@@ -789,11 +839,11 @@ export default function PropertyDetailPage() {
             </span>
             .
           </p>
-          <div className="p-3 bg-red-50 border rounded-lg">
-            <p className="font-medium text-red-900 mb-2">
+          <div className="p-3 bg-red-50 border rounded-lg dark:bg-red-950/20">
+            <p className="font-medium text-red-900 dark:text-red-100 mb-2">
               This will permanently remove:
             </p>
-            <ul className="text-red-700 space-y-1">
+            <ul className="text-red-700 dark:text-red-300 space-y-1">
               <li>
                 • All {units.length} unit{units.length !== 1 ? "s" : ""}
               </li>
@@ -849,7 +899,7 @@ function StatCard({ title, value, icon: Icon, color }) {
   };
 
   return (
-    <Card className="shadow-sm border-2">
+    <Card className="shadow-sm border-2 overflow-x-hidden">
       <CardContent className="pt-4 sm:pt-5 lg:pt-6 pb-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-2">
           <div className="flex-1 min-w-0">

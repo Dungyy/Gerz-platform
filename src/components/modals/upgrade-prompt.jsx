@@ -121,7 +121,7 @@ export function UpgradePrompt({
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="font-semibold text-lg">{tierInfo.name}</h3>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                <p className="text-2xl font-bold text-blue-600 dark:text-white-400">
                   {tierInfo.price}
                 </p>
               </div>
@@ -133,7 +133,7 @@ export function UpgradePrompt({
             <ul className="space-y-2">
               {tierInfo.features.map((feature, i) => (
                 <li key={i} className="flex items-center gap-2 text-sm">
-                  <Check className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  <Check className="h-4 w-4 text-green-600 dark:text-white-400 flex-shrink-0" />
                   <span>{feature}</span>
                 </li>
               ))}

@@ -171,11 +171,11 @@ export function InviteManagerModal({ isOpen, onClose, onSuccess }) {
           {inviteUrl ? (
             <div className="space-y-4">
               <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
-                <div className="flex items-center gap-2 text-green-900 dark:text-green-200 mb-2">
+                <div className="flex items-center gap-2 text-green-900 dark:text-white-200 mb-2">
                   <CheckCircle className="h-5 w-5" />
                   <span className="font-semibold">Invitation Sent!</span>
                 </div>
-                <p className="text-sm text-green-700 dark:text-green-300">
+                <p className="text-sm text-green-700 dark:text-white-300">
                   An email has been sent to <strong>{invitedEmail}</strong>
                 </p>
               </div>
@@ -268,7 +268,7 @@ export function InviteManagerModal({ isOpen, onClose, onSuccess }) {
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20 p-3 text-xs text-blue-800 dark:text-blue-200">
+                  <div className="flex items-start gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20 p-3 text-xs text-blue-800 dark:text-white-200">
                     <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                     <p>
                       The manager will receive an email with a link to set their
@@ -370,7 +370,7 @@ export function InviteManagerModal({ isOpen, onClose, onSuccess }) {
                     />
                   </div>
 
-                  <div className="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 text-xs text-amber-800 dark:text-amber-200">
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 text-xs text-amber-800 dark:text-white-200">
                     <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                     <p>
                       The account will be created immediately and the manager can

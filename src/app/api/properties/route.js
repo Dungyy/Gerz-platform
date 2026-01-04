@@ -38,7 +38,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Organization mismatch' }, { status: 403 })
     }
 
-    // ✅ ADD THIS: CHECK SUBSCRIPTION LIMIT
+    // ✅ CHECK SUBSCRIPTION LIMIT
     const { data: canAdd, error: limitError } = await supabaseAdmin.rpc(
       "check_subscription_limit",
       {
@@ -64,7 +64,6 @@ export async function POST(request) {
         { status: 403 }
       )
     }
-    // ✅ END OF ADDITION
 
     const propertyInsert = {
       organization_id: orgId,
@@ -136,7 +135,6 @@ export async function POST(request) {
   }
 }
 
-// GET function stays the same...
 export async function GET(request) {
   try {
     const token = getToken(request)
@@ -156,7 +154,16 @@ export async function GET(request) {
     const { data, error } = await supabaseAdmin
       .from('properties')
       .select(`
-        id, name, address, city, state, zip_code, property_type, created_at,
+        id, 
+        name, 
+        address, 
+        city, 
+        state, 
+        zip_code, 
+        property_type, 
+        photo_url,
+        created_at,
+        manager:profiles!properties_manager_id_fkey(id, full_name, email, avatar_url),
         units:units(count)
       `)
       .eq('organization_id', profile.organization_id)

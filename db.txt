@@ -1733,3 +1733,67 @@ GRANT EXECUTE ON FUNCTION check_subscription_limit(uuid, text) TO authenticated;
 
 -- ✅ Add comment for documentation
 COMMENT ON FUNCTION check_subscription_limit IS 'Checks if organization can add more of a resource type based on subscription tier limits';
+
+
+-- Property images column already exists as 'photo_url' in your schema
+-- No migration needed for the column itself
+
+-- Create storage bucket for property images (run this in Supabase Dashboard > Storage)
+-- Bucket name: property-images
+-- Public: true
+-- File size limit: 5MB
+-- Allowed MIME types: image/jpeg, image/png, image/gif, image/webp
+
+-- Storage policies for property-images bucket (run in SQL editor)
+
+-- Allow authenticated users to upload images to their organization folder
+CREATE POLICY "Users can upload property images to their org folder"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'property-images' AND
+  (storage.foldername(name))[1] IN (
+    SELECT organization_id::text 
+    FROM profiles 
+    WHERE id = auth.uid()
+  )
+);
+
+-- Allow authenticated users to view property images from their organization
+CREATE POLICY "Users can view property images from their org"
+ON storage.objects FOR SELECT
+TO authenticated
+USING (
+  bucket_id = 'property-images' AND
+  (storage.foldername(name))[1] IN (
+    SELECT organization_id::text 
+    FROM profiles 
+    WHERE id = auth.uid()
+  )
+);
+
+-- Allow authenticated users to delete property images from their organization
+CREATE POLICY "Users can delete property images from their org"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (
+  bucket_id = 'property-images' AND
+  (storage.foldername(name))[1] IN (
+    SELECT organization_id::text 
+    FROM profiles 
+    WHERE id = auth.uid()
+  )
+);
+
+-- Allow authenticated users to update property images from their organization
+CREATE POLICY "Users can update property images from their org"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (
+  bucket_id = 'property-images' AND
+  (storage.foldername(name))[1] IN (
+    SELECT organization_id::text 
+    FROM profiles 
+    WHERE id = auth.uid()
+  )
+);

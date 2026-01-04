@@ -177,7 +177,7 @@ export function EditUnitModal({ isOpen, onClose, unit, onSuccess }) {
           {/* Warning if occupied */}
           {unit.tenant_id && (
             <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-              <p className="text-xs text-amber-800 dark:text-amber-200">
+              <p className="text-xs text-amber-800 dark:text-white-200">
                 <strong>Note:</strong> This unit is currently occupied by{" "}
                 {unit.tenant?.full_name}. Changes will take effect immediately.
               </p>

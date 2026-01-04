@@ -141,13 +141,13 @@ export function InviteUserModal({
           {inviteUrl ? (
             <div className="space-y-3 sm:space-y-4">
               <div className="p-3 sm:p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
-                <div className="flex items-center gap-2 text-green-900 dark:text-green-200 mb-2">
+                <div className="flex items-center gap-2 text-green-900 dark:text-white-200 mb-2">
                   <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                   <span className="font-semibold text-sm sm:text-base">
                     Invitation Sent!
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-green-700 dark:text-green-300">
+                <p className="text-xs sm:text-sm text-green-700 dark:text-white-300">
                   An email has been sent to <strong>{formData.email}</strong>
                 </p>
               </div>
@@ -284,7 +284,7 @@ export function InviteUserModal({
                         ))}
                       </select>
                       {units.length === 0 && (
-                        <p className="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 mt-1">
+                        <p className="text-[10px] sm:text-xs text-amber-600 dark:text-white-400 mt-1">
                           No vacant units available in this property
                         </p>
                       )}
@@ -293,7 +293,7 @@ export function InviteUserModal({
 
                   {!formData.property_id && (
                     <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
-                      <p className="text-[10px] sm:text-xs text-blue-700 dark:text-blue-300">
+                      <p className="text-[10px] sm:text-xs text-blue-700 dark:text-white-300">
                         💡 <strong>Tip:</strong> You can assign a property and
                         unit later, or let the tenant choose during setup.
                       </p>
