@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -16,20 +16,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Mail,
-  Lock,
-  ArrowRight,
-  CheckCircle2,
-  AlertCircle,
-} from "lucide-react";
+import { Mail, Lock, ArrowRight, CheckCircle2, AlertCircle } from "lucide-react";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import { toast } from "sonner";
 
+const REMEMBER_EMAIL_KEY = "dingy_login_email";
+
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
@@ -38,6 +35,19 @@ export default function LoginPage() {
     email: "",
     password: "",
   });
+
+  const [rememberEmail, setRememberEmail] = useState(false);
+
+  // Load remembered email
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(REMEMBER_EMAIL_KEY);
+      if (saved) {
+        setFormData((p) => ({ ...p, email: saved }));
+        setRememberEmail(true);
+      }
+    } catch {}
+  }, []);
 
   function handleChange(e) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -48,28 +58,35 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       });
 
       if (error) throw error;
 
+      // remember email preference
+      try {
+        if (rememberEmail) {
+          localStorage.setItem(REMEMBER_EMAIL_KEY, formData.email);
+        } else {
+          localStorage.removeItem(REMEMBER_EMAIL_KEY);
+        }
+      } catch {}
+
       toast.success("Welcome back!");
       router.push("/dashboard");
     } catch (error) {
       console.error("Login error:", error);
+      let msg = "Login failed. Please try again.";
 
-      // Provide user-friendly error messages
-      let errorMessage = "Login failed. Please try again.";
-      if (error.message.includes("Invalid login credentials")) {
-        errorMessage =
-          "Invalid email or password. Please check your credentials.";
-      } else if (error.message.includes("Email not confirmed")) {
-        errorMessage = "Please verify your email address before signing in.";
+      if (error.message?.includes("Invalid login credentials")) {
+        msg = "Invalid email or password.";
+      } else if (error.message?.includes("Email not confirmed")) {
+        msg = "Please verify your email before signing in.";
       }
 
-      toast.error(errorMessage);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -80,23 +97,20 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/reset-password/request", {
+      const res = await fetch("/api/reset-password/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: resetEmail }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to send reset email");
-      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send reset email");
 
       setResetEmailSent(true);
       toast.success("Password reset email sent!");
-    } catch (error) {
-      console.error("Password reset error:", error);
-      toast.error(error.message || "Failed to send reset email");
+    } catch (err) {
+      console.error("Password reset error:", err);
+      toast.error(err.message || "Failed to send reset email");
     } finally {
       setLoading(false);
     }
@@ -111,8 +125,8 @@ export default function LoginPage() {
   return (
     <main>
       <Navbar />
+
       <div className="min-h-screen bg-background flex items-center justify-center p-4 py-20">
-        {/* Background accents */}
         <div className="pointer-events-none fixed inset-0 -z-10">
           <div className="absolute left-[-120px] top-[-120px] h-[320px] w-[320px] rounded-full bg-blue-500/10 blur-3xl" />
           <div className="absolute right-[-140px] top-[180px] h-[360px] w-[360px] rounded-full bg-indigo-500/10 blur-3xl" />
@@ -134,6 +148,7 @@ export default function LoginPage() {
                 </div>
               </div>
             </Link>
+
             <CardTitle className="text-3xl tracking-tight">Sign In</CardTitle>
             <p className="text-muted-foreground">
               Welcome back! Please enter your credentials
@@ -146,6 +161,7 @@ export default function LoginPage() {
                 <label htmlFor="email" className="block text-sm font-medium">
                   Email Address
                 </label>
+
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -160,16 +176,31 @@ export default function LoginPage() {
                     autoComplete="email"
                   />
                 </div>
+
+                {/* simple checkbox */}
+                <div className="flex items-center gap-2 mt-2">
+                  <input
+                    id="remember-email"
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={rememberEmail}
+                    onChange={(e) => setRememberEmail(e.target.checked)}
+                  />
+                  <label
+                    htmlFor="remember-email"
+                    className="text-sm text-muted-foreground cursor-pointer"
+                  >
+                    Remember this email
+                  </label>
+                </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label
-                    htmlFor="password"
-                    className="block text-sm font-medium"
-                  >
+                  <label htmlFor="password" className="block text-sm font-medium">
                     Password
                   </label>
+
                   <button
                     type="button"
                     onClick={() => setShowForgotPassword(true)}
@@ -178,6 +209,7 @@ export default function LoginPage() {
                     Forgot password?
                   </button>
                 </div>
+
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -255,12 +287,10 @@ export default function LoginPage() {
 
               <form onSubmit={handlePasswordReset} className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <label
-                    htmlFor="reset-email"
-                    className="block text-sm font-medium"
-                  >
+                  <label htmlFor="reset-email" className="block text-sm font-medium">
                     Email Address
                   </label>
+
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -286,6 +316,7 @@ export default function LoginPage() {
                   >
                     Cancel
                   </Button>
+
                   <Button type="submit" className="flex-1" disabled={loading}>
                     {loading ? "Sending..." : "Send Reset Link"}
                   </Button>
@@ -298,9 +329,11 @@ export default function LoginPage() {
                 <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-green-500/10">
                   <CheckCircle2 className="h-8 w-8 text-green-600" />
                 </div>
+
                 <DialogTitle className="text-2xl text-center">
                   Check Your Email
                 </DialogTitle>
+
                 <DialogDescription className="text-center">
                   We've sent a password reset link to:
                 </DialogDescription>
@@ -317,21 +350,15 @@ export default function LoginPage() {
                 <div className="p-4 rounded-lg border bg-blue-500/5 border-blue-500/20 space-y-2">
                   <p className="text-sm font-medium flex items-start gap-2">
                     <AlertCircle className="h-4 w-4 mt-0.5 text-blue-600 flex-shrink-0" />
-                    <span>
-                      Click the link in your email to create a new password
-                    </span>
+                    <span>Click the link in your email to create a new password</span>
                   </p>
+
                   <p className="text-xs text-muted-foreground pl-6">
-                    The link will expire in 1 hour. Check your spam folder if
-                    you don't see it.
+                    The link will expire in 1 hour. Check spam if you don't see it.
                   </p>
                 </div>
 
-                <Button
-                  onClick={closeForgotPasswordModal}
-                  className="w-full"
-                  variant="outline"
-                >
+                <Button onClick={closeForgotPasswordModal} className="w-full" variant="outline">
                   Back to Login
                 </Button>
               </div>
