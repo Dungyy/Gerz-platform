@@ -9,11 +9,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Wrench, 
-  Search, 
-  Plus, 
-  User, 
+import {
+  Wrench,
+  Search,
+  Plus,
+  User,
   Clock,
   Filter,
   CheckCircle2,
@@ -26,7 +26,7 @@ import {
   ChevronRight,
   Zap,
   RefreshCw,
-  SlidersHorizontal
+  SlidersHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,7 +48,9 @@ export default function RequestsPage() {
 
   async function loadData() {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         router.push("/login");
         return;
@@ -97,10 +99,14 @@ export default function RequestsPage() {
     const matchesSearch =
       request.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       request.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.tenant?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
+      request.tenant?.full_name
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase());
 
-    const matchesStatus = filterStatus === "all" || request.status === filterStatus;
-    const matchesPriority = filterPriority === "all" || request.priority === filterPriority;
+    const matchesStatus =
+      filterStatus === "all" || request.status === filterStatus;
+    const matchesPriority =
+      filterPriority === "all" || request.priority === filterPriority;
 
     return matchesSearch && matchesStatus && matchesPriority;
   });
@@ -112,7 +118,7 @@ export default function RequestsPage() {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
         <div className="text-center px-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4" />
           <p className="text-gray-600 text-sm">Loading requests...</p>
         </div>
       </div>
@@ -128,7 +134,8 @@ export default function RequestsPage() {
             Requests
           </h1>
           <p className="text-sm text-gray-600 mt-1">
-            {filteredRequests.length} request{filteredRequests.length !== 1 ? 's' : ''}
+            {filteredRequests.length} request
+            {filteredRequests.length !== 1 ? "s" : ""}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -139,7 +146,9 @@ export default function RequestsPage() {
             disabled={refreshing}
             className="h-9"
           >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+            />
           </Button>
           {isTenant && (
             <Link href="/dashboard/requests/new">
@@ -167,7 +176,7 @@ export default function RequestsPage() {
           variant="outline"
           size="sm"
           onClick={() => setShowFilters(!showFilters)}
-          className={`h-9 ${showFilters ? 'bg-gray-100' : ''}`}
+          className={`h-9 ${showFilters ? "bg-gray-100" : ""}`}
         >
           <SlidersHorizontal className="h-4 w-4 mr-1.5" />
           Filters
@@ -193,7 +202,9 @@ export default function RequestsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium mb-1.5">Priority</label>
+            <label className="block text-xs font-medium mb-1.5">
+              Priority
+            </label>
             <select
               value={filterPriority}
               onChange={(e) => setFilterPriority(e.target.value)}
@@ -236,6 +247,7 @@ export default function RequestsPage() {
 function RequestCard({ request, isTenant, currentUserId }) {
   const [latestComment, setLatestComment] = useState(null);
   const [commentCount, setCommentCount] = useState(0);
+  const [commentsLoading, setCommentsLoading] = useState(true);
 
   // Helper function to parse images (same as detail page)
   function getImagesArray(images) {
@@ -258,6 +270,8 @@ function RequestCard({ request, isTenant, currentUserId }) {
 
     async function loadLatestComment() {
       try {
+        setCommentsLoading(true);
+
         const response = await fetchWithAuth(
           `/api/requests/${request.id}/comments`,
           {
@@ -265,11 +279,16 @@ function RequestCard({ request, isTenant, currentUserId }) {
           }
         );
 
-        if (!response.ok) return;
+        if (!response.ok) {
+          if (isMounted) {
+            setLatestComment(null);
+            setCommentCount(0);
+          }
+          return;
+        }
 
         const data = await response.json();
-        if (!Array.isArray(data)) return;
-        if (!isMounted) return;
+        if (!Array.isArray(data) || !isMounted) return;
 
         setCommentCount(data.length);
 
@@ -291,6 +310,14 @@ function RequestCard({ request, isTenant, currentUserId }) {
         setLatestComment(latest || null);
       } catch (error) {
         console.error("Error loading latest comment:", error);
+        if (isMounted) {
+          setLatestComment(null);
+          setCommentCount(0);
+        }
+      } finally {
+        if (isMounted) {
+          setCommentsLoading(false);
+        }
       }
     }
 
@@ -317,7 +344,8 @@ function RequestCard({ request, isTenant, currentUserId }) {
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-600 flex-wrap">
                 <span className="flex items-center gap-1">
-                  {request.unit?.unit_number && `Unit ${request.unit.unit_number}`}
+                  {request.unit?.unit_number &&
+                    `Unit ${request.unit.unit_number}`}
                 </span>
                 {request.category && (
                   <>
@@ -370,7 +398,9 @@ function RequestCard({ request, isTenant, currentUserId }) {
               {request.description}
             </p>
             {request.location_details && (
-              <p className="text-xs text-gray-600">📍 {request.location_details}</p>
+              <p className="text-xs text-gray-600">
+                📍 {request.location_details}
+              </p>
             )}
           </div>
 
@@ -441,28 +471,44 @@ function RequestCard({ request, isTenant, currentUserId }) {
             </div>
           </div>
 
-          {/* Latest Message */}
-          {latestComment && (
-            <div className="mt-3 pt-3 border-t-2 border-gray-200">
-              <div className="flex items-start gap-2">
-                <MessageSquare className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-700 mb-0.5">
-                    Message Thread
-                    {commentCount ? ` (${commentCount})` : ""}
-                  </p>
-                  <p className="text-xs text-gray-500 mb-0.5">
-                    {latestComment.user?.full_name || "Unknown"}
-                    {" · "}
-                    {formatTimestamp(latestComment.created_at)}
-                  </p>
-                  <p className="text-sm text-gray-600 line-clamp-1">
-                    {latestComment.comment}
-                  </p>
-                </div>
+          {/* Message Thread (with inline loader) */}
+          <div className="mt-3 pt-3 border-t-2 border-gray-200">
+            <div className="flex items-start gap-2">
+              <MessageSquare className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-gray-700 mb-0.5">
+                  Message Thread
+                  {!commentsLoading && commentCount
+                    ? ` (${commentCount})`
+                    : ""}
+                </p>
+
+                {commentsLoading && (
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <span className="inline-flex h-3 w-3 rounded-full bg-gray-300 animate-pulse" />
+                    <span>Loading messages...</span>
+                  </div>
+                )}
+
+                {!commentsLoading && !latestComment && (
+                  <p className="text-xs text-gray-500">No messages yet</p>
+                )}
+
+                {!commentsLoading && latestComment && (
+                  <>
+                    <p className="text-xs text-gray-500 mb-0.5">
+                      {latestComment.user?.full_name || "Unknown"}
+                      {" · "}
+                      {formatTimestamp(latestComment.created_at)}
+                    </p>
+                    <p className="text-sm text-gray-600 line-clamp-1">
+                      {latestComment.comment}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
-          )}
+          </div>
 
           {/* Tenant Info (for staff) */}
           {!isTenant && request.tenant && (
@@ -483,7 +529,6 @@ function RequestCard({ request, isTenant, currentUserId }) {
     </Link>
   );
 }
-
 
 function TimelineItem({ label, value }) {
   return (
@@ -512,7 +557,11 @@ function StatusBadge({ status }) {
   };
 
   return (
-    <Badge className={`${variants[status] || variants.submitted} text-xs font-medium px-2 py-0.5 border-0`}>
+    <Badge
+      className={`${
+        variants[status] || variants.submitted
+      } text-xs font-medium px-2 py-0.5 border-0`}
+    >
       {labels[status] || status}
     </Badge>
   );
@@ -520,23 +569,23 @@ function StatusBadge({ status }) {
 
 function formatTimestamp(dateString) {
   if (!dateString) return "N/A";
-  
+
   const date = new Date(dateString);
   const now = new Date();
   const diffInMinutes = Math.floor((now - date) / (1000 * 60));
 
   if (diffInMinutes < 1) return "Just now";
   if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-  
+
   const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) return `${diffInHours}h ago`;
-  
+
   const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays < 7) return `${diffInDays}d ago`;
-  
+
   return date.toLocaleDateString("en-US", {
     month: "short",
-    day: "numeric"
+    day: "numeric",
   });
 }
 
@@ -544,15 +593,15 @@ function formatETA(createdAt) {
   const created = new Date(createdAt);
   const eta = new Date(created);
   eta.setDate(eta.getDate() + 2); // 2 day ETA
-  
+
   const now = new Date();
   if (eta < now) return "Overdue";
-  
+
   if (eta.toDateString() === now.toDateString()) return "Today";
-  
+
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
   if (eta.toDateString() === tomorrow.toDateString()) return "Tomorrow";
-  
+
   return eta.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
