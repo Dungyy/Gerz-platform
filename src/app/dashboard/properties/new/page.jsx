@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSubscriptionLimit } from '@/components/modals/upgrade-prompt'
+import { useSubscriptionLimit } from "@/components/modals/upgrade-prompt";
 import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ export default function NewPropertyPage() {
   const [loading, setLoading] = useState(false);
   const [orgId, setOrgId] = useState(null);
   const [showBulkImport, setShowBulkImport] = useState(false);
-  const { checkLimit, UpgradePrompt } = useSubscriptionLimit()
+  const { checkLimit, UpgradePrompt } = useSubscriptionLimit();
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -44,6 +44,9 @@ export default function NewPropertyPage() {
       bedrooms: "",
       bathrooms: "",
       square_feet: "",
+      monthly_rent: "",
+      lease_start_date: "",
+      lease_end_date: "",
     },
   ]);
 
@@ -96,6 +99,9 @@ export default function NewPropertyPage() {
         bedrooms: lastUnit?.bedrooms || 1,
         bathrooms: lastUnit?.bathrooms || 1,
         square_feet: lastUnit?.square_feet || "",
+        monthly_rent: lastUnit?.monthly_rent || "",
+        lease_start_date: lastUnit?.lease_start_date || "",
+        lease_end_date: lastUnit?.lease_end_date || "",
       },
     ]);
   }
@@ -126,6 +132,7 @@ export default function NewPropertyPage() {
     const bedrooms = prompt("Default bedrooms:", "1");
     const bathrooms = prompt("Default bathrooms:", "1");
     const squareFeet = prompt("Default square feet (optional):", "");
+    const monthlyRent = prompt("Default monthly rent (optional):", "");
 
     const newUnits = [];
     for (let i = start; i <= end; i++) {
@@ -136,6 +143,9 @@ export default function NewPropertyPage() {
         bedrooms: bedrooms ? Number(bedrooms) : 1,
         bathrooms: bathrooms ? Number(bathrooms) : 1,
         square_feet: squareFeet || "",
+        monthly_rent: monthlyRent || "",
+        lease_start_date: "",
+        lease_end_date: "",
       });
     }
 
@@ -165,6 +175,9 @@ export default function NewPropertyPage() {
             bedrooms: bedrooms ? Number(bedrooms) : 1,
             bathrooms: bathrooms ? Number(bathrooms) : 1,
             square_feet: square_feet || "",
+            monthly_rent: "",
+            lease_start_date: "",
+            lease_end_date: "",
           };
         })
         .filter((u) => u.unit_number);
@@ -205,15 +218,12 @@ export default function NewPropertyPage() {
       return;
     }
 
-    // ✅ STEP 1: Check subscription limit FIRST (before setLoading)
-    const canAdd = await checkLimit('properties')
-    
+    // 1) Check subscription limit first
+    const canAdd = await checkLimit("properties");
     if (!canAdd) {
-      // Upgrade prompt shows automatically via the hook
-      return
+      return;
     }
 
-    // ✅ STEP 2: Now set loading and proceed with creation
     setLoading(true);
     try {
       const payload = {
@@ -222,10 +232,26 @@ export default function NewPropertyPage() {
         units: units
           .filter((u) => u.unit_number && u.unit_number.trim())
           .map((u) => ({
-            ...u,
-            bedrooms: u.bedrooms === "" ? null : Number(u.bedrooms),
-            bathrooms: u.bathrooms === "" ? null : Number(u.bathrooms),
-            square_feet: u.square_feet === "" ? null : Number(u.square_feet),
+            unit_number: u.unit_number.trim(),
+            floor: u.floor === "" ? null : Number(u.floor),
+            bedrooms:
+              u.bedrooms === "" || u.bedrooms == null
+                ? null
+                : Number(u.bedrooms),
+            bathrooms:
+              u.bathrooms === "" || u.bathrooms == null
+                ? null
+                : Number(u.bathrooms),
+            square_feet:
+              u.square_feet === "" || u.square_feet == null
+                ? null
+                : Number(u.square_feet),
+            monthly_rent:
+              u.monthly_rent === "" || u.monthly_rent == null
+                ? null
+                : Number(u.monthly_rent),
+            lease_start_date: u.lease_start_date || null,
+            lease_end_date: u.lease_end_date || null,
           })),
       };
 
@@ -238,7 +264,6 @@ export default function NewPropertyPage() {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        // Handle limit_reached error from API (backup check)
         if (data.limit_reached) {
           toast.error("Property limit reached. Please upgrade your plan.");
           return;
@@ -251,7 +276,7 @@ export default function NewPropertyPage() {
         details: {
           property_name: formData.name,
           address: formData.address,
-          units_count: units.length
+          units_count: units.length,
         },
       });
 
@@ -298,8 +323,8 @@ export default function NewPropertyPage() {
               <div className="text-sm">
                 <p className="font-semibold mb-1">Quick tip</p>
                 <p className="text-muted-foreground">
-                  Use bulk import or range generator to quickly add multiple units
-                  at once.
+                  Use bulk import or range generator to quickly add multiple
+                  units at once.
                 </p>
               </div>
             </div>
@@ -473,7 +498,7 @@ export default function NewPropertyPage() {
                     key={index}
                     className="flex flex-col sm:flex-row gap-3 items-start p-3 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
                   >
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 flex-1 w-full">
+                    <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 flex-1 w-full">
                       <Input
                         placeholder="Unit #"
                         value={unit.unit_number}
@@ -522,6 +547,34 @@ export default function NewPropertyPage() {
                         min="0"
                         className="text-sm"
                       />
+                      <Input
+                        type="number"
+                        placeholder="Rent"
+                        value={unit.monthly_rent}
+                        onChange={(e) =>
+                          updateUnit(index, "monthly_rent", e.target.value)
+                        }
+                        min="0"
+                        className="text-sm"
+                      />
+                      <Input
+                        type="date"
+                        placeholder="Lease Start"
+                        value={unit.lease_start_date}
+                        onChange={(e) =>
+                          updateUnit(index, "lease_start_date", e.target.value)
+                        }
+                        className="text-xs sm:text-sm"
+                      />
+                      <Input
+                        type="date"
+                        placeholder="Lease End"
+                        value={unit.lease_end_date}
+                        onChange={(e) =>
+                          updateUnit(index, "lease_end_date", e.target.value)
+                        }
+                        className="text-xs sm:text-sm"
+                      />
                     </div>
 
                     {units.length > 1 && (
@@ -550,7 +603,9 @@ export default function NewPropertyPage() {
             >
               {loading
                 ? "Creating..."
-                : `Create Property with ${units.length} ${units.length === 1 ? "Unit" : "Units"}`}
+                : `Create Property with ${units.length} ${
+                    units.length === 1 ? "Unit" : "Units"
+                  }`}
             </Button>
             <Button
               type="button"
@@ -565,7 +620,7 @@ export default function NewPropertyPage() {
         </form>
       </div>
 
-      {/* ✅ CRITICAL: Render upgrade prompt */}
+      {/* Render upgrade prompt */}
       <UpgradePrompt />
     </>
   );

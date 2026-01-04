@@ -34,7 +34,7 @@ export async function GET(request, context) {
 
     console.log('👤 User org:', profile.organization_id)
 
-    // Get property with units
+    // Get property with units (including rent + lease info)
     const { data: property, error } = await supabaseAdmin
       .from('properties')
       .select(`
@@ -47,6 +47,9 @@ export async function GET(request, context) {
           bedrooms,
           bathrooms,
           square_feet,
+          monthly_rent,
+          lease_start_date,
+          lease_end_date,
           tenant_id,
           tenant:profiles(full_name, email, phone)
         )
@@ -112,7 +115,11 @@ export async function PUT(request, context) {
     }
 
     // Verify manager belongs to same organization (if manager_id is being set and not null)
-    if (updates.manager_id !== undefined && updates.manager_id !== null && updates.manager_id !== '') {
+    if (
+      updates.manager_id !== undefined &&
+      updates.manager_id !== null &&
+      updates.manager_id !== ''
+    ) {
       const { data: managerProfile } = await supabaseAdmin
         .from('profiles')
         .select('id, organization_id, role')

@@ -18,9 +18,12 @@ export function EditUnitModal({ isOpen, onClose, unit, onSuccess }) {
   const [formData, setFormData] = useState({
     unit_number: "",
     floor: "",
-    bedrooms: 1,
-    bathrooms: 1,
+    bedrooms: "1",
+    bathrooms: "1",
     square_feet: "",
+    monthly_rent: "",
+    lease_start_date: "",
+    lease_end_date: "",
   });
 
   // Populate form when unit changes
@@ -28,10 +31,15 @@ export function EditUnitModal({ isOpen, onClose, unit, onSuccess }) {
     if (unit && isOpen) {
       setFormData({
         unit_number: unit.unit_number || "",
-        floor: unit.floor?.toString() || "",
-        bedrooms: unit.bedrooms || 1,
-        bathrooms: unit.bathrooms || 1,
-        square_feet: unit.square_feet?.toString() || "",
+        floor: unit.floor != null ? String(unit.floor) : "",
+        bedrooms: unit.bedrooms != null ? String(unit.bedrooms) : "1",
+        bathrooms: unit.bathrooms != null ? String(unit.bathrooms) : "1",
+        square_feet:
+          unit.square_feet != null ? String(unit.square_feet) : "",
+        monthly_rent:
+          unit.monthly_rent != null ? String(unit.monthly_rent) : "",
+        lease_start_date: unit.lease_start_date || "",
+        lease_end_date: unit.lease_end_date || "",
       });
     }
   }, [unit, isOpen]);
@@ -42,7 +50,7 @@ export function EditUnitModal({ isOpen, onClose, unit, onSuccess }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    
+
     if (!formData.unit_number.trim()) {
       toast.error("Unit number is required");
       return;
@@ -54,11 +62,20 @@ export function EditUnitModal({ isOpen, onClose, unit, onSuccess }) {
       const payload = {
         unit_number: formData.unit_number.trim(),
         floor: formData.floor ? parseInt(formData.floor, 10) : null,
-        bedrooms: formData.bedrooms ? parseInt(formData.bedrooms, 10) : null,
-        bathrooms: formData.bathrooms ? parseFloat(formData.bathrooms) : null,
-        square_feet: formData.square_feet
-          ? parseInt(formData.square_feet, 10)
-          : null,
+        bedrooms:
+          formData.bedrooms !== "" ? parseInt(formData.bedrooms, 10) : null,
+        bathrooms:
+          formData.bathrooms !== "" ? parseFloat(formData.bathrooms) : null,
+        square_feet:
+          formData.square_feet !== ""
+            ? parseInt(formData.square_feet, 10)
+            : null,
+        monthly_rent:
+          formData.monthly_rent !== ""
+            ? parseFloat(formData.monthly_rent)
+            : null,
+        lease_start_date: formData.lease_start_date || null,
+        lease_end_date: formData.lease_end_date || null,
       };
 
       const response = await fetchWithAuth(`/api/units/${unit.id}`, {
@@ -66,14 +83,14 @@ export function EditUnitModal({ isOpen, onClose, unit, onSuccess }) {
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(data?.error || "Failed to update unit");
       }
 
       toast.success(`Unit ${formData.unit_number} updated successfully`);
-      onSuccess();
+      if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
       console.error("Error updating unit:", err);
@@ -132,7 +149,9 @@ export function EditUnitModal({ isOpen, onClose, unit, onSuccess }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Bedrooms</label>
+              <label className="block text-sm font-medium mb-2">
+                Bedrooms
+              </label>
               <Input
                 name="bedrooms"
                 type="number"
@@ -168,6 +187,47 @@ export function EditUnitModal({ isOpen, onClose, unit, onSuccess }) {
                 min="0"
                 placeholder="850"
                 value={formData.square_feet}
+                onChange={handleChange}
+                className="h-10"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Monthly Rent
+              </label>
+              <Input
+                name="monthly_rent"
+                type="number"
+                min="0"
+                placeholder="1200"
+                value={formData.monthly_rent}
+                onChange={handleChange}
+                className="h-10"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Lease Start
+              </label>
+              <Input
+                name="lease_start_date"
+                type="date"
+                value={formData.lease_start_date || ""}
+                onChange={handleChange}
+                className="h-10"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Lease End
+              </label>
+              <Input
+                name="lease_end_date"
+                type="date"
+                value={formData.lease_end_date || ""}
                 onChange={handleChange}
                 className="h-10"
               />

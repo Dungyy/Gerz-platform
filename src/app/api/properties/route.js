@@ -38,7 +38,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Organization mismatch' }, { status: 403 })
     }
 
-    // ✅ CHECK SUBSCRIPTION LIMIT
+    // Check subscription limit
     const { data: canAdd, error: limitError } = await supabaseAdmin.rpc(
       "check_subscription_limit",
       {
@@ -76,7 +76,6 @@ export async function POST(request) {
       manager_id: body.manager_id || null,
     }
 
-    // Remove undefined keys
     Object.keys(propertyInsert).forEach((k) => {
       if (typeof propertyInsert[k] === 'undefined') delete propertyInsert[k]
     })
@@ -90,7 +89,7 @@ export async function POST(request) {
 
     if (propErr) throw propErr
 
-    // Create units
+    // Create units (full shape)
     const units = Array.isArray(body.units) ? body.units : []
 
     const cleanedUnits = units
@@ -98,10 +97,22 @@ export async function POST(request) {
       .map((u) => ({
         property_id: property.id,
         unit_number: String(u.unit_number).trim(),
+
         floor: u.floor === '' || u.floor == null ? null : Number(u.floor),
         bedrooms: u.bedrooms === '' || u.bedrooms == null ? null : Number(u.bedrooms),
         bathrooms: u.bathrooms === '' || u.bathrooms == null ? null : Number(u.bathrooms),
-        square_feet: u.square_feet === '' || u.square_feet == null ? null : Number(u.square_feet),
+        square_feet:
+          u.square_feet === '' || u.square_feet == null ? null : Number(u.square_feet),
+
+        monthly_rent:
+          u.monthly_rent === '' || u.monthly_rent == null
+            ? null
+            : Number(u.monthly_rent),
+
+        lease_start_date: u.lease_start_date || null,
+        lease_end_date: u.lease_end_date || null,
+
+        tenant_id: u.tenant_id || null,
       }))
 
     let unitsCreated = 0

@@ -24,6 +24,28 @@ import { toast } from "sonner";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import { fetchWithAuth } from "@/lib/api-helper";
 
+function formatCurrency(amount) {
+  if (amount === null || amount === undefined || amount === "") return null;
+  const num = Number(amount);
+  if (Number.isNaN(num)) return null;
+  return num.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export default function TenantDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -48,7 +70,7 @@ export default function TenantDetailPage() {
     try {
       setLoading(true);
 
-      // Load tenant details
+      // Load tenant details (include lease + rent info on unit)
       const { data: tenantData, error: tenantError } = await supabase
         .from("profiles")
         .select(
@@ -61,6 +83,9 @@ export default function TenantDetailPage() {
             bedrooms,
             bathrooms,
             square_feet,
+            monthly_rent,
+            lease_start_date,
+            lease_end_date,
             property:properties(
               id,
               name,
@@ -232,7 +257,18 @@ export default function TenantDetailPage() {
       : tenant.unit && typeof tenant.unit === "object"
       ? tenant.unit
       : null;
+
   const property = unit?.property;
+  const leaseStart = unit?.lease_start_date
+    ? formatDate(unit.lease_start_date)
+    : null;
+  const leaseEnd = unit?.lease_end_date
+    ? formatDate(unit.lease_end_date)
+    : null;
+  const monthlyRentFormatted =
+    unit && unit.monthly_rent !== null && unit.monthly_rent !== undefined
+      ? formatCurrency(unit.monthly_rent)
+      : null;
 
   // Group units by property
   const unitsByProperty = units.reduce((acc, u) => {
@@ -434,7 +470,7 @@ export default function TenantDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-4 sm:space-y-6">
-            {/* Profile Card with Avatar (like workers page) */}
+            {/* Profile Card with Avatar */}
             <Card className="shadow-sm">
               <CardContent className="pt-4 sm:pt-6">
                 <div className="text-center mb-3 sm:mb-4">
@@ -485,7 +521,7 @@ export default function TenantDetailPage() {
                   {unit.floor && (
                     <div>
                       <p className="text-xs sm:text-sm text-muted-foreground">
-                        Floor
+                        Floors
                       </p>
                       <p className="font-medium text-sm sm:text-base">
                         {unit.floor}
@@ -525,6 +561,36 @@ export default function TenantDetailPage() {
                       </p>
                       <p className="font-medium text-sm sm:text-base">
                         {unit.square_feet.toLocaleString()} sq ft
+                      </p>
+                    </div>
+                  )}
+
+                  {monthlyRentFormatted && (
+                    <div>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        Monthly Rent
+                      </p>
+                      <p className="font-medium text-sm sm:text-base">
+                        {monthlyRentFormatted}
+                        <span className="text-xs sm:text-sm text-muted-foreground">
+                          {" "}
+                          / month
+                        </span>
+                      </p>
+                    </div>
+                  )}
+
+                  {(leaseStart || leaseEnd) && (
+                    <div>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        Lease
+                      </p>
+                      <p className="font-medium text-sm sm:text-base">
+                        {leaseStart && leaseEnd
+                          ? `${leaseStart} — ${leaseEnd}`
+                          : leaseStart
+                          ? `Starts ${leaseStart}`
+                          : `Ends ${leaseEnd}`}
                       </p>
                     </div>
                   )}
@@ -597,7 +663,11 @@ export default function TenantDetailPage() {
                     Pending
                   </span>
                   <span className="font-semibold text-sm sm:text-base">
-                    {requests.filter((r) => r.status === "submitted").length}
+                    {
+                      requests.filter(
+                        (r) => r.status === "submitted"
+                      ).length
+                    }
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -605,7 +675,11 @@ export default function TenantDetailPage() {
                     Completed
                   </span>
                   <span className="font-semibold text-sm sm:text-base">
-                    {requests.filter((r) => r.status === "completed").length}
+                    {
+                      requests.filter(
+                        (r) => r.status === "completed"
+                      ).length
+                    }
                   </span>
                 </div>
               </CardContent>
@@ -668,14 +742,18 @@ export default function TenantDetailPage() {
                 {Object.entries(unitsByProperty).map(
                   ([propertyName, propertyUnits]) => (
                     <optgroup key={propertyName} label={propertyName}>
-                      {propertyUnits.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          Unit {u.unit_number}
-                          {u.bedrooms
-                            ? ` • ${u.bedrooms} bed, ${u.bathrooms} bath`
-                            : ""}
-                        </option>
-                      ))}
+                      {propertyUnits.map((u) => {
+                        const labelRent = formatCurrency(u.monthly_rent);
+                        return (
+                          <option key={u.id} value={u.id}>
+                            Unit {u.unit_number}
+                            {u.bedrooms
+                              ? ` • ${u.bedrooms} bed, ${u.bathrooms} bath`
+                              : ""}
+                            {labelRent ? ` • ${labelRent}/mo` : ""}
+                          </option>
+                        );
+                      })}
                     </optgroup>
                   )
                 )}

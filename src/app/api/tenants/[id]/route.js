@@ -61,6 +61,9 @@ export async function GET(request, context) {
           bedrooms,
           bathrooms,
           square_feet,
+          monthly_rent,
+          lease_start_date,
+          lease_end_date,
           property:properties(
             id,
             name,

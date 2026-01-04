@@ -33,6 +33,17 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export default function PropertyDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -44,13 +55,13 @@ export default function PropertyDetailPage() {
   const [unitSearch, setUnitSearch] = useState("");
   const [unitFilter, setUnitFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  
+
   // Modals
   const [showAddUnitModal, setShowAddUnitModal] = useState(false);
   const [showEditUnitModal, setShowEditUnitModal] = useState(false);
   const [showDeletePropertyModal, setShowDeletePropertyModal] = useState(false);
   const [showDeleteUnitModal, setShowDeleteUnitModal] = useState(false);
-  
+
   // Selected items
   const [unitToEdit, setUnitToEdit] = useState(null);
   const [unitToDelete, setUnitToDelete] = useState(null);
@@ -61,6 +72,7 @@ export default function PropertyDetailPage() {
   useEffect(() => {
     if (!params?.id) return;
     loadProperty();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
   useEffect(() => {
@@ -233,7 +245,7 @@ export default function PropertyDetailPage() {
     .sort((a, b) => {
       const aNum = parseInt(a.unit_number, 10);
       const bNum = parseInt(b.unit_number, 10);
-      if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+      if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) return aNum - bNum;
       return (a.unit_number || "").localeCompare(b.unit_number || "");
     });
 
@@ -418,13 +430,12 @@ export default function PropertyDetailPage() {
                   <div className="space-y-2">
                     {/* Desktop header - hidden on mobile */}
                     <div className="hidden lg:grid lg:grid-cols-12 gap-4 px-4 py-2 text-xs font-medium text-muted-foreground border-b-2">
-                      <div className="col-span-2">Unit #</div>
+                      <div className="col-span-3">Unit / Lease</div>
                       <div className="col-span-1">Floor</div>
                       <div className="col-span-2">Beds/Baths</div>
                       <div className="col-span-2">Sq Ft</div>
                       <div className="col-span-2">Tenant</div>
-                      <div className="col-span-2">Status</div>
-                      <div className="col-span-1 text-right">Actions</div>
+                      <div className="col-span-2 text-right">Status / Actions</div>
                     </div>
 
                     {/* Units */}
@@ -433,24 +444,61 @@ export default function PropertyDetailPage() {
                         key={unit.id}
                         className="border-2 rounded-lg hover:bg-muted/30 hover:border-gray-400 transition-all overflow-x-hidden"
                       >
-                        {/* Desktop row - hidden on tablet and mobile */}
+                        {/* Desktop row */}
                         <div className="hidden lg:grid lg:grid-cols-12 gap-4 items-center p-4">
-                          <div className="col-span-2 font-semibold text-sm">
-                            Unit {unit.unit_number}
+                          <div className="col-span-3 text-sm">
+                            <div className="font-semibold">
+                              Unit {unit.unit_number}
+                            </div>
+                            {(unit.monthly_rent ||
+                              unit.lease_start_date ||
+                              unit.lease_end_date) && (
+                              <div className="text-xs text-muted-foreground mt-0.5 space-x-1">
+                                {unit.monthly_rent && (
+                                  <span>
+                                    Rent: $
+                                    {Number(unit.monthly_rent).toLocaleString(
+                                      undefined,
+                                      {
+                                        minimumFractionDigits: 0,
+                                        maximumFractionDigits: 2,
+                                      }
+                                    )}
+                                  </span>
+                                )}
+                                {(unit.lease_start_date ||
+                                  unit.lease_end_date) && (
+                                  <span>
+                                    • Lease:{" "}
+                                    {unit.lease_start_date
+                                      ? formatDate(unit.lease_start_date)
+                                      : "—"}{" "}
+                                    –{" "}
+                                    {unit.lease_end_date
+                                      ? formatDate(unit.lease_end_date)
+                                      : "—"}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
+
                           <div className="col-span-1 text-xs text-muted-foreground">
                             {unit.floor ? `Floor ${unit.floor}` : "—"}
                           </div>
+
                           <div className="col-span-2 text-xs text-muted-foreground">
                             {unit.bedrooms && unit.bathrooms
                               ? `${unit.bedrooms}/${unit.bathrooms}`
                               : "—"}
                           </div>
+
                           <div className="col-span-2 text-xs text-muted-foreground">
                             {unit.square_feet
                               ? `${unit.square_feet.toLocaleString()} sq ft`
                               : "—"}
                           </div>
+
                           <div className="col-span-2 text-sm">
                             {unit.tenant ? (
                               <Link
@@ -465,7 +513,8 @@ export default function PropertyDetailPage() {
                               </span>
                             )}
                           </div>
-                          <div className="col-span-2">
+
+                          <div className="col-span-2 flex items-center justify-end gap-2">
                             <Badge
                               className={
                                 unit.tenant
@@ -475,8 +524,6 @@ export default function PropertyDetailPage() {
                             >
                               {unit.tenant ? "Occupied" : "Vacant"}
                             </Badge>
-                          </div>
-                          <div className="col-span-1 flex justify-end gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -514,6 +561,36 @@ export default function PropertyDetailPage() {
                                   <p className="text-xs text-muted-foreground">
                                     Floor {unit.floor}
                                   </p>
+                                )}
+                                {(unit.monthly_rent ||
+                                  unit.lease_start_date ||
+                                  unit.lease_end_date) && (
+                                  <div className="mt-1 text-[11px] sm:text-xs text-muted-foreground space-y-0.5">
+                                    {unit.monthly_rent && (
+                                      <p>
+                                        Rent: $
+                                        {Number(
+                                          unit.monthly_rent
+                                        ).toLocaleString(undefined, {
+                                          minimumFractionDigits: 0,
+                                          maximumFractionDigits: 2,
+                                        })}
+                                      </p>
+                                    )}
+                                    {(unit.lease_start_date ||
+                                      unit.lease_end_date) && (
+                                      <p>
+                                        Lease:{" "}
+                                        {unit.lease_start_date
+                                          ? formatDate(unit.lease_start_date)
+                                          : "—"}{" "}
+                                        –{" "}
+                                        {unit.lease_end_date
+                                          ? formatDate(unit.lease_end_date)
+                                          : "—"}
+                                      </p>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -636,7 +713,6 @@ export default function PropertyDetailPage() {
           <Card className="shadow-sm border-2 overflow-x-hidden">
             <CardContent className="pt-4 sm:pt-6">
               <div className="text-center mb-3 sm:mb-4">
-                {/* Property Image */}
                 <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-xl overflow-hidden bg-muted mx-auto mb-3 border-2 border-border">
                   {property.photo_url ? (
                     <Image
