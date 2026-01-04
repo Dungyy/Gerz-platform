@@ -47,10 +47,10 @@ export async function GET(request, context) {
       .select(
         `
         *,
-        tenant:profiles!maintenance_requests_tenant_id_fkey(id, full_name, email, phone),
+        tenant:profiles!maintenance_requests_tenant_id_fkey(id, full_name, email, phone, avatar_url),
         property:properties(id, name, address, city, state),
         unit:units(id, unit_number),
-        assigned_to_user:profiles!maintenance_requests_assigned_to_fkey(id, full_name, email, phone)
+        assigned_to_user:profiles!maintenance_requests_assigned_to_fkey(id, full_name, email, phone, avatar_url)
       `
       )
       .eq("id", requestId)
@@ -130,10 +130,10 @@ export async function PUT(request, context) {
       .select(
         `
         *,
-        tenant:profiles!maintenance_requests_tenant_id_fkey(id, full_name, email, phone, sms_notifications),
+        tenant:profiles!maintenance_requests_tenant_id_fkey(id, full_name, email, phone, sms_notifications, avatar_url),
         property:properties(id, name, address, city, state),
         unit:units(id, unit_number),
-        assigned_to_user:profiles!maintenance_requests_assigned_to_fkey(id, full_name, email, phone, sms_notifications)
+        assigned_to_user:profiles!maintenance_requests_assigned_to_fkey(id, full_name, email, phone, sms_notifications, avatar_url)
       `
       )
       .eq("id", requestId)
@@ -177,10 +177,10 @@ export async function PUT(request, context) {
       .select(
         `
         *,
-        tenant:profiles!maintenance_requests_tenant_id_fkey(id, full_name, email, phone, sms_notifications),
+        tenant:profiles!maintenance_requests_tenant_id_fkey(id, full_name, email, phone, sms_notifications, avatar_url),
         property:properties(id, name, address, city, state),
         unit:units(id, unit_number),
-        assigned_to_user:profiles!maintenance_requests_assigned_to_fkey(id, full_name, email, phone, sms_notifications)
+        assigned_to_user:profiles!maintenance_requests_assigned_to_fkey(id, full_name, email, phone, sms_notifications, avatar_url)
       `
       )
       .single();
@@ -314,7 +314,7 @@ export async function PUT(request, context) {
             body: JSON.stringify({
               from: process.env.DEFAULT_FROM_EMAIL,
               to: updatedRequest.tenant.email,
-              subject: `${updates.status === 'completed' ? '' : '🔧 '}${updatedRequest.title}`,
+              subject: `${updates.status === 'completed' ? '✅ ' : '🔧 '}${updatedRequest.title}`,
               html: generateTenantUpdateEmail(
                 updatedRequest.tenant.full_name,
                 updatedRequest,

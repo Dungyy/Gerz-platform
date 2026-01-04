@@ -234,25 +234,75 @@ export default function RequestsPage() {
 }
 
 function RequestCard({ request, isTenant, currentUserId }) {
+  const [latestComment, setLatestComment] = useState(null);
+  const [commentCount, setCommentCount] = useState(0);
+
   // Helper function to parse images (same as detail page)
   function getImagesArray(images) {
     if (!images) return [];
     if (Array.isArray(images)) return images;
-    if (typeof images === 'string') {
+    if (typeof images === "string") {
       try {
         const parsed = JSON.parse(images);
         return Array.isArray(parsed) ? parsed : [];
       } catch (e) {
-        console.error('Failed to parse images:', e);
+        console.error("Failed to parse images:", e);
         return [];
       }
     }
     return [];
   }
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadLatestComment() {
+      try {
+        const response = await fetchWithAuth(
+          `/api/requests/${request.id}/comments`,
+          {
+            method: "GET",
+          }
+        );
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!Array.isArray(data)) return;
+        if (!isMounted) return;
+
+        setCommentCount(data.length);
+
+        if (data.length === 0) {
+          setLatestComment(null);
+          return;
+        }
+
+        // Prefer **public** comments (is_internal === false)
+        const publicComments = data.filter((c) => !c.is_internal);
+        const visibleComments = publicComments.length ? publicComments : data;
+
+        // Sort by created_at ascending and take the last one = latest
+        const sorted = [...visibleComments].sort(
+          (a, b) => new Date(a.created_at) - new Date(b.created_at)
+        );
+        const latest = sorted[sorted.length - 1];
+
+        setLatestComment(latest || null);
+      } catch (error) {
+        console.error("Error loading latest comment:", error);
+      }
+    }
+
+    loadLatestComment();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [request.id]);
+
   const requestImages = getImagesArray(request.images);
   const hasPhotos = requestImages.length > 0;
-  const commentCount = 0; // Would come from API
 
   return (
     <Link href={`/dashboard/requests/${request.id}`}>
@@ -262,9 +312,7 @@ function RequestCard({ request, isTenant, currentUserId }) {
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <h3 className="font-semibold text-base">
-                  {request.title}
-                </h3>
+                <h3 className="font-semibold text-base">{request.title}</h3>
                 <StatusBadge status={request.status} />
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-600 flex-wrap">
@@ -282,7 +330,8 @@ function RequestCard({ request, isTenant, currentUserId }) {
                     <span>•</span>
                     <span className="flex items-center gap-1">
                       <ImageIcon className="h-3 w-3" />
-                      {requestImages.length} photo{requestImages.length !== 1 ? 's' : ''}
+                      {requestImages.length} photo
+                      {requestImages.length !== 1 ? "s" : ""}
                     </span>
                   </>
                 )}
@@ -321,9 +370,7 @@ function RequestCard({ request, isTenant, currentUserId }) {
               {request.description}
             </p>
             {request.location_details && (
-              <p className="text-xs text-gray-600">
-                📍 {request.location_details}
-              </p>
+              <p className="text-xs text-gray-600">📍 {request.location_details}</p>
             )}
           </div>
 
@@ -336,7 +383,9 @@ function RequestCard({ request, isTenant, currentUserId }) {
               </div>
               <p className="text-sm font-medium truncate">
                 {request.assigned_to_user ? (
-                  request.assigned_to === currentUserId ? 'You' : request.assigned_to_user.full_name
+                  request.assigned_to === currentUserId
+                    ? "You"
+                    : request.assigned_to_user.full_name
                 ) : (
                   <span className="text-gray-500">Unassigned</span>
                 )}
@@ -359,7 +408,9 @@ function RequestCard({ request, isTenant, currentUserId }) {
                 <span className="font-medium">Status</span>
               </div>
               <p className="text-sm font-medium">
-                {request.status === 'completed' ? 'Done' : formatETA(request.created_at)}
+                {request.status === "completed"
+                  ? "Done"
+                  : formatETA(request.created_at)}
               </p>
             </div>
           </div>
@@ -372,19 +423,16 @@ function RequestCard({ request, isTenant, currentUserId }) {
                 label="Submitted"
                 value={formatTimestamp(request.created_at)}
               />
-              {request.status !== 'submitted' && (
+              {request.status !== "submitted" && (
                 <TimelineItem
                   label="Assigned"
                   value={formatTimestamp(request.updated_at)}
                 />
               )}
-              {request.status === 'in_progress' && (
-                <TimelineItem
-                  label="In progress"
-                  value="Now"
-                />
+              {request.status === "in_progress" && (
+                <TimelineItem label="In progress" value="Now" />
               )}
-              {request.status === 'completed' && (
+              {request.status === "completed" && (
                 <TimelineItem
                   label="Completed"
                   value={formatTimestamp(request.completed_at)}
@@ -394,16 +442,22 @@ function RequestCard({ request, isTenant, currentUserId }) {
           </div>
 
           {/* Latest Message */}
-          {request.latest_comment && (
+          {latestComment && (
             <div className="mt-3 pt-3 border-t-2 border-gray-200">
               <div className="flex items-start gap-2">
                 <MessageSquare className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-gray-700 mb-0.5">
-                    Latest message
+                    Message Thread
+                    {commentCount ? ` (${commentCount})` : ""}
+                  </p>
+                  <p className="text-xs text-gray-500 mb-0.5">
+                    {latestComment.user?.full_name || "Unknown"}
+                    {" · "}
+                    {formatTimestamp(latestComment.created_at)}
                   </p>
                   <p className="text-sm text-gray-600 line-clamp-1">
-                    {request.latest_comment}
+                    {latestComment.comment}
                   </p>
                 </div>
               </div>
@@ -417,7 +471,9 @@ function RequestCard({ request, isTenant, currentUserId }) {
                 <User className="h-4 w-4 text-gray-400" />
                 <div>
                   <p className="text-xs text-gray-600">Tenant</p>
-                  <p className="text-sm font-medium">{request.tenant.full_name}</p>
+                  <p className="text-sm font-medium">
+                    {request.tenant.full_name}
+                  </p>
                 </div>
               </div>
             </div>
@@ -427,6 +483,7 @@ function RequestCard({ request, isTenant, currentUserId }) {
     </Link>
   );
 }
+
 
 function TimelineItem({ label, value }) {
   return (

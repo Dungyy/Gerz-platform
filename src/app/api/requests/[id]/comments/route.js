@@ -48,12 +48,13 @@ export async function GET(request, context) {
       .select(
         `
         *,
-        user:profiles(full_name, role)
+        user:profiles(id, full_name, role, avatar_url)
       `
       )
       .eq("request_id", requestId)
       .order("created_at", { ascending: true });
 
+    // FILTER INTERNAL COMMENTS: Tenants can't see internal notes
     if (profile.role === "tenant") {
       query = query.eq("is_internal", false);
       console.log("🔒 Filtering out internal comments for tenant");
@@ -66,7 +67,7 @@ export async function GET(request, context) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    console.log("Found", comments?.length || 0, "comments");
+    console.log("✅ Found", comments?.length || 0, "comments");
 
     return NextResponse.json(comments || []);
   } catch (error) {
@@ -106,7 +107,7 @@ export async function POST(request, context) {
 
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("organization_id, role, full_name")
+      .select("organization_id, role, full_name, avatar_url")
       .eq("id", user.id)
       .single();
 
@@ -135,6 +136,7 @@ export async function POST(request, context) {
       profile.organization_id
     );
 
+    // AUTHORIZATION: Tenants cannot create internal comments
     if (profile.role === "tenant" && is_internal) {
       return NextResponse.json(
         {
@@ -151,16 +153,20 @@ export async function POST(request, context) {
           `
         *,
         tenant:profiles!maintenance_requests_tenant_id_fkey(
+          id,
           full_name, 
           email, 
           phone, 
-          sms_notifications
+          sms_notifications,
+          avatar_url
         ),
         assigned_worker:profiles!maintenance_requests_assigned_to_fkey(
+          id,
           full_name, 
           email, 
           phone, 
-          sms_notifications
+          sms_notifications,
+          avatar_url
         ),
         property:properties(name)
       `
@@ -192,7 +198,7 @@ export async function POST(request, context) {
       );
     }
 
-    console.log("Comment authorization passed");
+    console.log("✅ Comment authorization passed");
 
     // CREATE COMMENT WITH VALIDATED DATA
     console.log("📝 Inserting comment with:", {
@@ -208,14 +214,14 @@ export async function POST(request, context) {
       .insert({
         request_id: requestId,
         user_id: user.id,
-        organization_id: profile.organization_id, // This should now be valid
+        organization_id: profile.organization_id,
         comment,
         is_internal: is_internal || false,
       })
       .select(
         `
         *,
-        user:profiles(full_name, role)
+        user:profiles(id, full_name, role, avatar_url)
       `
       )
       .single();
@@ -232,12 +238,13 @@ export async function POST(request, context) {
       );
     }
 
-    console.log("Comment created:", newComment.id);
+    console.log("✅ Comment created:", newComment.id);
 
-    // ... rest of notification code (keep as-is)
+    // SEND NOTIFICATIONS (ONLY FOR PUBLIC COMMENTS)
     if (!is_internal) {
       console.log("📧 Sending notifications for public comment");
 
+      // Notify tenant if comment is from staff
       if (
         profile.role !== "tenant" &&
         maintenanceRequest.tenant?.email &&
@@ -264,7 +271,7 @@ export async function POST(request, context) {
             }),
           });
 
-          console.log("Email sent to tenant");
+          console.log("✅ Email sent to tenant");
 
           if (
             maintenanceRequest.tenant.phone &&
@@ -281,13 +288,14 @@ export async function POST(request, context) {
               recipientUserId: maintenanceRequest.tenant_id,
               messageType: "status_update",
             });
-            console.log("SMS sent to tenant");
+            console.log("✅ SMS sent to tenant");
           }
         } catch (err) {
           console.error("❌ Tenant notification error:", err);
         }
       }
 
+      // Notify worker if comment is from tenant
       if (
         profile.role === "tenant" &&
         maintenanceRequest.assigned_worker?.email &&
@@ -314,7 +322,7 @@ export async function POST(request, context) {
             }),
           });
 
-          console.log("Email sent to worker");
+          console.log("✅ Email sent to worker");
 
           if (
             maintenanceRequest.assigned_worker.phone &&
@@ -329,7 +337,7 @@ export async function POST(request, context) {
               recipientUserId: maintenanceRequest.assigned_to,
               messageType: "status_update",
             });
-            console.log("SMS sent to worker");
+            console.log("✅ SMS sent to worker");
           }
         } catch (err) {
           console.error("❌ Worker notification error:", err);

@@ -101,7 +101,7 @@ export default function Sidebar({ profile, currentPath }) {
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b">
+          <div className="p-2 border-b">
             <Link href="/dashboard" className="flex items-center gap-2">
               <div className="grid h-8 w-8 place-items-center rounded-xl bg-foreground text-background font-bold text-sm">
                 d

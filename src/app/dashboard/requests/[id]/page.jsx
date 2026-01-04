@@ -565,11 +565,21 @@ export default function RequestDetailPage() {
                 >
                   <div className="flex items-start justify-between mb-1">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center">
-                        <span className="text-xs font-medium">
-                          {comment.user?.full_name?.charAt(0) || '?'}
-                        </span>
-                      </div>
+              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-foreground text-background">
+                {comment.user?.avatar_url ? (
+                  <Image
+                    src={comment.user.avatar_url}
+                    alt={comment.user?.full_name || "User"}
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center font-semibold text-sm">
+                    {comment.user?.full_name?.[0]?.toUpperCase() || "U"}
+                  </div>
+                )}
+              </div>
                       <div>
                         <p className="text-sm font-medium">
                           {comment.user?.full_name}

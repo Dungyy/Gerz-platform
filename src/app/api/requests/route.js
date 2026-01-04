@@ -168,7 +168,7 @@ export async function POST(request) {
               to: formatPhoneNumber(manager.phone),
               message: smsMessage,
               organizationId: profile.organization_id,
-              recipientUserId: manager.id,
+              recipientUserId: unit.property.manager_id,
               messageType: "new_request",
             });
             console.log("SMS sent to manager");
